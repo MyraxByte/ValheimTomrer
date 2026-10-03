@@ -1,5 +1,5 @@
 # Runs a scripted test session in Valheim (src\Dev\AutoTest.cs, Debug builds only) and prints the results (Windows).
-# Same scenarios as scripts/autotest.sh, see the list there and in CLAUDE.md. It uses its own character, world and
+# Same scenarios as scripts/autotest.sh (editor_redesign included), see the list there and in CLAUDE.md. It uses its own character, world and
 # save folder, never the player's saves. Output goes to .devtest\ in the repo.
 #   .\scripts\autotest.ps1                 scenario "blueprints"
 #   .\scripts\autotest.ps1 editor_all      everything, then the art guard (about 11 minutes). The one to run.

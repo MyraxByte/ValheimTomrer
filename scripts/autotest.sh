@@ -32,6 +32,8 @@
 #   ./scripts/autotest.sh editor_build build a blueprint made in the editor, in the world, then edit it again
 #   ./scripts/autotest.sh editor_capture build a kit turned 45 degrees, capture it with the turned rectangle, compare it to the file
 #   ./scripts/autotest.sh editor_support build test structures, hold the editor's support rule against the game's
+#   ./scripts/autotest.sh editor_redesign the view-first window, Quick add, the wheel, themes, keymap, Keys window,
+#                                      command search, hide and lock, align, spread, mirror, copy in a row
 #   ./scripts/autotest.sh editor_all   every scenario above but probe_build in one game (about 10 minutes),
 #                                      then the "no game art" guard, sites folder included
 #   ./scripts/autotest.sh readme_gifs  no test: records the README's GIF frames (editor, build, capture) into

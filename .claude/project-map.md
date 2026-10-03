@@ -152,6 +152,7 @@ Sites/SiteRemoval.cs              "Whole structure": takes a site's built pieces
 
 ```
 EditorConfig.cs                   every editor setting, and the layer number
+PieceMemory.cs                    the pieces used last and the starred ones, kept in the config as prefab names
 EditorSession.cs                  open, close (keeps everything), Forget, the one per-frame tick
 EditorState.cs                    selection, what is in hand, every action that changes the
                                   blueprint. No UI, no scene, the autotest drives it alone
@@ -170,7 +171,8 @@ Doc/BlueprintDocument.cs          the open blueprint with undo and redo. Never c
 Doc/DocumentStore.cs              open, save, save as, rename, delete. Temp file, then rename
 
 Input/EditorInput.cs              raw layer: keys through ZInput, the pad read once a frame
-Input/Bindings.cs                 the one keyboard dispatcher, with the help table next to it
+Input/Bindings.cs                 the one keyboard dispatcher (Press, Run), the help table read from the keymap
+Input/Keymap.cs                   every action, its keys per preset (Tomrer, Figma, Blender) and the Keys config section
 Input/PadBindings.cs              the one pad dispatcher: dialog, then piece menu, then editor
 Input/PadReader.cs                reads the first pad, dead zones, and Fake for the autotest
 Input/Glyphs.cs                   button names for on-screen hints, PlayStation or Xbox wording
@@ -188,16 +190,18 @@ Placement/Support.cs              the game's support rule in plain C#: how well 
                                   held, which ones would fall, and the hammer's colours. The
                                   ground is y = 0, or the terrain through a callback
 
-Ui/EditorWindow.cs                the canvas and its five regions, rebuilt after a world load. The
-                                  blueprint region grows with a long materials list (FitBlueprint)
+Ui/EditorWindow.cs                the canvas: the 3D view full screen, the thin top bar, the Layers
+                                  and Inspector cards that fold (slid off screen, never switched off),
+                                  the status line, the fold handles and the Quick add popup. Ctrl+\
+                                  hides it all. The Inspector's blueprint region grows (FitBlueprint)
 Ui/ModUi.cs                       the Blocking flag every input patch reads
-Ui/UiTheme.cs                     the theme: colours, the TMP font, two own copies of its
-                                  material (plain and outlined) and the chrome sprites, all taken
-                                  off the running game, nothing on disk. Keyed on the live Hud
-                                  object, which dies on every world load
-Ui/UiBuild.cs                     small widget builders: TMP text with the HUD font, sliced
-                                  sprites, OverPicture for text drawn on the 3D pane, and TextBox,
-                                  the text box that ignores the game UI's pad Submit/Cancel/Move
+Ui/UiTheme.cs                     the editor's flat modern look, Dark (default) or Light: colours,
+                                  a sans font the game ships, own copies of its material. GameLook()
+                                  gives the game's colours and font to widgets inside the game's
+                                  HUD (the hammer card's list, the capture line). Keyed on the Hud
+Ui/UiBuild.cs                     small widget builders: TMP text, flat cards with a border, flat
+                                  buttons, OverPicture for text on the 3D pane, TextBox (ignores the
+                                  game UI's pad Submit/Cancel/Move), WheelScroll (the wheel in lists)
 Ui/PadGlyphs.cs                   the game's own controller icons, out of its gamepad_glyphs TMP
                                   sprite asset, handed out as Sprites
 Ui/HintBar.cs                     the row of controls along the bottom of the pane: pad icons and
@@ -205,20 +209,23 @@ Ui/HintBar.cs                     the row of controls along the bottom of the pa
 Ui/TopBar.cs                      Build this, the file commands, undo and redo, view switches, help
 Ui/ViewportHost.cs                the 3D pane, who has the mouse, and the once-a-frame work
                                   behind it
-Ui/Palette.cs                     the Pieces tab: virtualised icon grid, search, tag chips, filter
-Ui/PieceListPanel.cs              the second tab: one row per piece of the open blueprint
+Ui/Palette.cs                     the piece grid inside Quick add: virtualised tiles, search, Recent, Starred, tag chips
+Ui/QuickAdd.cs                    Tab: the palette as a popup over the view, the search box typing
+Ui/PieceListPanel.cs              the Layers card: one row per piece, with Hide and Lock switches
 Ui/BlueprintPanel.cs              name, description, icon, and a copy of the build card with the
                                   materials list. Scrolls when even the grown region is too short
 Ui/MaterialList.cs                the materials list widget: icon, name, have / need, a bar, station
                                   rows, one footer line at the bottom (the editor hides it). Two
                                   columns past 10 rows when the caller allows. Pooled rows
-Ui/SelectionPanel.cs              what is selected, the position and rotation boxes, four buttons
+Ui/SelectionPanel.cs              what is selected and its size, the position and rotation boxes, and
+                                  rows of buttons: move, turn, copy, delete; hide, lock, same kind;
+                                  mirror, copy in a row; align and spread (several pieces)
 Ui/ChecksPanel.cs                 the problem list. Click a row to select the pieces it is about
 Ui/PiecePicker.cs                 the controller's piece menu
-Ui/FocusNav.cs                    the panel walk behind Tab and L3: three regions, steps by
-                                  screen position, and the orange ring
-Ui/Dialogs.cs                     Blueprints (open, delete your own), save as, help, the
-                                  questions. One at a time
+Ui/FocusNav.cs                    the panel walk behind F6 and L3: three regions (a folded card is
+                                  skipped), steps by screen position, and the accent ring
+Ui/Dialogs.cs                     Blueprints (open, delete your own), save as, help, the Keys window,
+                                  the command search (Ctrl+K), the questions. One at a time
 Ui/Toasts.cs                      short messages over the bottom right
 
 View/EditorScene.cs               the little world: ground, grid, origin ring, front marker, two
@@ -242,9 +249,10 @@ View/CaptureHud.cs                the capture's status line top left, under the 
 **`src/Dev/`**, Debug builds only, stripped from a Release build
 
 ```
-AutoTest.cs                       the scripted session: 24 scenarios, PASS/FAIL lines, screenshots,
+AutoTest.cs                       the scripted session: 25 scenarios, PASS/FAIL lines, screenshots,
                                   and the art guard at the end of editor_all
 AutoTestPeace.cs                  stops the AI, the spawns and the raids in the test world
+AutoTestRedesign.cs               scenario editor_redesign: the new layout, Quick add, themes, keymap, the Figma-like edits
 ```
 
 ## Where to change what
@@ -252,7 +260,7 @@ AutoTestPeace.cs                  stops the AI, the spawns and the raids in the 
 | Task | File |
 |---|---|
 | Colours, font, sprites | `src/Editor/Ui/UiTheme.cs` |
-| Add or change a keyboard key | `src/Editor/Input/Bindings.cs` (the help table is in the same file) |
+| Add or change a keyboard key or an action | `src/Editor/Input/Keymap.cs` (the table and presets), what it does in `Bindings.Run` |
 | Add or change a pad button | `src/Editor/Input/PadBindings.cs` |
 | Add or change a pad combo in the world (hammer, open the editor, capture) | `src/Editor/Input/WorldPad.cs`, read where the key is read (`PlayerUpdatePlacementPatch`, `EditorSession.Tick`, `WorldCapture.Tick`) |
 | Change what Tab and L3 walk | `src/Editor/Ui/FocusNav.cs` |

@@ -55,7 +55,7 @@ namespace ValheimTomrer.Dev
     /// no art, in the unfinished-build folder too;
     /// "readme_gifs" is no test: it records the README's GIF frames into .devtest/gifs (scripts/make-gifs.sh).
     /// </summary>
-    internal static class AutoTest
+    internal static partial class AutoTest
     {
         private const string TestName = "aclab";
         private const string WorldSeed = "ACTEST01";
@@ -266,6 +266,9 @@ namespace ValheimTomrer.Dev
                 case "editor_support":
                     scenario = TestEditorSupport(player);
                     break;
+                case "editor_redesign":
+                    scenario = TestEditorRedesign(player);
+                    break;
                 case "editor_all":
                     scenario = TestEverything(player);
                     break;
@@ -343,7 +346,7 @@ namespace ValheimTomrer.Dev
             var names = (Environment.GetEnvironmentVariable("VT_CHAIN")
                 ?? "dump,probe,editor_open,editor_view,editor_files,editor_palette,editor_snap,"
                 + "editor_edit,editor_panels,editor_keys,editor_pad,editor_focus,editor_keep,editor_build,"
-                + "editor_capture,editor_support,blueprints,build_sources,build_partial,build_sites,"
+                + "editor_capture,editor_support,editor_redesign,blueprints,build_sources,build_partial,build_sites,"
                 + "build_continue,card_materials,hint_row")
                 .Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
 
@@ -396,6 +399,7 @@ namespace ValheimTomrer.Dev
                 case "editor_build": return TestEditorBuild(player);
                 case "editor_capture": return TestEditorCapture(player);
                 case "editor_support": return TestEditorSupport(player);
+                case "editor_redesign": return TestEditorRedesign(player);
                 default: return null;
             }
         }
@@ -442,6 +446,8 @@ namespace ValheimTomrer.Dev
             Default(EditorConfig.LayersOpen);
             Default(EditorConfig.InspectorOpen);
             PieceMemory.Reset();
+            Keymap.ResetAll();
+            Keymap.SetPreset(Keymap.Presets[0]);
             Default(BuildConfig.UseChests);
             Default(BuildConfig.ChestRange);
         }

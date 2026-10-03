@@ -35,6 +35,7 @@ Scenario table and details: `.claude/design-decisions.md` §10.
 | `editor_build` | a blueprint made in the editor, built in the world, edited again |
 | `editor_capture` | the capture, keyboard and pad |
 | `editor_support` | the support rule against the game's numbers. `VT_SUPPORT_EDITOR_ONLY=1` skips the world half |
+| `editor_redesign` | the view-first window (cards fold, Ctrl+\ and L2 + L3 hide), Quick add on Tab, the wheel step, Dark and Light, the keymap and presets, the Keys window and the command search (keyboard and pad), hide and lock, align, spread, mirror, copy in a row, Shift + arrow |
 | `editor_all` | all of the above except `probe_build`, then the art guard. **This is the one to run.** |
 | `readme_gifs` | no test: records the README's GIF frames. Not in `editor_all`. Then `scripts/make-gifs.py` |
 
