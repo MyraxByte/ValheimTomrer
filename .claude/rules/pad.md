@@ -2,7 +2,7 @@
 paths:
   - "src/Editor/Input/**"
   - "src/Patches/ZInput*"
-  - "src/Editor/Ui/PiecePicker.cs"
+  - "src/Editor/Ui/QuickAdd.cs"
 ---
 
 # The controller

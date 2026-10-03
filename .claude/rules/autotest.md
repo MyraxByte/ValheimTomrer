@@ -24,18 +24,15 @@ Scenario table and details: `.claude/design-decisions.md` §10.
 | `editor_open` | F7 and L2 + square open and close the window |
 | `editor_view` | the 3D pane and its camera, nothing leaks on close |
 | `editor_files` | the writer round-trips every blueprint, the file commands |
-| `editor_palette` | the catalog, the palette counts, the filters |
 | `editor_snap` | placing and snapping against a table of rays, no UI |
 | `editor_edit` | place, select, copy, turn, nudge, undo |
-| `editor_panels` | the card, the selection fields, the problem list, the materials list |
 | `editor_keys` | every key, the wheel, the mouse, the top bar, the dialogs, deleting a blueprint |
 | `editor_pad` | every pad button through a made-up pad, the piece menu, the look against the game's |
-| `editor_focus` | the panel walk with the pad and Tab, text boxes on the pad (a real pad's cross and circle too), deleting a blueprint with the pad |
 | `editor_keep` | close and open again finds everything as it was |
 | `editor_build` | a blueprint made in the editor, built in the world, edited again |
 | `editor_capture` | the capture, keyboard and pad |
 | `editor_support` | the support rule against the game's numbers. `VT_SUPPORT_EDITOR_ONLY=1` skips the world half |
-| `editor_redesign` | the view-first window (cards fold, Ctrl+\ and L2 + L3 hide), Quick add on Tab, the wheel step, Dark and Light, the keymap and presets, the Keys window and the command search (keyboard and pad), hide and lock, align, spread, mirror, copy in a row, Shift + arrow |
+| `editor_ui` | the editor screen: the window is the screen, the view between the panels, Alt+1 and Alt+2 fold them, Ctrl+\ and L2 + L3 hide all, the pad walk reaches header, Layers, Inspector and toolbar, the menu, the Inspector tabs, Layers groups, Quick add (Tab, search, Recent, Starred, keyboard and pad), the wheel step, Dark and Light, the keymap and presets, the Keys window and the command search, hide and lock, align, spread, mirror, copy in a row, Shift + arrow, grid and turn step |
 | `editor_all` | all of the above except `probe_build`, then the art guard. **This is the one to run.** |
 | `readme_gifs` | no test: records the README's GIF frames. Not in `editor_all`. Then `scripts/make-gifs.py` |
 

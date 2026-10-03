@@ -23,8 +23,8 @@ F7 opens a window with a 3D view, the piece list and the game's snapping.
   changes. Its words are `UiTheme.TextOnPicture` on `UiTheme.FontMaterial`, no edge, no shadow (the
   user had a white edge taken out).
 - **The panel walk** (`FocusNav`) keeps the EventSystem's selection null for buttons, or a real pad
-  fires the game's input module and ours in the same frame. Palette tiles, the "In blueprint" rows
-  and the problem rows are plain Images, not Selectables.
+  fires the game's input module and ours in the same frame. Quick add tiles, the Layers rows and
+  the Checks rows are plain Images, not Selectables.
 - **A new dialog** ends its builder with `Start()` (it sets `Dialogs.FocusStart`), so the walk can
   enter it. `Dialogs.Tick` stands back on Enter while the walk is in the dialog, or one press fires
   twice.
@@ -35,11 +35,11 @@ F7 opens a window with a 3D view, the piece list and the game's snapping.
 - **The Esc and circle ladder**, in this order: a text box gives the keyboard back
   (`EditorSession.Tick`, read through `ModUi.JustTyping`, so an Esc the box took first this frame
   cannot also close the dialog), then the dialog, the piece menu, what is
-  in hand, release the pane, leave the walk, clear the selection, close the window.
-- **The look is flat and modern, not the game's.** The editor uses no game sprite: cards are
-  `UiBuild.Card` (flat colour, one-pixel border), buttons `UiBuild.Button` (colour tint), rows and
-  tiles `UiTheme.Surface`, the selected one `UiTheme.Accent`. Colours come from `UiTheme` (Dark or
-  Light), never typed in a panel. A widget inside the game's own HUD (the hammer card's materials
+  in hand, release the pane, leave the walk, clear the selection, bring a hidden interface back,
+  close the window. The header's menu and Quick add close before what is in hand.
+- **The look is a design tool's, not the game's.** Panels are built from `Kit` (ghost, solid and
+  primary buttons, rows, columns, fields with the caption inside, tabs, segmented switches) on flat
+  `UiTheme` colours; no game sprite. A widget inside the game's own HUD (the hammer card's materials
   list, the capture's status line) builds and refreshes inside `using (UiTheme.GameLook())`.
 - **No glyph a plain font may lack.** The sans font may have no star or arrow symbols: mark with a
   shape (the Starred dot) or words.
@@ -61,12 +61,15 @@ F7 opens a window with a 3D view, the piece list and the game's snapping.
   other way round. `Evaluate` takes the ground callback from the map, so always pass it a real map.
 - **The materials list** in the editor: `MaterialSources.Around` at most once a second while the
   window is open, never while it is closed.
-- **The view comes first.** The 3D view fills the screen; the top bar, the snap bar, the Layers and
-  Inspector cards float over it. A folded card is slid off screen (`EditorWindow.ApplyCards`), never
-  switched off: the panels measure text while they build and tick, and TextMeshPro measures nothing
-  in an inactive object. The panel walk skips a folded card (`FocusNav.RegionRect`).
-- **Quick add** (`QuickAdd`, Tab) is the palette in a popup. It is built open and folded right after
-  the palette is built (`EditorSession.Begin`), and `Palette.Tick` runs only while it is open.
+- **The screen** (`EditorWindow`): a root canvas of its own, never a child of the HUD (the HUD's
+  canvas is larger than the screen and cut the old window off). Header on top, Layers docked left,
+  the Inspector docked right, the view between them. A folded panel is slid off screen
+  (`EditorWindow.ApplyLayout`), never switched off: panels measure text while they build and tick,
+  and TextMeshPro measures nothing in an inactive object. The walk skips a folded panel.
+- **Inspector tabs** slide too (`Inspector.SetTab`); only Quick add switches its popup off, and it
+  builds its tiles and chips in `Open`, after switching on.
+- **Quick add** (`QuickAdd`) is the only piece picker: Tab, the pad's cross and the Add mode open it.
+  While its search box types, `QuickAdd.Tick` reads Tab, Esc, up and down itself.
 - **Keys come from the keymap** (`Input/Keymap.cs`). A new action is an `Act`, a `Def` row with the
   three presets' keys, and a case in `Bindings.Run`. Esc, Enter and the arrows inside a dialog or the
   walk are not in the table. Tab is Quick add, F6 the walk.

@@ -906,7 +906,7 @@ namespace ValheimTomrer.Editor.Ui
         {
             if (EditorWindow.StatusText != null)
             {
-                EditorWindow.StatusText.text = text + "   |   F7 or Esc closes";
+                EditorWindow.StatusText.text = text;
             }
         }
 
@@ -1215,7 +1215,8 @@ namespace ValheimTomrer.Editor.Ui
             Centre(_aimName.rectTransform, new Vector2(0f, -80f), new Vector2(420f, 22f));
 
             _hints = HintBar.Create("Hints", _image.rectTransform);
-            Strip(_hints.Rect, false, 8f, HintBar.Height);
+            // Above the floating toolbar, which has the bottom edge.
+            Strip(_hints.Rect, false, EditorWindow.BottomInset, HintBar.Height);
 
             _placeLine = UiBuild.OverPicture(
                 UiBuild.Label("Placing", _image.rectTransform, "", 17f, TextAlignmentOptions.TopLeft, UiTheme.Accent));

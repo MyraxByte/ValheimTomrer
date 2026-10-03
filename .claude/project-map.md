@@ -190,43 +190,51 @@ Placement/Support.cs              the game's support rule in plain C#: how well 
                                   held, which ones would fall, and the hammer's colours. The
                                   ground is y = 0, or the terrain through a callback
 
-Ui/EditorWindow.cs                the canvas: the 3D view full screen, the thin top bar, the Layers
-                                  and Inspector cards that fold (slid off screen, never switched off),
-                                  the status line, the fold handles and the Quick add popup. Ctrl+\
-                                  hides it all. The Inspector's blueprint region grows (FitBlueprint)
+Ui/EditorWindow.cs                the screen: a root canvas of its own (exactly the screen), the
+                                  header, Layers docked left, the Inspector docked right, the 3D view
+                                  between them with the status line and the toolbar host. Folding a
+                                  panel slides it away and widens the view; Ctrl+\ hides all
+Ui/Kit.cs                         the widget kit every panel uses: text, ghost, solid and primary
+                                  buttons, rows, columns, dividers, inline fields, tabs, segmented
+                                  switches, chips, HoverEvents and ClickEvents
+Ui/Header.cs                      the top bar: the menu button and its menu, the blueprint name and
+                                  state, the modes (Select, Add, Move, Copy), undo, redo, commands,
+                                  theme, help and Build in world
+Ui/LayersPanel.cs                 the left panel: the blueprint's pieces grouped by kind, folding
+                                  groups, search, Hide and Lock on hover. Virtual rows
+Ui/Inspector.cs                   the right panel: the Design, Blueprint and Checks tabs
+Ui/DesignPage.cs                  the Design tab: the selection and its size, x y z and yaw, edit,
+                                  align and spread, arrange, view
+Ui/BlueprintPage.cs               the Blueprint tab: name, description, icon, the build card preview
+                                  and the materials list
+Ui/ChecksPage.cs                  the Checks tab: the problem list, a click selects its pieces
+Ui/Toolbar.cs                     the floating bar at the bottom of the view: grid, turn step, snap
+                                  points, dots, boxes, hide panels
+Ui/QuickAdd.cs                    Tab, cross or the Add mode: the piece search over the view. Typing
+                                  filters, Enter places, arrows and the D-pad move, L1 R1 change tags,
+                                  Recent and Starred
 Ui/ModUi.cs                       the Blocking flag every input patch reads
 Ui/UiTheme.cs                     the editor's flat modern look, Dark (default) or Light: colours,
                                   a sans font the game ships, own copies of its material. GameLook()
                                   gives the game's colours and font to widgets inside the game's
                                   HUD (the hammer card's list, the capture line). Keyed on the Hud
-Ui/UiBuild.cs                     small widget builders: TMP text, flat cards with a border, flat
-                                  buttons, OverPicture for text on the 3D pane, TextBox (ignores the
-                                  game UI's pad Submit/Cancel/Move), WheelScroll (the wheel in lists)
+Ui/UiBuild.cs                     the lowest builders: TMP text, flat cards with a border, buttons,
+                                  OverPicture for text on the 3D pane, TextBox (ignores the game
+                                  UI's pad Submit/Cancel/Move), WheelScroll (the wheel in lists)
 Ui/PadGlyphs.cs                   the game's own controller icons, out of its gamepad_glyphs TMP
                                   sprite asset, handed out as Sprites
-Ui/HintBar.cs                     the row of controls along the bottom of the pane: pad icons and
-                                  keyboard key caps, rebuilt only when the set changes
-Ui/TopBar.cs                      Build this, the file commands, undo and redo, view switches, help
+Ui/HintBar.cs                     the row of controls over the bottom of the view: pad icons and
+                                  key caps, rebuilt only when the set changes
 Ui/ViewportHost.cs                the 3D pane, who has the mouse, and the once-a-frame work
                                   behind it
-Ui/Palette.cs                     the piece grid inside Quick add: virtualised tiles, search, Recent, Starred, tag chips
-Ui/QuickAdd.cs                    Tab: the palette as a popup over the view, the search box typing
-Ui/PieceListPanel.cs              the Layers card: one row per piece, with Hide and Lock switches
-Ui/BlueprintPanel.cs              name, description, icon, and a copy of the build card with the
-                                  materials list. Scrolls when even the grown region is too short
 Ui/MaterialList.cs                the materials list widget: icon, name, have / need, a bar, station
-                                  rows, one footer line at the bottom (the editor hides it). Two
-                                  columns past 10 rows when the caller allows. Pooled rows
-Ui/SelectionPanel.cs              what is selected and its size, the position and rotation boxes, and
-                                  rows of buttons: move, turn, copy, delete; hide, lock, same kind;
-                                  mirror, copy in a row; align and spread (several pieces)
-Ui/ChecksPanel.cs                 the problem list. Click a row to select the pieces it is about
-Ui/PiecePicker.cs                 the controller's piece menu
-Ui/FocusNav.cs                    the panel walk behind F6 and L3: three regions (a folded card is
-                                  skipped), steps by screen position, and the accent ring
+                                  rows, one footer line (the editor hides it). Two columns past 10
+                                  rows when the caller allows. Pooled rows. Also on the hammer card
+Ui/FocusNav.cs                    the panel walk behind F6 and L3: header, Layers, Inspector, toolbar
+                                  (a folded panel is skipped), steps by screen position, the ring
 Ui/Dialogs.cs                     Blueprints (open, delete your own), save as, help, the Keys window,
                                   the command search (Ctrl+K), the questions. One at a time
-Ui/Toasts.cs                      short messages over the bottom right
+Ui/Toasts.cs                      short messages over the bottom middle of the view
 
 View/EditorScene.cs               the little world: ground, grid, origin ring, front marker, two
                                   lights. 8000 m under the player, all on layer 30
@@ -249,10 +257,10 @@ View/CaptureHud.cs                the capture's status line top left, under the 
 **`src/Dev/`**, Debug builds only, stripped from a Release build
 
 ```
-AutoTest.cs                       the scripted session: 25 scenarios, PASS/FAIL lines, screenshots,
+AutoTest.cs                       the scripted session: 22 scenarios, PASS/FAIL lines, screenshots,
                                   and the art guard at the end of editor_all
 AutoTestPeace.cs                  stops the AI, the spawns and the raids in the test world
-AutoTestRedesign.cs               scenario editor_redesign: the new layout, Quick add, themes, keymap, the Figma-like edits
+AutoTestUi.cs                     scenario editor_ui: the editor screen, Quick add, themes, keymap, the Figma-like edits
 ```
 
 ## Where to change what
@@ -263,13 +271,13 @@ AutoTestRedesign.cs               scenario editor_redesign: the new layout, Quic
 | Add or change a keyboard key or an action | `src/Editor/Input/Keymap.cs` (the table and presets), what it does in `Bindings.Run` |
 | Add or change a pad button | `src/Editor/Input/PadBindings.cs` |
 | Add or change a pad combo in the world (hammer, open the editor, capture) | `src/Editor/Input/WorldPad.cs`, read where the key is read (`PlayerUpdatePlacementPatch`, `EditorSession.Tick`, `WorldCapture.Tick`) |
-| Change what Tab and L3 walk | `src/Editor/Ui/FocusNav.cs` |
+| Change what F6 and L3 walk | `src/Editor/Ui/FocusNav.cs` |
 | Change the controls shown under the 3D pane | `ViewportHost.ShowHints`, widgets in `src/Editor/Ui/HintBar.cs` |
 | Add an editor setting | `src/Editor/EditorConfig.cs` (the config file only, there is no settings dialog) |
 | Add a build setting | `src/Blueprints/BuildConfig.cs`, and put it back in `AutoTest.ResetSettings` |
 | Change where a build takes materials from | `src/Blueprints/MaterialSources.cs` |
 | Change which pieces a click builds, and in what order | `src/Blueprints/PartialBuild.cs` |
-| Change the materials list: its numbers / its look / where it sits on the hammer card / in the editor | `src/Blueprints/MaterialTally.cs` / `src/Editor/Ui/MaterialList.cs` / `src/Blueprints/BlueprintInfoCard.cs` / `src/Editor/Ui/BlueprintPanel.cs` |
+| Change the materials list: its numbers / its look / where it sits on the hammer card / in the editor | `src/Blueprints/MaterialTally.cs` / `src/Editor/Ui/MaterialList.cs` / `src/Blueprints/BlueprintInfoCard.cs` / `src/Editor/Ui/BlueprintPage.cs` |
 | Change how an unfinished build is kept, found or shown | `src/Blueprints/Sites/` (file: `SiteStore`, world and ghosts: `SiteTracker`) |
 | Change an unfinished build's ghost colours | `BlueprintPreview.ReadyTint` / `RedTint` in `src/Blueprints/BlueprintPreview.cs` |
 | Change Continue: the key's order, the click, what Remove does | `src/Blueprints/BlueprintMode.cs` |
@@ -277,7 +285,7 @@ AutoTestRedesign.cs               scenario editor_redesign: the new layout, Quic
 | Change how "Whole structure" takes pieces down, or its message | `src/Blueprints/Sites/SiteRemoval.cs` |
 | Change the capture: keys, sizes, the glow, the status line | `src/Editor/WorldCapture.cs`, `View/CaptureTint.cs`, `View/CaptureHud.cs` |
 | Change the hints in blueprint mode or capture (the game's row along the bottom) | `src/Blueprints/HintRow.cs` (the sets are in `Hints`) |
-| Add a top-bar button | `src/Editor/Ui/TopBar.cs` + the verb in `src/Editor/EditorCommands.cs` |
+| Add a header button or menu item | `src/Editor/Ui/Header.cs` + the verb in `src/Editor/EditorCommands.cs` |
 | Change what an edit does | `src/Editor/EditorState.cs`, the undo step in `Doc/BlueprintDocument.cs` |
 | Change snapping | `src/Editor/Placement/Placement.cs` |
 | Change the support rule or its colours | `src/Editor/Placement/Support.cs` |

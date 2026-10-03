@@ -21,19 +21,17 @@
 #   ./scripts/autotest.sh editor_open  open the editor window with its key, check the input takeover
 #   ./scripts/autotest.sh editor_view  fill the 3D pane with a kit and drive the camera
 #   ./scripts/autotest.sh editor_files round-trip every blueprint and run the file commands
-#   ./scripts/autotest.sh editor_palette build the piece catalog and check the palette panel
 #   ./scripts/autotest.sh editor_snap  run the placing and snapping engine against a table of rays
 #   ./scripts/autotest.sh editor_edit  place, select, copy, turn, nudge and undo, then draw it
-#   ./scripts/autotest.sh editor_panels check the build card, the selection fields and the problem list
 #   ./scripts/autotest.sh editor_keys  drive every key, the wheel and the mouse, the top bar and the dialogs
 #   ./scripts/autotest.sh editor_pad   drive every controller button through a made-up pad, and the piece menu
-#   ./scripts/autotest.sh editor_focus walk the top bar and both panels with the pad, and press what it finds
 #   ./scripts/autotest.sh editor_keep  close the editor on a changed blueprint, open it again, find it all kept
 #   ./scripts/autotest.sh editor_build build a blueprint made in the editor, in the world, then edit it again
 #   ./scripts/autotest.sh editor_capture build a kit turned 45 degrees, capture it with the turned rectangle, compare it to the file
 #   ./scripts/autotest.sh editor_support build test structures, hold the editor's support rule against the game's
-#   ./scripts/autotest.sh editor_redesign the view-first window, Quick add, the wheel, themes, keymap, Keys window,
-#                                      command search, hide and lock, align, spread, mirror, copy in a row
+#   ./scripts/autotest.sh editor_ui    the editor screen: header and menu, Layers, Inspector tabs, toolbar, the pad
+#                                      walk, Quick add, the wheel, themes, keymap, Keys window, command search,
+#                                      hide and lock, align, spread, mirror, copy in a row, snapping
 #   ./scripts/autotest.sh editor_all   every scenario above but probe_build in one game (about 10 minutes),
 #                                      then the "no game art" guard, sites folder included
 #   ./scripts/autotest.sh readme_gifs  no test: records the README's GIF frames (editor, build, capture) into

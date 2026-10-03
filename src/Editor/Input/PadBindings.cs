@@ -11,9 +11,9 @@ namespace ValheimTomrer.Editor.Input
     /// Everything the controller does, in the order the Tomrer editor does it (view/Editor.ts,
     /// onPad and padPicker). The buttons follow the game's building layout where the game has one:
     /// R2 places, L2 and the right stick turn, L1 is "no snapping", L3 and R3 walk the snap point,
-    /// R1 removes, cross opens the piece menu.
+    /// R1 removes, cross opens Quick add.
     ///
-    /// The order matters: a dialog eats everything, then the piece menu, then the editor.
+    /// The order matters: a dialog eats everything, then Quick add, then the editor.
     /// <see cref="Tick"/> is the only dispatcher, so the autotest can drive every row of the help
     /// table through a made-up pad (<see cref="PadReader.Fake"/>) with no controller at all.
     ///
@@ -28,7 +28,7 @@ namespace ValheimTomrer.Editor.Input
 
         public const float TurnEvery = 0.08f;
 
-        /// <summary>Holding a direction in the piece menu: the game's menu numbers.</summary>
+        /// <summary>Holding a direction in Quick add: the game's menu numbers.</summary>
         public const float NavDelay = 0.3f;
 
         public const float NavEvery = 0.1f;
@@ -36,7 +36,7 @@ namespace ValheimTomrer.Editor.Input
         /// <summary>How far the right stick has to go before it turns the piece instead of the camera.</summary>
         private const float TurnStick = 0.4f;
 
-        /// <summary>How far a stick has to go to count as a direction in the piece menu.</summary>
+        /// <summary>How far a stick has to go to count as a direction in Quick add.</summary>
         private const float NavStick = 0.5f;
 
         private static readonly Repeater Turn = new Repeater(TurnDelay, TurnEvery);
@@ -79,12 +79,12 @@ namespace ValheimTomrer.Editor.Input
             }
 
             // A held direction repeats only where it is used; elsewhere it starts fresh.
-            if (Dialogs.IsOpen || PiecePicker.IsOpen || FocusNav.Active)
+            if (Dialogs.IsOpen || QuickAdd.IsOpen || FocusNav.Active)
             {
                 Turn.Step(0, dt);
             }
 
-            if (!PiecePicker.IsOpen && !FocusNav.Active)
+            if (!QuickAdd.IsOpen && !FocusNav.Active)
             {
                 NavX.Step(0, dt);
                 NavY.Step(0, dt);
@@ -117,7 +117,7 @@ namespace ValheimTomrer.Editor.Input
             }
 
             // 4. The piece menu has the pad while it is up.
-            if (PiecePicker.IsOpen)
+            if (QuickAdd.IsOpen)
             {
                 Picker(pad, dt);
                 return;
@@ -179,12 +179,12 @@ namespace ValheimTomrer.Editor.Input
                 }
             }
 
-            // 9. Cross opens the piece menu. Not while moving: those pieces are out of the
+            // 9. Cross opens Quick add. Not while moving: those pieces are out of the
             //    blueprint until they are dropped. Not while a button is selected either, or the
             //    UI would press that button with the same press.
             if (pad.Pressed(PadButton.Cross) && !moving && !selected)
             {
-                PiecePicker.Open();
+                QuickAdd.Open();
             }
 
             // 10. Circle: the Esc ladder, in EditorSession.
@@ -267,7 +267,7 @@ namespace ValheimTomrer.Editor.Input
         /// <summary>
         /// In the panel walk: the D-pad and the left stick step up, down, left and right by what
         /// is on screen, L1 and R1 change panel, cross presses, the right stick scrolls the panel.
-        /// Everything else does nothing, the way the piece menu holds the pad.
+        /// Everything else does nothing, the way Quick add holds the pad.
         /// </summary>
         private static void Focus(PadFrame pad, float dt)
         {
@@ -315,7 +315,7 @@ namespace ValheimTomrer.Editor.Input
                 || pad.Ls.magnitude > NavStick;
         }
 
-        /// <summary>In the piece menu: the D-pad or the left stick moves, L1 and R1 change the tab.</summary>
+        /// <summary>In Quick add: the D-pad or the left stick moves, L1 and R1 change the tab.</summary>
         private static void Picker(PadFrame pad, float dt)
         {
             var dx = Dir(pad.Held(PadButton.Left) || pad.Ls.x < -NavStick,
@@ -324,27 +324,27 @@ namespace ValheimTomrer.Editor.Input
                 pad.Held(PadButton.Down) || pad.Ls.y < -NavStick);
             if (NavX.Step(dx, dt))
             {
-                PiecePicker.Move(dx, 0);
+                QuickAdd.Move(dx, 0);
             }
 
             if (NavY.Step(dy, dt))
             {
-                PiecePicker.Move(0, dy);
+                QuickAdd.Move(0, dy);
             }
 
             if (pad.Pressed(PadButton.L1))
             {
-                PiecePicker.NextTab(-1);
+                QuickAdd.NextTag(-1);
             }
 
             if (pad.Pressed(PadButton.R1))
             {
-                PiecePicker.NextTab(1);
+                QuickAdd.NextTag(1);
             }
 
             if (pad.Pressed(PadButton.Cross))
             {
-                PiecePicker.Pick();
+                QuickAdd.Pick();
             }
         }
 
@@ -481,7 +481,7 @@ namespace ValheimTomrer.Editor.Input
                 new HelpRow($"{l3}, {r3} (while placing)", "Pick the snap point, like Q and E"),
                 new HelpRow($"{r3} (in the view)", "Look at the selection, or at everything"),
                 new HelpRow(cross,
-                    $"Pieces menu, the pad's Quick add: {g.Dpad} to choose, {l1} {r1} for the tab, {cross} to place, {circle} to close"),
+                    $"Quick add: {g.Dpad} to choose, {l1} {r1} for the tag, {cross} to place, {circle} to close"),
                 new HelpRow(circle,
                     "Stop placing, else leave the panels for the view, else clear the selection, "
                     + "else close the editor"),

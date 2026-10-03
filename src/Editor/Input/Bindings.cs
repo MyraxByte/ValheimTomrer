@@ -107,7 +107,7 @@ namespace ValheimTomrer.Editor.Input
                 return;
             }
 
-            if (Dialogs.IsOpen || PiecePicker.IsOpen || FocusNav.Active || QuickAdd.IsOpen)
+            if (Dialogs.IsOpen || FocusNav.Active || QuickAdd.IsOpen)
             {
                 // A dialog, the piece menu and the walk still read keys, but nothing flies behind
                 // them. A dialog only ever gets Tab, the arrows and Enter, through the walk.
@@ -167,26 +167,37 @@ namespace ValheimTomrer.Editor.Input
                 return DialogKey(key);
             }
 
-            // The piece menu owns the keyboard while it is up: the arrows move, Enter places.
-            if (PiecePicker.IsOpen)
-            {
-                PiecePicker.Key(key);
-                return true;
-            }
-
             var act = Keymap.Match(key, mods);
 
-            // Quick add has the keyboard while it is up. Its key closes it, and any other key that did
-            // not reach the search box puts the keyboard back in it, so the next letters are typed.
+            // Quick add has the keyboard while it is up. Its key closes it, the arrows move the light,
+            // Enter places, and any other key that did not reach the search box puts the keyboard back
+            // in it, so the next letters are typed.
             if (QuickAdd.IsOpen)
             {
-                if (act == Act.QuickAdd)
+                switch (act == Act.QuickAdd ? KeyCode.None : key)
                 {
-                    QuickAdd.Close();
-                }
-                else
-                {
-                    Palette.FocusSearch();
+                    case KeyCode.None:
+                        QuickAdd.Close();
+                        break;
+                    case KeyCode.UpArrow:
+                        QuickAdd.Move(0, -1);
+                        break;
+                    case KeyCode.DownArrow:
+                        QuickAdd.Move(0, 1);
+                        break;
+                    case KeyCode.LeftArrow:
+                        QuickAdd.Move(-1, 0);
+                        break;
+                    case KeyCode.RightArrow:
+                        QuickAdd.Move(1, 0);
+                        break;
+                    case KeyCode.Return:
+                    case KeyCode.KeypadEnter:
+                        QuickAdd.Pick();
+                        break;
+                    default:
+                        QuickAdd.FocusSearch();
+                        break;
                 }
 
                 return true;
@@ -549,12 +560,12 @@ namespace ValheimTomrer.Editor.Input
                 return true;
             }
 
-            if (QuickAdd.Close())
+            if (Header.CloseMenu())
             {
                 return true;
             }
 
-            if (PiecePicker.Close())
+            if (QuickAdd.Close())
             {
                 return true;
             }

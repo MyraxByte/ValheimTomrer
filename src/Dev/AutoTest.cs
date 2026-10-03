@@ -40,13 +40,10 @@ namespace ValheimTomrer.Dev
     /// "editor_open" opens the editor window with its key and checks the input takeover;
     /// "editor_view" fills the 3D pane with a kit and drives the camera through both its modes;
     /// "editor_files" round-trips every blueprint through the writer and runs the file commands;
-    /// "editor_palette" builds the piece catalog and checks the palette's counts and filters;
     /// "editor_snap" runs the placing and snapping engine against a table of rays, with no UI;
     /// "editor_edit" drives placing, selecting, copying, turning, nudging and undo, then draws it;
-    /// "editor_panels" checks the right panel: the build card, the selection fields and the problem list;
     /// "editor_keys" drives every key, the wheel and the mouse, plus the top bar and the dialogs;
     /// "editor_pad" drives every controller button through a made-up pad, plus the piece menu;
-    /// "editor_focus" walks the top bar and the two panels with the pad, and presses what it finds;
     /// "editor_keep" closes the editor on a changed blueprint and checks the key comes back to all of it;
     /// "editor_build" builds a blueprint made in the editor, in the world, and edits it again;
     /// "editor_capture" builds a kit turned 45 degrees, captures it with the turned rectangle, and compares it to the file;
@@ -233,26 +230,17 @@ namespace ValheimTomrer.Dev
                 case "editor_files":
                     scenario = TestEditorFiles(player);
                     break;
-                case "editor_palette":
-                    scenario = TestEditorPalette(player);
-                    break;
                 case "editor_snap":
                     scenario = TestEditorSnap(player);
                     break;
                 case "editor_edit":
                     scenario = TestEditorEdit(player);
                     break;
-                case "editor_panels":
-                    scenario = TestEditorPanels(player);
-                    break;
                 case "editor_keys":
                     scenario = TestEditorKeys(player);
                     break;
                 case "editor_pad":
                     scenario = TestEditorPad(player);
-                    break;
-                case "editor_focus":
-                    scenario = TestEditorFocus(player);
                     break;
                 case "editor_keep":
                     scenario = TestEditorKeep(player);
@@ -266,8 +254,8 @@ namespace ValheimTomrer.Dev
                 case "editor_support":
                     scenario = TestEditorSupport(player);
                     break;
-                case "editor_redesign":
-                    scenario = TestEditorRedesign(player);
+                case "editor_ui":
+                    scenario = TestEditorUi(player);
                     break;
                 case "editor_all":
                     scenario = TestEverything(player);
@@ -344,9 +332,9 @@ namespace ValheimTomrer.Dev
         {
             // VT_CHAIN cuts the list down while hunting for the scenario that left something behind.
             var names = (Environment.GetEnvironmentVariable("VT_CHAIN")
-                ?? "dump,probe,editor_open,editor_view,editor_files,editor_palette,editor_snap,"
-                + "editor_edit,editor_panels,editor_keys,editor_pad,editor_focus,editor_keep,editor_build,"
-                + "editor_capture,editor_support,editor_redesign,blueprints,build_sources,build_partial,build_sites,"
+                ?? "dump,probe,editor_open,editor_view,editor_files,editor_snap,"
+                + "editor_edit,editor_keys,editor_pad,editor_keep,editor_build,"
+                + "editor_capture,editor_support,editor_ui,blueprints,build_sources,build_partial,build_sites,"
                 + "build_continue,card_materials,hint_row")
                 .Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
 
@@ -388,18 +376,15 @@ namespace ValheimTomrer.Dev
                 case "editor_open": return TestEditorOpen(player);
                 case "editor_view": return TestEditorView(player);
                 case "editor_files": return TestEditorFiles(player);
-                case "editor_palette": return TestEditorPalette(player);
                 case "editor_snap": return TestEditorSnap(player);
                 case "editor_edit": return TestEditorEdit(player);
-                case "editor_panels": return TestEditorPanels(player);
                 case "editor_keys": return TestEditorKeys(player);
                 case "editor_pad": return TestEditorPad(player);
-                case "editor_focus": return TestEditorFocus(player);
                 case "editor_keep": return TestEditorKeep(player);
                 case "editor_build": return TestEditorBuild(player);
                 case "editor_capture": return TestEditorCapture(player);
                 case "editor_support": return TestEditorSupport(player);
-                case "editor_redesign": return TestEditorRedesign(player);
+                case "editor_ui": return TestEditorUi(player);
                 default: return null;
             }
         }
@@ -1979,22 +1964,14 @@ namespace ValheimTomrer.Dev
             Check(File.Exists(focus), "focus probe written to " + focus);
         }
 
-        /// <summary>The four regions a walk would cover, with the left panel on each of its tabs.</summary>
+        /// <summary>The regions a walk would cover: the header, the two panels, the toolbar.</summary>
         private static IEnumerator ProbeRegions(StringBuilder report)
         {
-            ProbeWidgets(report, "TopBar", EditorWindow.TopBar);
-
-            EditorWindow.SetLeftTab(0);
+            ProbeWidgets(report, "Header", EditorWindow.Header);
+            ProbeWidgets(report, "Layers", EditorWindow.LeftDock);
+            ProbeWidgets(report, "Inspector", EditorWindow.RightDock);
+            ProbeWidgets(report, "Toolbar", Toolbar.Root);
             yield return null;
-            ProbeWidgets(report, "LeftPanel tab 0 (Pieces)", EditorWindow.LeftPanel);
-
-            EditorWindow.SetLeftTab(1);
-            yield return null;
-            ProbeWidgets(report, "LeftPanel tab 1 (In blueprint)", EditorWindow.LeftPanel);
-
-            EditorWindow.SetLeftTab(0);
-            yield return null;
-            ProbeWidgets(report, "RightPanel", EditorWindow.RightPanel);
         }
 
         /// <summary>
@@ -7382,278 +7359,6 @@ namespace ValheimTomrer.Dev
             yield return null;
         }
 
-        // ---------- scenario: editor_palette ----------
-
-        /// <summary>
-        /// The piece catalog and the palette panel. The character is given a handful of recipes, so
-        /// the unlocked list is short and the config switch makes a visible difference. Then the
-        /// window is opened and the grid, the chips, the search box and the piece list are checked
-        /// against the hammer's own numbers.
-        /// </summary>
-        private static IEnumerator TestEditorPalette(Player player)
-        {
-            yield return new WaitForSeconds(1f);
-            yield return EquipHammer(player);
-
-            var tool = player.GetBuildTool();
-            Check(tool != null, "the hammer's piece table is in hand");
-            if (tool == null)
-            {
-                yield break;
-            }
-
-            Check(!player.PlacementCostDisabled, "placement cost is on, so the unlocked list is the real one");
-
-            // A short, known unlock list. Without this the test would ride on whatever the saved
-            // character happened to know.
-            var knownBefore = new List<string>(player.m_knownRecipes);
-            var few = new List<string>();
-            foreach (var prefab in tool.m_pieces)
-            {
-                var piece = prefab.GetComponent<Piece>();
-                if (piece == null || piece.m_repairPiece || piece.m_removePiece || !piece.m_enabled)
-                {
-                    continue;
-                }
-
-                if (!few.Contains(piece.m_name))
-                {
-                    few.Add(piece.m_name);
-                }
-
-                if (few.Count == 6)
-                {
-                    break;
-                }
-            }
-
-            player.m_knownRecipes.Clear();
-            foreach (var name in few)
-            {
-                player.m_knownRecipes.Add(name);
-            }
-
-            player.UpdateAvailablePiecesList();
-            yield return null;
-
-            var wantAll = tool.m_pieces.Count(p => Buildable(p));
-            var wantUnlocked = tool.m_availablePieces.Count(p => !p.m_repairPiece && !p.m_removePiece);
-            Log($"hammer table: {tool.m_pieces.Count} pieces, {wantAll} buildable, {wantUnlocked} unlocked");
-
-            PieceCatalog.Clear();
-            EditorConfig.ShowAllPieces.Value = false;
-            var built = PieceCatalog.Ensure();
-            Check(built && PieceCatalog.All.Count == wantAll,
-                $"the catalog holds every piece but repair and remove: {PieceCatalog.All.Count} of {wantAll}");
-            Check(PieceCatalog.Visible.Count == wantUnlocked,
-                $"ShowAllPieces off: the palette shows the {wantUnlocked} unlocked pieces"
-                + $" (is {PieceCatalog.Visible.Count})");
-            Check(wantUnlocked < wantAll, $"the two lists really differ ({wantUnlocked} of {wantAll})");
-
-            EditorConfig.ShowAllPieces.Value = true;
-            Check(PieceCatalog.Visible.Count == wantAll,
-                $"ShowAllPieces on: the palette shows all {wantAll} pieces (is {PieceCatalog.Visible.Count})");
-
-            CheckCatalogDetail();
-
-            // The window itself.
-            yield return PressKey(UnityEngine.InputSystem.Key.F7);
-            yield return new WaitForSeconds(1f);
-            Check(ModUi.Open, "the key opened the editor");
-            Check(EditorWindow.PalettePane != null && EditorWindow.PalettePane.gameObject.activeSelf,
-                "the Pieces tab is the one on show");
-
-            yield return null;
-            yield return null;
-            Check(Palette.ShownCount == wantAll, $"the grid lists all {wantAll} pieces (is {Palette.ShownCount})");
-            Check(Palette.FooterText == $"{wantAll} of {wantAll} pieces.", $"footer reads '{Palette.FooterText}'");
-            Check(Palette.TagChipCount == PieceCatalog.Tags.Count + 1,
-                $"one chip per tag plus All: {Palette.TagChipCount} chips for {PieceCatalog.Tags.Count} tags");
-            Check(Palette.MaterialChipCount > 5, $"the material filter has {Palette.MaterialChipCount} chips");
-
-            // Virtualised: a few rows of widgets carry hundreds of pieces.
-            Log($"tiles alive: {Palette.LiveTiles} for {Palette.ShownCount} pieces");
-            Check(Palette.LiveTiles > 0 && Palette.LiveTiles < 120,
-                $"only the rows in view exist: {Palette.LiveTiles} tiles for {Palette.ShownCount} pieces");
-
-            // Search: an AND of the words, over display name and prefab.
-            yield return SearchIs(player, "wood wall");
-            yield return SearchIs(player, "beam");
-            yield return SearchIs(player, "zzzz");
-            Check(Palette.ShownCount == 0, "a search that matches nothing empties the grid");
-
-            Palette.SetSearch("");
-            yield return null;
-            Check(Palette.ShownCount == wantAll, "clearing the search brings every piece back");
-
-            // A tag chip.
-            var tag = PieceCatalog.Tags.Contains("Roof") ? "Roof" : PieceCatalog.Tags[0];
-            var wantTag = PieceCatalog.Visible.Count(p => p.UsageTags.Contains(tag));
-            Palette.SetTag(tag);
-            yield return null;
-            Check(Palette.ShownCount == wantTag, $"the {tag} chip leaves {wantTag} pieces (is {Palette.ShownCount})");
-            Palette.SetTag(null);
-            yield return null;
-
-            // Open the material row and a hover card, so the screenshot shows everything at once.
-            Palette.SetMaterialsOpen(true);
-            var card = PieceCatalog.Find("woodwall") ?? PieceCatalog.Visible[0];
-            Palette.ShowCard(card);
-            yield return null;
-            yield return null;
-            Check(Palette.CardVisible, $"the hover card is up for '{card.DisplayName}'");
-            yield return Screenshot("editor-palette-1-grid");
-
-            Palette.HideCard();
-            Palette.SetMaterialsOpen(false);
-
-            // The switch works live, with the window open.
-            EditorConfig.ShowAllPieces.Value = false;
-            yield return null;
-            yield return null;
-            Check(Palette.ShownCount == wantUnlocked,
-                $"flipping the switch refreshed the open palette: {Palette.ShownCount} of {wantUnlocked}");
-            yield return Screenshot("editor-palette-2-unlocked");
-
-            EditorConfig.ShowAllPieces.Value = true;
-            yield return null;
-            yield return null;
-
-            // The second tab.
-            yield return TestPieceList(player);
-
-            yield return PressKey(UnityEngine.InputSystem.Key.Escape);
-            yield return new WaitForSeconds(0.5f);
-            Check(!ModUi.Open, "Esc closed the editor");
-
-            player.m_knownRecipes.Clear();
-            foreach (var name in knownBefore)
-            {
-                player.m_knownRecipes.Add(name);
-            }
-
-            player.UpdateAvailablePiecesList();
-            Log($"put the character's {knownBefore.Count} recipes back");
-        }
-
-        private static bool Buildable(GameObject prefab)
-        {
-            var piece = prefab != null ? prefab.GetComponent<Piece>() : null;
-            return piece != null && !piece.m_repairPiece && !piece.m_removePiece;
-        }
-
-        /// <summary>Types a search and compares the grid with the same filter run by hand.</summary>
-        private static IEnumerator SearchIs(Player player, string text)
-        {
-            var words = text.ToLowerInvariant().Split(' ');
-            var want = PieceCatalog.Visible.Count(p => words.All(w => p.SearchText.Contains(w)));
-            Palette.SetSearch(text);
-            yield return null;
-            Check(Palette.ShownCount == want, $"search '{text}' leaves {want} pieces (is {Palette.ShownCount})");
-        }
-
-        /// <summary>What the catalog read off the prefabs, beyond the counts.</summary>
-        private static void CheckCatalogDetail()
-        {
-            var noIcon = PieceCatalog.All.Count(p => p.Icon == null);
-            Log($"pieces with no icon: {noIcon} (they get a blank slot with the prefab name)");
-
-            var wall = PieceCatalog.Find("woodwall");
-            Check(wall != null, "the catalog knows woodwall");
-            if (wall != null)
-            {
-                Log($"woodwall: '{wall.DisplayName}' | tags {string.Join(",", wall.UsageTags)}"
-                    + $" | cost {string.Join(",", wall.Cost.Select(c => c.Amount + " " + c.Name))}"
-                    + $" | station {wall.StationName ?? "-"} | size {wall.Bounds.size}"
-                    + $" | snaps {wall.SnapPoints.Length} | colliders {wall.Colliders.Length}"
-                    + $" (ray {wall.RayColliders.Length}, touch {wall.TouchColliders.Length},"
-                    + $" snap search {wall.SnapSearchColliders.Length})");
-                Check(wall.SnapPoints.Length == 4 && wall.SnapNames.Length == 4,
-                    $"woodwall has its 4 snap points, named ({wall.SnapNames.Length} names)");
-                Check(wall.Cost.Length == 1 && wall.Cost[0].Amount == 2 && wall.Cost[0].Icon != null,
-                    "woodwall costs 2 wood, with the item's own icon");
-                Check(wall.StationName != null && wall.Icon != null, "woodwall has a station and an icon");
-                Check(wall.RayColliders.Length > 0 && wall.SnapSearchColliders.Length > 0,
-                    $"woodwall's colliders are split: {wall.RayColliders.Length} ray, "
-                    + $"{wall.TouchColliders.Length} touch, {wall.SnapSearchColliders.Length} snap search");
-                Check(wall.Bounds.size.x > 1.5f && wall.Bounds.size.y > 1.5f, $"woodwall measures {wall.Bounds.size}");
-            }
-
-            Check(PieceCatalog.All.All(p => !p.RepairPiece && !p.RemovePiece),
-                "no repair or remove tool got into the catalog");
-            Check(PieceCatalog.Tags.Count > 5 && PieceCatalog.Tags[0] == "Misc",
-                $"tags in the game's order: {string.Join(", ", PieceCatalog.Tags)}");
-
-            // A piece of another tool must be named as such, not called unknown.
-            var other = OtherToolPiece();
-            if (other != null)
-            {
-                var problem = PieceCatalog.Problem(other);
-                Check(problem != null && problem.EndsWith("piece"),
-                    $"'{other}' is reported as '{problem}'");
-            }
-
-            Check(PieceCatalog.Problem("not_a_piece_at_all") == "unknown", "a made-up name is 'unknown'");
-        }
-
-        /// <summary>The first piece of a build tool that is not the hammer (hoe, cultivator, ...).</summary>
-        private static string OtherToolPiece()
-        {
-            var hammer = PieceCatalog.Table;
-            foreach (var prefab in ObjectDB.instance.m_items)
-            {
-                var item = prefab != null ? prefab.GetComponent<ItemDrop>() : null;
-                var table = item != null ? item.m_itemData.m_shared.m_buildPieces : null;
-                if (table == null || table == hammer)
-                {
-                    continue;
-                }
-
-                foreach (var piece in table.m_pieces)
-                {
-                    if (piece != null && PieceCatalog.Find(piece.name) == null)
-                    {
-                        Log($"other tool: '{item.m_itemData.m_shared.m_name}' has {table.m_pieces.Count} pieces,"
-                            + $" first '{piece.name}'");
-                        return piece.name;
-                    }
-                }
-            }
-
-            return null;
-        }
-
-        /// <summary>The second tab: one row per piece of the open blueprint, and the selection hook.</summary>
-        private static IEnumerator TestPieceList(Player player)
-        {
-            EditorWindow.SetLeftTab(1);
-            yield return null;
-            yield return null;
-
-            var document = EditorSession.Document;
-            Check(document != null && document.Pieces.Count > 0, "a blueprint is open in the editor");
-            if (document == null)
-            {
-                yield break;
-            }
-
-            Check(PieceListPanel.RowCount == document.Pieces.Count,
-                $"the list has a row per piece: {PieceListPanel.RowCount} of {document.Pieces.Count}");
-            Check(PieceListPanel.LiveRows > 0 && PieceListPanel.LiveRows <= PieceListPanel.RowCount + 1,
-                $"only the rows in view exist: {PieceListPanel.LiveRows} widgets for {PieceListPanel.RowCount} rows");
-            Check(PieceListPanel.FooterText.EndsWith("pieces."), $"footer reads '{PieceListPanel.FooterText}'");
-
-            var clicked = new List<int>();
-            PieceListPanel.PieceClicked = (id, additive) => clicked.Add(id);
-            PieceListPanel.SetSelection(new[] { document.Pieces[0].Id });
-            yield return null;
-            Check(PieceListPanel.Selection.Count == 1, "the next phase can push a selection into the list");
-            PieceListPanel.PieceClicked = null;
-
-            yield return Screenshot("editor-palette-3-list");
-            EditorWindow.SetLeftTab(0);
-            yield return null;
-        }
 
         // ---------- scenario: editor_files ----------
 
@@ -8233,8 +7938,6 @@ namespace ValheimTomrer.Dev
             Check(ViewportHost.Boxes.BoxCount == 3,
                 $"three boxes: one per selected piece and one round the group ({ViewportHost.Boxes.BoxCount})");
             Check(ViewportHost.Dots.Drawn > 0, $"snap dots drawn: {ViewportHost.Dots.Drawn}");
-            Check(PieceListPanel.Selection.Count == 2,
-                $"the blueprint's piece list shows the same selection: {PieceListPanel.Selection.Count}");
 
             yield return null;
             var edited = SampleView("with the ghost and the boxes");
@@ -8274,664 +7977,10 @@ namespace ValheimTomrer.Dev
             return Mathf.Atan2(forward.x, forward.z) * Mathf.Rad2Deg;
         }
 
-        // ---------- scenario: editor_panels ----------
-
-        /// <summary>
-        /// The right panel. A blueprint holding a seasonal piece, a locked piece, an unknown
-        /// prefab, a piece of another tool, two pieces in the same spot and a scaled piece is
-        /// written to a file and opened; its problem list is then compared row by row with the
-        /// list the phase asks for. The window is opened on it for the rest: a check row is
-        /// clicked, the selection fields are read, committed and reverted, and a new name is
-        /// typed into the blueprint panel with the build card watching.
-        /// </summary>
-        private static IEnumerator TestEditorPanels(Player player)
-        {
-            yield return new WaitForSeconds(1f);
-            yield return EquipHammer(player);
-
-            var tool = player.GetBuildTool();
-            Check(tool != null, "the hammer's piece table is in hand");
-            if (tool == null)
-            {
-                yield break;
-            }
-
-            // A short, known unlock list, so "not unlocked yet" is a fact and not a guess.
-            var knownBefore = new List<string>(player.m_knownRecipes);
-            KnowAFewPieces(player, tool, 6);
-            yield return null;
-
-            PieceCatalog.Clear();
-            PieceCatalog.Ensure();
-            var normal = PieceCatalog.Unlocked.FirstOrDefault(p => p.Dlc.Length == 0 && p.Cost.Length > 0);
-            var locked = PieceCatalog.All.FirstOrDefault(
-                p => !p.Seasonal && p.Dlc.Length == 0 && !PieceCatalog.IsUnlocked(p));
-            var seasonal = PieceCatalog.All.FirstOrDefault(p => p.Seasonal && p.Dlc.Length == 0);
-            var hoe = OtherToolPiece();
-            hoe = hoe != null && PieceCatalog.OtherTool(hoe) != null ? hoe : null;
-            Check(normal != null && locked != null && seasonal != null,
-                $"the fixture's pieces exist: normal={Named(normal)} locked={Named(locked)} "
-                + $"seasonal={Named(seasonal)} otherTool={hoe ?? "none"}");
-            if (normal == null || locked == null || seasonal == null)
-            {
-                yield break;
-            }
-
-            var document = PanelsFixture(normal, seasonal, locked, hoe);
-            if (document == null)
-            {
-                yield break;
-            }
-
-            var checks = CheckProblemList(document, normal, seasonal, locked, hoe);
-            CheckOtherProblems(normal);
-            yield return PanelsInTheWindow(document, checks, normal);
-
-            player.m_knownRecipes.Clear();
-            foreach (var name in knownBefore)
-            {
-                player.m_knownRecipes.Add(name);
-            }
-
-            player.UpdateAvailablePiecesList();
-            Log($"put the character's {knownBefore.Count} recipes back");
-        }
-
-        /// <summary>Cuts the character's recipe list down to a handful, so unlocks are known.</summary>
-        private static void KnowAFewPieces(Player player, PieceTable tool, int count)
-        {
-            var few = new List<string>();
-            foreach (var prefab in tool.m_pieces)
-            {
-                var piece = prefab != null ? prefab.GetComponent<Piece>() : null;
-                if (piece == null || piece.m_repairPiece || piece.m_removePiece || !piece.m_enabled)
-                {
-                    continue;
-                }
-
-                if (!few.Contains(piece.m_name))
-                {
-                    few.Add(piece.m_name);
-                }
-
-                if (few.Count == count)
-                {
-                    break;
-                }
-            }
-
-            player.m_knownRecipes.Clear();
-            foreach (var name in few)
-            {
-                player.m_knownRecipes.Add(name);
-            }
-
-            player.UpdateAvailablePiecesList();
-        }
-
-        /// <summary>Writes the test blueprint and reads it back through the real reader.</summary>
-        private static BlueprintDocument PanelsFixture(
-            PieceEntry normal, PieceEntry seasonal, PieceEntry locked, string hoe)
-        {
-            var lines = new List<string>
-            {
-                "#Name:Panel test",
-                "#Description:A blueprint with problems",
-                "#Icon:vt_missingicon",
-                "#Pieces",
-                PieceFixtureLine(normal.PrefabName, 12f, null),
-                PieceFixtureLine(normal.PrefabName, 12f, null),           // the same spot as the one above
-                PieceFixtureLine(seasonal.PrefabName, 14f, null),
-                PieceFixtureLine(locked.PrefabName, 16f, null),
-                PieceFixtureLine("vt_nosuchpiece", 18f, null),
-                PieceFixtureLine("vt_nosuchpiece", 20f, null),
-                PieceFixtureLine(normal.PrefabName, 22f, "info;1;2;1"),   // a scale other than 1
-            };
-
-            if (hoe != null)
-            {
-                lines.Add(PieceFixtureLine(hoe, 24f, null));
-            }
-
-            lines.Add("");
-            var folder = Path.Combine(OutDir, "panels-test");
-            Directory.CreateDirectory(folder);
-            var path = Path.Combine(folder, "problems.blueprint");
-            File.WriteAllText(path, string.Join("\n", lines.ToArray()));
-
-            if (!DocumentStore.Open(path, out var document, out var error))
-            {
-                Check(false, "the test blueprint opens: " + error);
-                return null;
-            }
-
-            Check(document.Pieces.Count == lines.Count - 5,
-                $"the test blueprint holds {document.Pieces.Count} pieces");
-            return document;
-        }
-
-        private static string PieceFixtureLine(string prefab, float x, string rest)
-        {
-            var line = $"{prefab};;{BlueprintFormat.FormatNumber(x, 4)};0;12;0;0;0;1";
-            return rest == null ? line : line + ";" + rest;
-        }
-
-        /// <summary>The whole problem list, row by row, in the order the panel shows it.</summary>
-        private static List<Check> CheckProblemList(
-            BlueprintDocument document, PieceEntry normal, PieceEntry seasonal, PieceEntry locked, string hoe)
-        {
-            var want = new List<string>
-            {
-                "Error|Unknown piece vt_nosuchpiece (2x). The game skips the whole blueprint.",
-            };
-            if (hoe != null)
-            {
-                want.Add($"Error|{hoe} is a {PieceCatalog.OtherTool(hoe).ToLowerInvariant()} piece (1 piece). "
-                    + "The blueprint is never offered.");
-            }
-
-            want.Add($"Warning|{seasonal.DisplayName} is seasonal. The blueprint is offered only in its season.");
-            want.Add($"Warning|{locked.DisplayName} is not unlocked yet. "
-                + "The blueprint is not offered in build mode.");
-            want.Add("Warning|1 piece with a scale other than 1. The mod builds them at normal size.");
-            want.Add("Warning|2 pieces sit in the same spot as another piece of the same kind.");
-
-            want.Add("Warning|The icon piece vt_missingicon is not in the blueprint. "
-                + "The game shows the first piece's icon.");
-            want.Add("Note|The origin is *");
-
-            var got = Checks.Run(document);
-            Check(got.Count == want.Count, $"the list has {want.Count} rows (is {got.Count})");
-            for (var i = 0; i < Mathf.Max(got.Count, want.Count); i++)
-            {
-                var line = i < got.Count ? got[i].LevelWord + "|" + got[i].Message : "(missing)";
-                var wanted = i < want.Count ? want[i] : "(nothing)";
-                var ok = wanted.EndsWith("*")
-                    ? line.StartsWith(wanted.Substring(0, wanted.Length - 1), StringComparison.Ordinal)
-                    : line == wanted;
-                Check(ok, $"row {i + 1}: {line}" + (ok ? "" : $"  |  wanted {wanted}"));
-            }
-
-            Check(Checks.Summary(got).StartsWith(hoe != null ? "2 errors" : "1 error"),
-                $"the summary reads '{Checks.Summary(got)}'");
-            return got;
-        }
-
-        /// <summary>The rows the fixture cannot show: a line that cannot be read, empty, too big, and no card row for 12 items.</summary>
-        private static void CheckOtherProblems(PieceEntry normal)
-        {
-            var empty = DocumentStore.New("Empty");
-            var rows = Checks.Run(empty);
-            Check(rows.Count == 1 && rows[0].Level == CheckLevel.Warning
-                && rows[0].Message == "No pieces yet. The build tool skips an empty blueprint.",
-                $"an empty blueprint has one row: {Row(rows, 0)}");
-
-            rows = Checks.Run(empty, "line 7: expected at least 9 fields, got 3");
-            Check(rows.Count == 2 && rows[0].Message
-                == "Line 7 cannot be read (expected at least 9 fields, got 3). The game skips this file.",
-                $"a line the reader rejects is a row: {Row(rows, 0)}");
-
-            var big = DocumentStore.New("Too many");
-            var many = new List<NewPiece>();
-            for (var i = 0; i <= BlueprintFormat.MaxPieces; i++)
-            {
-                many.Add(new NewPiece
-                {
-                    PrefabName = normal.PrefabName,
-                    Position = new Vector3(i % 50, i / 50, 0f),
-                    Rotation = Quaternion.identity,
-                });
-            }
-
-            big.AddPieces(many);
-            rows = Checks.Run(big);
-            Check(rows.Any(c => c.Level == CheckLevel.Error
-                    && c.Message == $"{many.Count} pieces. The mod reads at most {BlueprintFormat.MaxPieces}."),
-                $"{many.Count} pieces is one too many: {Row(rows, 0)}");
-
-            // Twelve items and a station: the card used to show only six squares and warned about
-            // the rest. The list shows them all now, so there is no such row any more.
-            var twelve = TwelveItemsDocument();
-            rows = Checks.Run(twelve);
-            var cardRows = rows.Where(c => c.Message.Contains("card") || c.Message.Contains("cost items")).ToList();
-            Check(twelve.Pieces.Count == 4 && cardRows.Count == 0,
-                $"a 12-item blueprint has no card-slots problem: {cardRows.Count} rows about the card"
-                + (cardRows.Count > 0 ? $" ('{cardRows[0].Message}')" : ""));
-        }
-
-        /// <summary>The four pieces of <see cref="TwelveItems"/> as an editor document: 12 items, all from the workbench.</summary>
-        private static BlueprintDocument TwelveItemsDocument()
-        {
-            var document = DocumentStore.New("Twelve items");
-            foreach (var piece in TwelveItems().Pieces)
-            {
-                document.AddPiece(piece.PrefabName, piece.Position, piece.Rotation);
-            }
-
-            return document;
-        }
 
         private static string Row(List<Check> rows, int index)
         {
             return index < rows.Count ? rows[index].LevelWord + " " + rows[index].Message : "(no rows)";
-        }
-
-        /// <summary>The three panels in the real window, driven the way a player would.</summary>
-        private static IEnumerator PanelsInTheWindow(
-            BlueprintDocument document, List<Check> checks, PieceEntry normal)
-        {
-            EditorSession.OpenDocument(document);
-            yield return null;
-            yield return null;
-            yield return null;
-            Check(ModUi.Open && EditorSession.Document == document, "the editor opened on the test blueprint");
-            Check(!document.Dirty, "a freshly opened blueprint is not dirty");
-
-            // ---- the problem list ----
-            Check(ChecksPanel.RowCount == checks.Count,
-                $"the panel draws a row per problem: {ChecksPanel.RowCount} of {checks.Count}");
-            Check(ChecksPanel.HeadingText == "Checks   " + Checks.Summary(checks),
-                $"the heading counts them: '{ChecksPanel.HeadingText}'");
-            Check(ChecksPanel.RowText(0).EndsWith(checks[0].Message),
-                $"the first row reads '{ChecksPanel.RowText(0)}'");
-
-            var unknown = checks.FindIndex(c => c.Message.StartsWith("Unknown piece"));
-            var wantIds = checks[unknown].Pieces;
-            ChecksPanel.Click(unknown);
-            yield return null;
-            yield return null;
-            Check(wantIds.Length == 2 && EditorState.SelectionCount == 2
-                && wantIds.All(EditorState.IsSelected),
-                $"clicking the unknown-piece row selected its {wantIds.Length} pieces "
-                + $"(selection is {EditorState.SelectionCount})");
-            Check(SelectionPanel.Mode == 2 && SelectionPanel.CountText == "2 pieces selected."
-                && SelectionPanel.KindsText == "2x vt_nosuchpiece",
-                $"the selection panel tallies them: '{SelectionPanel.CountText}' '{SelectionPanel.KindsText}'");
-
-            // ---- the name, with the card watching ----
-            var undoBefore = document.UndoDepth;
-            Check(BlueprintPanel.CardText == $"A blueprint with problems\n{document.Pieces.Count} pieces."
-                && NoControls(BlueprintPanel.CardText),
-                $"the card text is the description and the count, no controls: '{BlueprintPanel.CardText.Replace("\n", " / ")}'");
-            CheckEditorMaterials(document, "the problem blueprint");
-
-            // A short list: the region grows to show all of the card, nothing to scroll.
-            yield return new WaitForSeconds(0.2f);
-            var view = BlueprintPanel.Scroll.viewport;
-            Check(Contains(view, BlueprintPanel.CardPanel) && BlueprintPanel.Scroll.content.rect.height <= view.rect.height + 0.5f,
-                $"the whole card is in sight without scrolling: region {EditorWindow.BlueprintBand:0} high, content "
-                + $"{BlueprintPanel.Scroll.content.rect.height:0}, the problem list keeps {EditorWindow.ChecksPane.rect.height:0}");
-
-            var refreshes = BlueprintPanel.MaterialRefreshes;
-            BlueprintPanel.NameField.text = "Panel tes";
-            BlueprintPanel.NameField.text = "Panel test 2";
-            yield return null;
-            yield return null;
-            Check(BlueprintPanel.MaterialRefreshes > refreshes,
-                $"a change to the blueprint works the list out again at once: {BlueprintPanel.MaterialRefreshes - refreshes} times");
-            Check(document.Dirty && document.Name == "Panel test 2",
-                $"typing a name changed the blueprint: '{document.Name}', dirty={document.Dirty}");
-            Check(document.UndoDepth == undoBefore + 1,
-                $"the keystrokes are one undo step: {document.UndoDepth} of {undoBefore + 1}");
-            Check(BlueprintPanel.CardName == "Panel test 2",
-                $"the build card followed: '{BlueprintPanel.CardName}'");
-
-            // ---- the icon chooser ----
-            var kinds = document.Pieces.Select(p => p.PrefabName).Distinct().Count();
-            Check(BlueprintPanel.ChoiceCount == kinds + 1,
-                $"First plus one button per kind: {BlueprintPanel.ChoiceCount} for {kinds} kinds");
-            Check(BlueprintPanel.IconWarningText.Length > 0,
-                $"the missing icon piece is called out: '{BlueprintPanel.IconWarningText}'");
-            BlueprintPanel.Choose(1);
-            yield return null;
-            yield return null;
-            Check(BlueprintPanel.ChosenIcon == normal.PrefabName && BlueprintPanel.IconWarningText.Length == 0,
-                $"picking the first kind set #Icon:{BlueprintPanel.ChosenIcon}");
-            Check(ChecksPanel.RowCount == checks.Count - 1,
-                $"and the icon problem left the list: {ChecksPanel.RowCount} of {checks.Count - 1}");
-
-            // ---- the selection fields ----
-            var scaled = document.Pieces.Last(p => p.PrefabName == normal.PrefabName);
-            EditorState.Select(scaled.Id);
-            yield return null;
-            yield return null;
-            Check(SelectionPanel.Mode == 1 && SelectionPanel.NameText == normal.DisplayName,
-                $"one piece selected: '{SelectionPanel.NameText}'");
-            Check(SelectionPanel.XField.text == "22" && SelectionPanel.ZField.text == "12"
-                && SelectionPanel.YawField.text == "0",
-                $"its place reads x={SelectionPanel.XField.text} z={SelectionPanel.ZField.text} "
-                + $"yaw={SelectionPanel.YawField.text}");
-            Check(SelectionPanel.ScaleText.StartsWith("Scale 1 x 2 x 1"),
-                $"the scale warning reads '{SelectionPanel.ScaleText}'");
-            Check(SelectionPanel.KeptText.Contains("Extra fields: info;1;2;1"),
-                $"the kept fields are shown: '{SelectionPanel.KeptText.Replace("\n", " / ")}'");
-
-            SelectionPanel.XField.text = "25.5";
-            SelectionPanel.XField.onEndEdit.Invoke(SelectionPanel.XField.text);
-            yield return null;
-            yield return null;
-            var moved = document.Find(scaled.Id);
-            Check(Mathf.Abs(moved.Position.x - 25.5f) < 1e-4f && SelectionPanel.XField.text == "25.5",
-                $"the x box moved the piece to {V4(moved.Position)}");
-
-            SelectionPanel.XField.text = "nonsense";
-            SelectionPanel.XField.onEndEdit.Invoke(SelectionPanel.XField.text);
-            yield return null;
-            Check(SelectionPanel.XField.text == "25.5"
-                && Mathf.Abs(document.Find(scaled.Id).Position.x - 25.5f) < 1e-4f,
-                $"a number it cannot read is put back: '{SelectionPanel.XField.text}'");
-
-            // Esc: TMP restores the old text itself and marks the edit cancelled, so nothing is applied.
-            AccessTools.Field(typeof(TMPro.TMP_InputField), "m_WasCanceled")
-                .SetValue(SelectionPanel.XField, true);
-            SelectionPanel.XField.onEndEdit.Invoke("99");
-            yield return null;
-            Check(SelectionPanel.XField.text == "25.5"
-                && Mathf.Abs(document.Find(scaled.Id).Position.x - 25.5f) < 1e-4f,
-                $"Esc reverts instead of applying: '{SelectionPanel.XField.text}'");
-            AccessTools.Field(typeof(TMPro.TMP_InputField), "m_WasCanceled")
-                .SetValue(SelectionPanel.XField, false);
-
-            SelectionPanel.YawField.text = "45";
-            SelectionPanel.YawField.onEndEdit.Invoke(SelectionPanel.YawField.text);
-            yield return null;
-            yield return null;
-            Check(Mathf.Abs(Mathf.DeltaAngle(SelectionPanel.YawOf(document.Find(scaled.Id).Rotation), 45f)) < 0.01f,
-                $"the yaw box turned it to {SelectionPanel.YawOf(document.Find(scaled.Id).Rotation):0.##} degrees");
-
-            ViewportHost.Frame();
-            yield return null;
-            yield return Screenshot("editor-panels-1-right-panel");
-
-            yield return PanelsMaterials();
-
-            // Esc steps back one thing at a time, so the selection has to go before the window.
-            EditorState.Select(Array.Empty<int>());
-            yield return PressKey(UnityEngine.InputSystem.Key.Escape);
-            yield return new WaitForSeconds(0.5f);
-            Check(!ModUi.Open, "Esc closed the editor");
-        }
-
-        /// <summary>
-        /// The materials list in the editor's card, worked out here without the panel: one row per
-        /// item the document's hammer pieces cost and one per station, have = what
-        /// <see cref="MaterialSources.Around"/> counts where the player stands, a station in range of
-        /// the player (not of the blueprint) or in the blueprint itself. No footer, own text material,
-        /// and nothing in the list the panel walk could step into.
-        /// </summary>
-        private static void CheckEditorMaterials(BlueprintDocument document, string what)
-        {
-            var player = Player.m_localPlayer;
-            var list = BlueprintPanel.List;
-            if (list == null || player == null)
-            {
-                Check(false, $"{what}: the editor's card has a materials list");
-                return;
-            }
-
-            var items = new HashSet<string>();
-            var stations = new HashSet<string>();
-            var own = new HashSet<string>();
-            foreach (var piece in document.Pieces)
-            {
-                var entry = PieceCatalog.Find(piece.PrefabName);
-                if (entry == null)
-                {
-                    continue;
-                }
-
-                foreach (var cost in entry.Cost.Where(c => c.Amount > 0))
-                {
-                    items.Add(cost.Token);
-                }
-
-                if (!string.IsNullOrEmpty(entry.StationToken))
-                {
-                    stations.Add(entry.StationToken);
-                }
-
-                if (!string.IsNullOrEmpty(entry.OwnStationToken))
-                {
-                    own.Add(entry.OwnStationToken);
-                }
-            }
-
-            var rows = list.ShownRows.ToList();
-            Check(rows.Count == items.Count + stations.Count && rows.Count(r => !r.IsStation) == items.Count,
-                $"{what}: one row per item and station, {rows.Count} rows for {items.Count} items and {stations.Count} stations");
-
-            var sources = MaterialSources.Around(player);
-            var wrongHave = rows.Where(r => !r.IsStation && r.Have.text != MaterialList.Short(sources.Count(r.Key)))
-                .Select(r => $"{r.Name.text} shows {r.Have.text}, the world has {sources.Count(r.Key)}").ToList();
-            Check(wrongHave.Count == 0, $"{what}: every have is MaterialSources.Around(player).Count"
-                + (wrongHave.Count == 0 ? $" ({string.Join(", ", rows.Where(r => !r.IsStation).Select(r => r.Name.text + " " + r.Have.text + r.Need.text))})"
-                    : ": " + string.Join("; ", wrongHave)));
-            CheckRowsMatch(rows, BlueprintCard.Materials(document, sources, false), what);
-
-            var noStations = ZoneSystem.instance != null && ZoneSystem.instance.GetGlobalKey(GlobalKeys.NoWorkbench);
-            var wrongState = new List<string>();
-            foreach (var row in rows.Where(r => r.IsStation))
-            {
-                var want = noStations ? "not needed"
-                    : own.Contains(row.Key) ? "in blueprint"
-                    : CraftingStation.HaveBuildStationInRange(row.Key, player.transform.position) != null ? "in range"
-                    : "not in range";
-                if (row.State.text != want)
-                {
-                    wrongState.Add($"{row.Name.text} says '{row.State.text}', want '{want}'");
-                }
-            }
-
-            Check(wrongState.Count == 0, $"{what}: a station is in range of the player or in the blueprint: "
-                + (wrongState.Count == 0 ? string.Join(", ", rows.Where(r => r.IsStation).Select(r => r.Name.text + " " + r.State.text)) : string.Join("; ", wrongState)));
-            Check(!list.Footer.gameObject.activeSelf && list.Columns == 1,
-                $"{what}: no footer in the editor, one column (panel {list.Width:0} wide)");
-            CheckLabels(list);
-
-            var texts = BlueprintPanel.CardPanel.GetComponentsInChildren<TMPro.TMP_Text>(true).Select(t => t.text).ToList();
-            Check(texts.All(t => !t.Contains("Not shown") && !t.Contains("slots")),
-                $"{what}: no \"Not shown\" or slots text in the card's {texts.Count} texts");
-            var selectables = list.Root.GetComponentsInChildren<UnityEngine.UI.Selectable>(true).Length;
-            Check(selectables == 0, $"{what}: the list holds nothing the panel walk could step into ({selectables} selectables)");
-        }
-
-        /// <summary>
-        /// A 12-item blueprint in the open window: 12 item rows and the workbench, none cut, none
-        /// overlapping, all inside the card; the region scrolls to show the last one. The list follows
-        /// the bag within a second while the window is open, and reads the chests once a second at most.
-        /// </summary>
-        private static IEnumerator PanelsMaterials()
-        {
-            var player = Player.m_localPlayer;
-            if (!ResolvedBlueprint.TryResolve(TwelveItems(), out var twelve, out var error))
-            {
-                Check(false, "the twelve-item blueprint resolves: " + error);
-                yield break;
-            }
-
-            // A third in full, a third half, a third none: all three looks at once. Taken back at the end.
-            var added = new List<KeyValuePair<string, int>>();
-            for (var i = 0; i < twelve.TotalCost.Count; i++)
-            {
-                var cost = twelve.TotalCost[i];
-                var amount = i % 3 == 0 ? cost.m_amount : i % 3 == 1 ? cost.m_amount / 2 : 0;
-                var before = player.GetInventory().CountItems(cost.m_resItem.m_itemData.m_shared.m_name);
-                AddTo(player.GetInventory(), cost.m_resItem.gameObject.name, amount);
-                added.Add(new KeyValuePair<string, int>(
-                    cost.m_resItem.m_itemData.m_shared.m_name,
-                    player.GetInventory().CountItems(cost.m_resItem.m_itemData.m_shared.m_name) - before));
-            }
-
-            var document = TwelveItemsDocument();
-            EditorState.Select(Array.Empty<int>());
-            EditorSession.Replace(document);
-            yield return null;
-            yield return null;
-            yield return null;
-            Check(EditorSession.Document == document && twelve.TotalCost.Count == 12,
-                $"the window shows the 12-item blueprint ({twelve.TotalCost.Count} items, {twelve.Stations.Count} station)");
-            CheckEditorMaterials(document, "twelve items");
-
-            var list = BlueprintPanel.List;
-            var rows = list.ShownRows.ToList();
-            Check(rows.Count(r => !r.IsStation) == 12 && rows.Count == 12 + twelve.Stations.Count,
-                $"12 item rows and {rows.Count(r => r.IsStation)} station row");
-            Check(!Checks.Run(document).Any(c => c.Message.Contains("card")), "and no card-slots problem in the problem list");
-
-            var card = BlueprintPanel.CardPanel;
-            var inside = rows.All(r => Contains(card, r.Rect));
-            var overlaps = 0;
-            for (var a = 0; a < rows.Count; a++)
-            {
-                for (var b = a + 1; b < rows.Count; b++)
-                {
-                    overlaps += ScreenRect(rows[a].Rect).Overlaps(ScreenRect(rows[b].Rect)) ? 1 : 0;
-                }
-            }
-
-            var cut = rows.Where(r => r.Name.isTextTruncated || (!r.IsStation && (r.Have.isTextTruncated || r.Need.isTextTruncated))
-                || (r.IsStation && r.State.isTextTruncated)).Select(r => r.Name.text).ToList();
-            Check(inside && overlaps == 0 && cut.Count == 0,
-                $"every row inside the card ({inside}), none overlapping ({overlaps}), none cut short ({(cut.Count == 0 ? "none" : string.Join(", ", cut))})");
-
-            // Taller than the window allows: the region grows until the problem list keeps its least,
-            // then scrolls, and at the bottom the last row is in sight.
-            yield return new WaitForSeconds(0.2f);
-            var scroll = BlueprintPanel.Scroll;
-            var view = scroll.viewport;
-            var checksLeft = EditorWindow.ChecksPane.rect.height;
-            var grown = scroll.content.rect.height > view.rect.height + 0.5f
-                ? checksLeft >= 159.5f && checksLeft <= 161f
-                : Contains(view, card);
-            Check(grown && view.rect.height > 360f,
-                $"the region grew to {EditorWindow.BlueprintBand:0} (view {view.rect.height:0}, content {scroll.content.rect.height:0}, "
-                + $"card {card.rect.height:0}, list {list.Height:0}); the problem list keeps {checksLeft:0}");
-            scroll.verticalNormalizedPosition = 0f;
-            yield return null;
-            yield return null;
-            var last = rows[rows.Count - 1];
-            Check(Contains(view, last.Rect),
-                $"scrolled to the bottom, the last row ('{last.Name.text} {last.State.text}') is in sight");
-            // The items above teach the cut-down recipe list "new" recipes, and the game's popups for
-            // them would cover the left panel in the picture. A test artefact: clear them.
-            if (MessageHud.instance != null)
-            {
-                MessageHud.instance.ClearUnlockQueue();
-                MessageHud.instance.HideAll();
-            }
-
-            yield return new WaitForSeconds(0.3f);
-            yield return Screenshot("editor-panels-card");
-
-            // The pad scrolls it too: the right stick, while the panel walk is in this panel.
-            yield return PanelsPadScroll(scroll);
-
-            // The bag changes with the window open: the list follows within a second.
-            var first = rows.First(r => !r.IsStation);
-            var firstCost = twelve.TotalCost.First(c => c.m_resItem.m_itemData.m_shared.m_name == first.Key);
-            var wasText = first.Have.text;
-            AddTo(player.GetInventory(), firstCost.m_resItem.gameObject.name, 1);
-            added.Add(new KeyValuePair<string, int>(first.Key, 1));
-            var refreshes = BlueprintPanel.MaterialRefreshes;
-            var reads = BlueprintPanel.SourceReads;
-            var waited = 0f;
-            var want = MaterialList.Short(MaterialSources.Around(player).Count(first.Key));
-            while (first.Have.text != want && waited < 3f)
-            {
-                waited += Time.unscaledDeltaTime;
-                yield return null;
-            }
-
-            Check(first.Have.text == want && waited <= BlueprintPanel.MaterialsPeriod + 0.2f,
-                $"one more {first.Name.text} in the bag shows in {waited:0.00} s: '{wasText}' -> '{first.Have.text}'");
-
-            // Held still for 2.5 s: two or three refreshes, never one a frame, and one read of the chests each.
-            refreshes = BlueprintPanel.MaterialRefreshes;
-            reads = BlueprintPanel.SourceReads;
-            var frames = 0;
-            waited = 0f;
-            while (waited < 2.5f)
-            {
-                waited += Time.unscaledDeltaTime;
-                frames++;
-                yield return null;
-            }
-
-            var made = BlueprintPanel.MaterialRefreshes - refreshes;
-            var read = BlueprintPanel.SourceReads - reads;
-            Check(made >= 2 && made <= 3 && read <= made,
-                $"with nothing changing, {made} refreshes in {frames} frames over 2.5 s, {read} reads of the chests");
-
-            foreach (var item in added.Where(a => a.Value > 0))
-            {
-                player.GetInventory().RemoveItem(item.Key, item.Value);
-            }
-
-            scroll.verticalNormalizedPosition = 1f;
-        }
-
-        /// <summary>
-        /// L3 walks into the panels, R1 on to the right one, and the right stick scrolls it: up to the
-        /// top, down to the bottom. The ring hides while its widget is scrolled out of sight.
-        /// </summary>
-        private static IEnumerator PanelsPadScroll(UnityEngine.UI.ScrollRect scroll)
-        {
-            _pad = new PadState();
-            PadReader.Fake = _pad;
-            yield return Frames(3);
-            EditorState.CancelMode();
-            yield return Tap(PadButton.L3);
-            yield return Tap(PadButton.R1);
-            Check(FocusNav.Active && FocusNav.Current == FocusRegion.Right && FocusNav.ScrollTarget() == scroll,
-                $"L3 and R1 put the walk in the right panel ({FocusNav.Current}), on '{WidgetName(FocusNav.Focused)}', "
-                + $"and its list to scroll is the blueprint region: {FocusNav.ScrollTarget() == scroll}");
-
-            // Stepping in scrolled the name box into sight; start from the bottom again.
-            scroll.verticalNormalizedPosition = 0f;
-            yield return Frames(2);
-            var start = scroll.verticalNormalizedPosition;
-            Check(RingMatchesSight(), $"at the bottom the ring shows only when its widget is in sight (shown: {FocusNav.Ring.gameObject.activeSelf})");
-            _pad.Rs = new Vector2(0f, 1f);
-            yield return Wait(1f);
-            _pad.Rs = Vector2.zero;
-            yield return Frames(2);
-            var top = scroll.verticalNormalizedPosition;
-            Check(start < 0.01f && top > 0.99f, $"right stick up scrolls the panel to the top: {start:0.00} -> {top:0.00}");
-            Check(RingMatchesSight(), "the ring shows exactly when its widget is in sight");
-
-            _pad.Rs = new Vector2(0f, -1f);
-            yield return Wait(1f);
-            _pad.Rs = Vector2.zero;
-            yield return Frames(2);
-            var bottom = scroll.verticalNormalizedPosition;
-            Check(bottom < 0.01f, $"right stick down scrolls it back down: {top:0.00} -> {bottom:0.00}");
-            Check(RingMatchesSight(), $"and the ring still shows exactly when its widget is in sight (shown: {FocusNav.Ring.gameObject.activeSelf})");
-
-            yield return Tap(PadButton.Circle);
-            PadReader.Fake = null;
-            _pad = null;
-            Check(!FocusNav.Active && ModUi.Open, "circle left the walk, the window stays");
-        }
-
-        /// <summary>The focus ring is up when its widget's middle is inside its list's view, and down when not.</summary>
-        private static bool RingMatchesSight()
-        {
-            var widget = FocusNav.Focused;
-            var ring = FocusNav.Ring;
-            if (widget == null || ring == null)
-            {
-                return false;
-            }
-
-            var list = widget.GetComponentInParent<UnityEngine.UI.ScrollRect>();
-            var inSight = list == null || list.viewport == null
-                || ScreenRect(list.viewport).Contains(ScreenRect((RectTransform)widget.transform).center);
-            return ring.gameObject.activeSelf == inSight;
-        }
-
-        private static string Named(PieceEntry entry)
-        {
-            return entry != null ? entry.PrefabName : "none";
         }
 
         // ---------- scenario: editor_keys ----------
@@ -9202,9 +8251,9 @@ namespace ValheimTomrer.Dev
             Check(Vector3.Distance(ViewportHost.Camera.Position, was) < 1e-4f,
                 "and did not fly the camera down as a plain S would");
 
-            TopBar.Tick();
-            Check(TopBar.FileText.Contains("Keys test") && TopBar.FileText.Contains("keys-test.blueprint"),
-                $"the top bar names the file: '{Strip(TopBar.FileText)}'");
+            Header.Tick();
+            Check(Header.FileText.Contains("Keys test") && Header.StateText.Contains("keys-test.blueprint"),
+                $"the header names the blueprint and the file: '{Header.FileText}', '{Header.StateText}'");
 
             yield return null;
         }
@@ -9279,16 +8328,12 @@ namespace ValheimTomrer.Dev
             ViewportHost.Release();
             yield return null;
 
-            // Save always reads "Save": the problem list counts the errors, not the button.
-            // A piece this game does not have is one error.
+            // A piece this game does not have is one error, counted on the Checks tab.
             document.AddPiece("valheimtomrer_no_such_piece", Vector3.zero, Quaternion.identity);
-            ChecksPanel.Refresh();
-            TopBar.Tick();
-            Check(TopBar.SaveText == "Save",
-                $"with an error the Save button still reads '{TopBar.SaveText}'");
+            ChecksPage.Refresh();
+            Check(ChecksPage.RowCount > 0, $"the Checks tab lists the unknown piece: {ChecksPage.RowCount} rows");
             EditorState.Undo();
-            ChecksPanel.Refresh();
-            TopBar.Tick();
+            ChecksPage.Refresh();
 
             // Move one piece first, or the kit's origin is already where centring would put it.
             EditorState.Select(document.Pieces[0].Id);
@@ -9305,7 +8350,7 @@ namespace ValheimTomrer.Dev
         /// <summary>A key while a text box has the keyboard is not the editor's.</summary>
         private static IEnumerator KeysWhileTyping(BlueprintDocument document)
         {
-            var field = BlueprintPanel.NameField;
+            var field = BlueprintPage.NameField;
             Check(field != null, "the blueprint panel has a name box");
             if (field == null)
             {
@@ -9756,76 +8801,63 @@ namespace ValheimTomrer.Dev
             EditorState.Select(Array.Empty<int>());
 
             yield return Tap(PadButton.Cross);
-            Check(PiecePicker.IsOpen, "cross opens the piece menu");
-            Check(PiecePicker.TabCount == PieceCatalog.Tags.Count && PiecePicker.TabName == "Building",
-                $"one tab per usage tag, open on Building: {PiecePicker.TabCount} tabs, '{PiecePicker.TabName}'");
-            Check(PiecePicker.Count > PiecePicker.Columns * 2 && PiecePicker.LiveTiles >= PiecePicker.Count,
-                $"the tab holds {PiecePicker.Count} pieces in a grid {PiecePicker.Columns} icons wide");
+            Check(QuickAdd.IsOpen && !ModUi.Typing, "cross opens Quick add, on the grid, not typing");
+            Check(QuickAdd.ShownCount > 12 && QuickAdd.TagKeys.Count == PieceCatalog.Tags.Count + 3,
+                $"it lists {QuickAdd.ShownCount} pieces under {QuickAdd.TagKeys.Count} chips (All, Recent, Starred and the tags)");
 
-            var tab = PiecePicker.Tab;
+            var tag = QuickAdd.Tag;
             yield return Tap(PadButton.R1);
-            var next = PiecePicker.Tab;
+            var next = QuickAdd.Tag;
             yield return Tap(PadButton.L1);
-            Check(next == tab + 1 && PiecePicker.Tab == tab,
-                $"R1 and L1 change the tab: {tab} -> {next} -> {PiecePicker.Tab}");
-
-            PiecePicker.NextTab(-PiecePicker.Tab);
+            Check(tag == null && next == QuickAdd.RecentKey && QuickAdd.Tag == null,
+                $"R1 and L1 step the chips: All -> {next ?? "All"} -> {QuickAdd.Tag ?? "All"}");
             yield return Tap(PadButton.L1);
-            var wrapped = PiecePicker.Tab;
-            yield return Tap(PadButton.R1);
-            Check(wrapped == PiecePicker.TabCount - 1 && PiecePicker.Tab == 0,
-                $"L1 on the first tab wraps to the last: {wrapped} of {PiecePicker.TabCount}");
+            Check(QuickAdd.Tag == QuickAdd.TagKeys[QuickAdd.TagKeys.Count - 1], $"L1 on All wraps to the last chip: {QuickAdd.Tag}");
+            QuickAdd.SetTag(null);
+            yield return null;
 
-            for (var i = 0; i < PiecePicker.TabCount && PiecePicker.TabName != "Building"; i++)
-            {
-                PiecePicker.NextTab(1);
-            }
-
-            PiecePicker.Move(-PiecePicker.Count, 0);
             yield return Tap(PadButton.Right);
-            var right = PiecePicker.Index;
+            var right = QuickAdd.LitIndex;
             yield return Tap(PadButton.Down);
-            var down = PiecePicker.Index;
+            var down = QuickAdd.LitIndex;
             yield return Tap(PadButton.Up);
-            Check(right == 1 && down == 1 + PiecePicker.Columns && PiecePicker.Index == 1,
-                $"the D-pad moves by one and by a row: 0 -> {right} -> {down} -> {PiecePicker.Index}");
+            Check(right == 1 && down == 7 && QuickAdd.LitIndex == 1,
+                $"the D-pad moves the light by one and by a row of six: 0 -> {right} -> {down} -> {QuickAdd.LitIndex}");
 
-            PiecePicker.Move(-PiecePicker.Count, 0);
+            QuickAdd.Move(-1000, 0);
             _pad.Ls = new Vector2(1f, 0f);
             yield return null;
             yield return null;
             _pad.Ls = Vector2.zero;
-            var stick = PiecePicker.Index;
+            var stick = QuickAdd.LitIndex;
             yield return null;
             Check(stick == 1, $"the left stick moves it too: {stick}");
 
-            PiecePicker.Move(-PiecePicker.Count, 0);
+            QuickAdd.Move(-1000, 0);
             yield return Hold(PadButton.Right, 0.15f);
-            var once = PiecePicker.Index;
-            PiecePicker.Move(-PiecePicker.Count, 0);
+            var once = QuickAdd.LitIndex;
+            QuickAdd.Move(-1000, 0);
             yield return Hold(PadButton.Right, 0.75f);
-            var many = PiecePicker.Index;
+            var many = QuickAdd.LitIndex;
             Check(once == 1 && many >= 3 && many <= 8,
                 $"a held direction goes once, then repeats after {PadBindings.NavDelay} s every "
                 + $"{PadBindings.NavEvery} s: {once} step in 0.15 s, {many} in 0.75 s");
 
-            PiecePicker.Move(-PiecePicker.Count, 0);
-            PiecePicker.Move(2 * PiecePicker.Columns + 3, 0);
+            QuickAdd.Move(-1000, 0);
+            QuickAdd.Move(15, 0);
             yield return null;
-            yield return null;
-            yield return Screenshot("editor-pad-1-picker");
+            yield return Screenshot("editor-pad-1-quick-add");
 
-            var chosen = PiecePicker.Current;
+            var chosen = QuickAdd.Lit;
             yield return Tap(PadButton.Cross);
-            Check(!PiecePicker.IsOpen && EditorState.Mode == EditMode.Place && EditorState.Held == chosen,
-                $"cross places the highlighted piece: {(chosen != null ? chosen.DisplayName : "none")}");
+            Check(!QuickAdd.IsOpen && EditorState.Mode == EditMode.Place && EditorState.Held == chosen,
+                $"cross places the lit piece: {(chosen != null ? chosen.DisplayName : "none")}");
 
             yield return Tap(PadButton.Cross);
-            Check(PiecePicker.IsOpen && PiecePicker.Current == chosen, "it opens again on the piece in hand");
-
+            Check(QuickAdd.IsOpen, "cross with a piece in hand opens Quick add again");
             yield return Tap(PadButton.Circle);
-            Check(!PiecePicker.IsOpen && EditorState.Mode == EditMode.Place,
-                "circle closes the menu and leaves the piece in hand");
+            Check(!QuickAdd.IsOpen && EditorState.Mode == EditMode.Place,
+                "circle closes it and leaves the piece in hand");
             yield return Tap(PadButton.Circle);
             Check(EditorState.Mode == EditMode.Idle, "the next circle empties the hand");
         }
@@ -10142,7 +9174,7 @@ namespace ValheimTomrer.Dev
             var moving = EditorState.Mode == EditMode.Place && EditorState.Action == PlaceAction.Move
                 && EditorState.Moving != null && EditorState.Moving.Count == 1;
             yield return Tap(PadButton.Cross);
-            Check(moving && !PiecePicker.IsOpen,
+            Check(moving && !QuickAdd.IsOpen,
                 "square moves the aimed piece with nothing selected, and cross is silent while it is in hand");
             EditorState.CancelMode();
 
@@ -10209,11 +9241,11 @@ namespace ValheimTomrer.Dev
                 yield return null;
                 var had = ModUi.HasSelection;
                 yield return Tap(PadButton.Cross);
-                Check(had && !PiecePicker.IsOpen,
+                Check(had && !QuickAdd.IsOpen,
                     $"cross belongs to the selected button '{button.name}', so the menu does not also open");
                 yield return Tap(PadButton.Cross);
-                Check(PiecePicker.IsOpen, "the pad took the aim with that press, so the next cross opens it");
-                PiecePicker.Close();
+                Check(QuickAdd.IsOpen, "the pad took the aim with that press, so the next cross opens Quick add");
+                QuickAdd.Close();
                 UnityEngine.EventSystems.EventSystem.current.SetSelectedGameObject(null);
                 yield return null;
             }
@@ -10262,746 +9294,9 @@ namespace ValheimTomrer.Dev
         }
 
 
-        // ---------- scenario: editor_focus ----------
 
         /// <summary>How many presses left one of our widgets selected in the EventSystem.</summary>
         private static int _focusSelected;
-
-        /// <summary>
-        /// The panel walk: L3 opens it, the D-pad and L1/R1 move it, cross presses, circle gives
-        /// the pane back. Driven through the made-up pad, against the counts the focus probe
-        /// measured. It opens the same blueprint as that probe, one piece and one undo step, so
-        /// the numbers line up.
-        ///
-        /// The one thing it cannot prove: a real controller's cross also reaches whatever the
-        /// EventSystem has selected. The fake pad is invisible to the game's input module, so the
-        /// double press has to be checked by hand. What is checked here is the rule that prevents
-        /// it: nothing of ours is ever selected while the ring is on a button.
-        /// </summary>
-        private static IEnumerator TestEditorFocus(Player player)
-        {
-            yield return new WaitForSeconds(1f);
-            _focusSelected = 0;
-
-            PieceCatalog.Ensure();
-            var wall = PieceCatalog.Find("woodwall") ?? (PieceCatalog.All.Count > 0 ? PieceCatalog.All[0] : null);
-            Check(PieceCatalog.Ready && wall != null, "the catalog is built and has a piece for the blueprint");
-            if (wall == null)
-            {
-                yield break;
-            }
-
-            var document = BlueprintDocument.New("focus test");
-            document.AddPiece(wall.PrefabName, Vector3.zero, Quaternion.identity);
-            EditorSession.OpenDocument(document);
-            yield return new WaitForSeconds(0.5f);
-            Check(ModUi.Open && ViewportHost.Ready,
-                $"the window is open on a blueprint of {document.Pieces.Count} piece, undo={document.CanUndo}");
-
-            _pad = new PadState();
-            PadReader.Fake = _pad;
-            yield return null;
-            yield return null;
-
-            yield return FocusEnter();
-            yield return FocusRegions(document);
-            yield return FocusPress(document);
-            yield return FocusDialog();
-            yield return FocusDelete(wall);
-            yield return FocusLeave();
-
-            Check(_focusSelected == 0,
-                $"the EventSystem never held one of our buttons: {_focusSelected} presses left one selected");
-
-            PadReader.Fake = null;
-            _pad = null;
-            EditorSession.Close();
-            yield return new WaitForSeconds(0.3f);
-            Check(!ModUi.Open && !FocusNav.Active, "the editor closed and the walk went with it");
-        }
-
-        /// <summary>L3 opens the walk on the top bar, and a pad wake does not kill it.</summary>
-        private static IEnumerator FocusEnter()
-        {
-            Check(!FocusNav.Active, "the walk is off while the 3D pane has the focus");
-            yield return FocusTap(PadButton.L3);
-            Check(FocusNav.Active && FocusNav.Current == FocusRegion.TopBar,
-                $"L3 with an empty hand opens the walk on the {FocusNav.Current} region, "
-                + $"widget '{WidgetName(FocusNav.Focused)}'");
-
-            var live = Interactable(EditorWindow.TopBar);
-            Check(FocusNav.Count == live && FocusNav.Count >= 15,
-                $"the top bar's walk holds every button that can be pressed and no more, the snap bar's too: "
-                + $"{FocusNav.Count} of {live} interactable");
-
-            // The L3 press itself woke the pad, so start from the mouse having the aim again.
-            ViewportHost.GiveAimBack();
-            yield return null;
-            ViewportHost.TakeAim();
-            yield return null;
-            Check(FocusNav.Active && !ViewportHost.PadAim,
-                "a pad wake does nothing at all while the walk is on: it still holds "
-                + $"'{WidgetName(FocusNav.Focused)}'");
-
-            var gap = RingGap();
-            Check(gap < 4f, $"the ring sits on the focused widget: {gap:0.0} px between the two centres");
-
-            // The top bar is one row: right walks it in screen order and stops at the end.
-            var steps = new List<int>();
-            var widgets = FocusNav.Count;
-            var ordered = true;
-            for (var i = 0; i < widgets; i++)
-            {
-                var x = Middle((RectTransform)FocusNav.Focused.transform).x;
-                yield return FocusTap(PadButton.Right);
-                steps.Add(FocusNav.Index);
-                ordered &= i == widgets - 1 || Middle((RectTransform)FocusNav.Focused.transform).x > x;
-            }
-
-            Check(steps.Count > 1 && steps[0] == 1 && steps[steps.Count - 2] == widgets - 1
-                && FocusNav.Index == widgets - 1 && FocusNav.Current == FocusRegion.TopBar && ordered,
-                $"D-pad right walks the bar one button at a time, left to right, and stops at the end: "
-                + $"0 -> {steps[0]} -> ... -> {steps[steps.Count - 2]} -> {FocusNav.Index} of {widgets}");
-
-            var moved = RingGap();
-            Check(moved < 4f, $"and the ring follows it: {moved:0.0} px on '{WidgetName(FocusNav.Focused)}'");
-
-            // The left stick goes sideways too, and a slanted push is one step on its bigger half.
-            yield return FocusStick(new Vector2(-1f, 0f));
-            var back = FocusNav.Index;
-            yield return FocusStick(new Vector2(1f, 0f));
-            var on = FocusNav.Index;
-            yield return FocusStick(new Vector2(-0.8f, 0.6f));
-            Check(back == widgets - 2 && on == widgets - 1 && FocusNav.Index == widgets - 2
-                && FocusNav.Current == FocusRegion.TopBar,
-                $"the left stick walks the bar: left -> {back}, right -> {on}, slanted up-left -> "
-                + $"{FocusNav.Index} on the {FocusNav.Current}");
-
-            yield return FocusTap(PadButton.Up);
-            Check(FocusNav.Index == widgets - 2 && FocusNav.Current == FocusRegion.TopBar,
-                "up on the top bar does nothing, there is nothing above it");
-
-            // The bar's last buttons sit over the right panel: down goes into it, up comes back
-            // to the same button.
-            var top = FocusNav.Focused;
-            yield return FocusTap(PadButton.Down);
-            var under = FocusNav.Current;
-            var landed = WidgetName(FocusNav.Focused);
-            yield return FocusTap(PadButton.Up);
-            Check(under == FocusRegion.Right && FocusNav.Current == FocusRegion.TopBar && FocusNav.Focused == top,
-                $"down from '{WidgetName(top)}' goes into the {under} panel, on '{landed}', and up comes "
-                + $"back to '{WidgetName(FocusNav.Focused)}'");
-
-            for (var i = 0; i < widgets; i++)
-            {
-                yield return FocusTap(PadButton.Left);
-            }
-
-            Check(FocusNav.Index == 0 && FocusNav.Current == FocusRegion.TopBar,
-                $"left walks back to the first button and stops there: {FocusNav.Index}");
-        }
-
-        /// <summary>L1 and R1 walk the three regions, and the left panel's list follows its tab.</summary>
-        private static IEnumerator FocusRegions(BlueprintDocument document)
-        {
-            // The regions sit left, top, right on screen. R1 goes on to the right and wraps,
-            // L1 goes back the same way.
-            yield return FocusTap(PadButton.R1);
-            var first = FocusNav.Current;
-            yield return FocusTap(PadButton.R1);
-            var second = FocusNav.Current;
-            yield return FocusTap(PadButton.R1);
-            Check(first == FocusRegion.Right && second == FocusRegion.Left
-                && FocusNav.Current == FocusRegion.TopBar,
-                $"R1 walks left to right and wraps: TopBar -> {first} -> {second} -> {FocusNav.Current}");
-
-            yield return FocusTap(PadButton.L1);
-            Check(FocusNav.Current == FocusRegion.Left,
-                $"L1 walks them the other way: TopBar -> {FocusNav.Current}");
-
-            // L1 again wraps round to the right panel: the name, the description and the two icons.
-            yield return FocusTap(PadButton.L1);
-            var rightCount = FocusNav.Count;
-            Check(FocusNav.Current == FocusRegion.Right
-                && rightCount == Interactable(EditorWindow.RightPanel) && rightCount == 4,
-                $"the right panel's walk with nothing selected: {rightCount} widgets (the probe measured 4)");
-
-            // R1 wraps on to the left panel.
-            yield return FocusTap(PadButton.R1);
-            EditorWindow.SetLeftTab(0);
-            yield return null;
-            yield return null;
-            var tab0 = FocusNav.Count;
-            var tabs = FocusNav.Count >= 3
-                && WidgetName(FocusNav.Widgets[0]) == "Pieces"
-                && WidgetName(FocusNav.Widgets[1]) == "In blueprint"
-                && FocusNav.Widgets[2] is TMPro.TMP_InputField;
-            Check(tab0 == Interactable(EditorWindow.LeftPanel) && tabs && tab0 >= 20,
-                $"the left panel's walk is the two tabs, the search box and the chips: {tab0} widgets "
-                + $"({Palette.TagChipCount} tag chips, the probe measured 22)");
-
-            // The two tabs are one row, the search box sits under them, the chips flow in rows
-            // under that. The pad moves by what is on screen.
-            var pieces = FocusNav.Focused;
-            yield return FocusTap(PadButton.Right);
-            var blueprintTab = WidgetName(FocusNav.Focused);
-            yield return FocusTap(PadButton.Right);
-            var across = FocusNav.Current;
-            yield return FocusTap(PadButton.Left);
-            var backTab = WidgetName(FocusNav.Focused);
-            yield return FocusTap(PadButton.Left);
-            Check(blueprintTab == "In blueprint" && across == FocusRegion.Right && backTab == "In blueprint"
-                && FocusNav.Focused == pieces,
-                $"right goes Pieces -> '{blueprintTab}' -> the {across} panel across the 3D pane, left comes "
-                + $"back -> '{backTab}' -> '{WidgetName(FocusNav.Focused)}'");
-
-            // Up from the tabs goes into the top bar, down comes back to the same tab.
-            yield return FocusTap(PadButton.Up);
-            var over = FocusNav.Current;
-            var overName = WidgetName(FocusNav.Focused);
-            yield return FocusTap(PadButton.Down);
-            Check(over == FocusRegion.TopBar && FocusNav.Current == FocusRegion.Left && FocusNav.Focused == pieces,
-                $"up from Pieces goes into the {over}, on '{overName}', and down comes back to "
-                + $"'{WidgetName(FocusNav.Focused)}'");
-
-            yield return FocusTap(PadButton.Down);
-            var search = FocusNav.Focused is TMPro.TMP_InputField;
-            yield return FocusTap(PadButton.Down);
-            var firstChip = FocusNav.Focused;
-            Check(search && WidgetName(firstChip) == "Chip All",
-                $"down goes to the search box, then to the first chip: '{WidgetName(firstChip)}'");
-
-            yield return FocusTap(PadButton.Right);
-            var secondChip = FocusNav.Focused;
-            var along = secondChip != firstChip && Mathf.Abs(Mid(secondChip).y - Mid(firstChip).y) < 1f
-                && Mid(secondChip).x > Mid(firstChip).x;
-            yield return FocusTap(PadButton.Down);
-            var below = FocusNav.Focused;
-            var lower = below != null && WidgetName(below).StartsWith("Chip ")
-                && Mid(below).y < Mid(secondChip).y - 10f;
-            yield return FocusTap(PadButton.Up);
-            var returned = FocusNav.Focused == secondChip;
-            Check(along && lower && returned,
-                $"right goes along the chip row to '{WidgetName(secondChip)}', down to the row under it "
-                + $"('{WidgetName(below)}'), up back to '{WidgetName(FocusNav.Focused)}'");
-
-            yield return FocusStick(new Vector2(0f, -1f));
-            var stickDown = FocusNav.Focused;
-            yield return FocusStick(new Vector2(0f, 1f));
-            Check(stickDown == below && FocusNav.Focused == secondChip,
-                $"the left stick does the same: down to '{WidgetName(stickDown)}', up to "
-                + $"'{WidgetName(FocusNav.Focused)}'");
-
-            yield return FocusTap(PadButton.Down);
-            Check(RingGap() < 4f, $"the ring follows it into the chips, on '{WidgetName(FocusNav.Focused)}'");
-            yield return Screenshot("editor-focus-1-ring");
-
-            EditorWindow.SetLeftTab(1);
-            yield return null;
-            yield return null;
-            var tab1 = FocusNav.Count;
-            var hidden = 0;
-            foreach (var widget in FocusNav.Widgets)
-            {
-                if (EditorWindow.PalettePane != null && widget.transform.IsChildOf(EditorWindow.PalettePane))
-                {
-                    hidden++;
-                }
-            }
-
-            Check(tab1 == 2 && tab1 != tab0 && hidden == 0,
-                $"the In blueprint tab changes the walk: {tab0} -> {tab1} widgets, {hidden} of them "
-                + "belong to the hidden pane");
-
-            EditorWindow.SetLeftTab(0);
-            yield return null;
-            yield return null;
-        }
-
-        /// <summary>Cross on a button fires it, cross on a text box starts typing.</summary>
-        private static IEnumerator FocusPress(BlueprintDocument document)
-        {
-            yield return FocusTap(PadButton.R1);
-            Check(FocusNav.Current == FocusRegion.TopBar,
-                $"R1 from the left panel is the {FocusNav.Current}");
-
-            var steps = 0;
-            while (WidgetName(FocusNav.Focused) != "Undo" && steps < 20)
-            {
-                yield return FocusTap(PadButton.Right);
-                steps++;
-            }
-
-            Check(WidgetName(FocusNav.Focused) == "Undo", $"the walk reaches the Undo button in {steps} steps");
-            var before = document.Pieces.Count;
-            yield return FocusTap(PadButton.Cross);
-            Check(document.CanRedo && document.Pieces.Count == before - 1,
-                $"cross on Undo really undoes: {before} -> {document.Pieces.Count} pieces, redo is now on");
-            EditorState.Redo();
-            yield return null;
-            yield return null;
-
-            // The right panel's first widget is the blueprint's name box.
-            yield return FocusTap(PadButton.R1);
-            var field = FocusNav.Focused as TMPro.TMP_InputField;
-            Check(FocusNav.Current == FocusRegion.Right && field != null,
-                $"R1 lands on the right panel's first widget, the '{WidgetName(FocusNav.Focused)}' box");
-            if (field == null)
-            {
-                yield break;
-            }
-
-            yield return FocusTap(PadButton.Cross);
-            var waited = 0f;
-            while (!ModUi.Typing && waited < 2f)
-            {
-                waited += Time.deltaTime;
-                yield return null;
-            }
-
-            Check(ModUi.Typing, $"cross on the box starts typing after {waited:0.00} s");
-            var at = FocusNav.Index;
-            var text = field.text;
-            yield return FocusTap(PadButton.R1);
-            Check(FocusNav.Index == at && ModUi.Typing && field.text == text,
-                $"and R1 does nothing while it types: still widget {FocusNav.Index} of {FocusNav.Count}");
-
-            // The pad has no keys to type with: the D-pad walks on out of the box.
-            yield return FocusTap(PadButton.Down);
-            var below = FocusNav.Focused;
-            Check(!ModUi.Typing && below != field && FocusNav.Current == FocusRegion.Right && !ModUi.HasSelection,
-                $"the D-pad leaves the box and walks on down, to '{WidgetName(below)}', nothing selected in the UI");
-            yield return FocusTap(PadButton.Up);
-            Check(FocusNav.Focused == field && !ModUi.Typing, "up comes back to the box, not typing");
-
-            // Circle, straight on a box that types: it lets go, the walk keeps it.
-            yield return FocusTap(PadButton.Cross);
-            waited = 0f;
-            while (!ModUi.Typing && waited < 2f)
-            {
-                waited += Time.deltaTime;
-                yield return null;
-            }
-
-            yield return FocusTap(PadButton.Circle);
-            yield return null;
-            Check(ModUi.Typing == false && FocusNav.Active && FocusNav.Focused == field && field.text == text,
-                $"circle stops the typing and the walk stays on the box: '{WidgetName(FocusNav.Focused)}'");
-
-            // Esc's job, straight on the box: it stops typing but the walk keeps it.
-            yield return FocusTap(PadButton.Cross);
-            waited = 0f;
-            while (!ModUi.Typing && waited < 2f)
-            {
-                waited += Time.deltaTime;
-                yield return null;
-            }
-
-            field.DeactivateInputField();
-            yield return null;
-            yield return null;
-            Check(FocusNav.Active && FocusNav.Focused == field && !ModUi.Typing && !ModUi.HasSelection,
-                "the box lets go of the keyboard, the walk keeps it, and nothing is selected in the UI");
-        }
-
-        /// <summary>
-        /// A dialog takes the walk on its own while it is up: the D-pad moves through what it
-        /// holds, L1 and R1 cannot walk out of it, and closing it puts the walk back where it was.
-        /// </summary>
-        private static IEnumerator FocusDialog()
-        {
-            var before = FocusNav.Current;
-            EditorCommands.OpenDialog();
-            yield return null;
-            yield return null;
-
-            Check(Dialogs.IsOpen && FocusNav.InDialog,
-                $"Open takes the walk into the dialog: region {FocusNav.Current}, "
-                + $"widget '{WidgetName(FocusNav.Focused)}'");
-            var live = Interactable(Dialogs.Modal);
-            Check(FocusNav.Count == live && live > 1,
-                $"the walk holds everything the dialog can press: {FocusNav.Count} of {live}");
-            Check(FocusNav.Focused == Dialogs.FocusStart && Dialogs.RowCount > 0,
-                $"and it starts on the first of {Dialogs.RowCount} blueprints");
-            Check(RingGap() < 4f, $"the ring is on it, over the dialog: {RingGap():0.0} px");
-
-            var first = FocusNav.Focused;
-            yield return FocusTap(PadButton.Down);
-            Check(FocusNav.Focused != first && FocusNav.InDialog,
-                $"the D-pad moves on inside it, to '{WidgetName(FocusNav.Focused)}'");
-
-            var at = FocusNav.Focused;
-            yield return FocusTap(PadButton.R1);
-            Check(FocusNav.InDialog && FocusNav.Focused == at,
-                $"R1 cannot walk out of it: still '{WidgetName(FocusNav.Focused)}'");
-
-            // Down runs the list, scrolling it, to the Close button under it, and no further.
-            var taps = 0;
-            var inSight = true;
-            while (WidgetName(FocusNav.Focused) != "Left" && taps < 60)
-            {
-                yield return FocusTap(PadButton.Down);
-                inSight &= RingGap() < 4f && InModal(FocusNav.Focused);
-                taps++;
-            }
-
-            var close = FocusNav.Focused;
-            yield return FocusTap(PadButton.Down);
-            Check(WidgetName(close) == "Left" && FocusNav.Focused == close && FocusNav.InDialog && inSight,
-                $"down walks the {Dialogs.RowCount} rows to the Close button in {taps} steps, every one "
-                + $"scrolled into sight, and stops there: '{WidgetName(FocusNav.Focused)}'");
-
-            yield return FocusTap(PadButton.Up);
-            Check(FocusNav.InDialog && FocusNav.Focused != close && InModal(FocusNav.Focused),
-                $"up goes back into the list: '{WidgetName(FocusNav.Focused)}'");
-
-            yield return FocusTap(PadButton.Circle);
-            yield return null;
-            yield return null;
-            Check(!Dialogs.IsOpen, "circle closes the dialog");
-            Check(FocusNav.Active && FocusNav.Current == before,
-                $"and the walk is back on the {FocusNav.Current} region it came from");
-
-            yield return FocusSaveAs();
-            yield return FocusQuestion();
-            yield return FocusHelp();
-            Check(FocusNav.Active && FocusNav.Current == before && !Dialogs.IsOpen,
-                $"after the three dialogs the walk is back on the {FocusNav.Current} region");
-        }
-
-        /// <summary>Save as: the name box, and under it Cancel and Save side by side.</summary>
-        private static IEnumerator FocusSaveAs()
-        {
-            var padInUse = EditorInput.PadInUse;
-            Dialogs.SaveAs("focus test");
-            yield return null;
-            yield return null;
-            var box = FocusNav.Focused as TMPro.TMP_InputField;
-
-            // The pad has no keys: the ring waits on the box, not typing, so the D-pad walks at once.
-            Check(padInUse && Dialogs.Kind == "saveAs" && box != null && !ModUi.Typing && FocusNav.InDialog,
-                $"with the pad in use, Save as opens with the ring on the name box, not typing: "
-                + $"'{WidgetName(FocusNav.Focused)}', pad in use={padInUse}");
-
-            yield return FocusTap(PadButton.Down);
-            var down = WidgetName(FocusNav.Focused);
-            yield return FocusTap(PadButton.Right);
-            var right = WidgetName(FocusNav.Focused);
-            yield return FocusTap(PadButton.Left);
-            var left = WidgetName(FocusNav.Focused);
-            yield return FocusStick(new Vector2(0f, 1f));
-            Check(down == "Left" && right == "Right" && left == "Left" && FocusNav.Focused == box
-                && FocusNav.InDialog,
-                $"down goes to Cancel ('{down}'), right to Save ('{right}'), left back ('{left}'), "
-                + $"the stick up to the name box ('{WidgetName(FocusNav.Focused)}')");
-            if (box == null)
-            {
-                Dialogs.Close();
-                yield break;
-            }
-
-            yield return FocusSaveAsTyping(box);
-
-            yield return FocusTap(PadButton.Circle);
-            yield return null;
-            yield return null;
-            Check(!Dialogs.IsOpen, "circle closes Save as");
-        }
-
-        /// <summary>
-        /// The name box while it types, with a real pad the game's own UI reads too (its module
-        /// sends cross as Submit and circle as Cancel to the box): cross must not save the first
-        /// name and close, circle must stop the typing and keep the text and the dialog, and the
-        /// D-pad walks on out of the box. The made-up pad drives the editor at the same time.
-        /// </summary>
-        private static IEnumerator FocusSaveAsTyping(TMPro.TMP_InputField box)
-        {
-            // A folder of its own, so a save that should not happen cannot touch the player's files.
-            var folder = Path.Combine(OutDir, "focus-saveas");
-            var wasFolder = BlueprintLibrary.UserFolder;
-            if (Directory.Exists(folder))
-            {
-                Directory.Delete(folder, true);
-            }
-
-            Directory.CreateDirectory(folder);
-            BlueprintLibrary.UserFolder = folder;
-
-            yield return FocusTap(PadButton.Cross);
-            var waited = 0f;
-            while (!ModUi.Typing && waited < 2f)
-            {
-                waited += Time.deltaTime;
-                yield return null;
-            }
-
-            Check(ModUi.Typing && FocusNav.Focused == box, $"cross on the box starts typing after {waited:0.00} s");
-            box.text = "focus typed";
-
-            WorldPadOn();
-            yield return PadPress(false, PadKey.South);
-            yield return Frames(3);
-            var written = Directory.GetFiles(folder).Length;
-            Check(Dialogs.Kind == "saveAs" && ModUi.Typing && box.text == "focus typed" && written == 0,
-                $"a real pad's cross, which the game's UI sends to the box, saves nothing and the box keeps "
-                + $"typing: dialog '{Dialogs.Kind}', text '{box.text}', {written} files written");
-
-            // Circle reaches the box through the game's UI and the editor in the same frames.
-            PadDown(false, PadKey.East);
-            _pad.Down.Add(PadButton.Circle);
-            yield return Frames(2);
-            PadDown(false);
-            _pad.Down.Remove(PadButton.Circle);
-            yield return Frames(3);
-            Check(Dialogs.Kind == "saveAs" && !ModUi.Typing && box.text == "focus typed"
-                && FocusNav.Focused == box && !ModUi.HasSelection,
-                $"circle from both stops the typing, keeps the text and the dialog: dialog '{Dialogs.Kind}', "
-                + $"text '{box.text}', on '{WidgetName(FocusNav.Focused)}'");
-
-            // Typing again, the D-pad leaves the box for the buttons under it.
-            yield return FocusTap(PadButton.Cross);
-            waited = 0f;
-            while (!ModUi.Typing && waited < 2f)
-            {
-                waited += Time.deltaTime;
-                yield return null;
-            }
-
-            yield return FocusTap(PadButton.Down);
-            Check(Dialogs.Kind == "saveAs" && !ModUi.Typing && WidgetName(FocusNav.Focused) == "Left" && !ModUi.HasSelection,
-                $"while it types, the D-pad leaves the box and walks down to '{WidgetName(FocusNav.Focused)}'");
-            yield return FocusStick(new Vector2(0f, 1f));
-            yield return WorldPadOff();
-            BlueprintLibrary.UserFolder = wasFolder;
-            Directory.Delete(folder, true);
-        }
-
-        /// <summary>A yes or no question: the two buttons side by side, and the X over them.</summary>
-        private static IEnumerator FocusQuestion()
-        {
-            Dialogs.Confirm("Focus test", "A question for the walk.", "Discard", () => { });
-            yield return null;
-            yield return null;
-            var start = WidgetName(FocusNav.Focused);
-            yield return FocusTap(PadButton.Left);
-            var left = WidgetName(FocusNav.Focused);
-            yield return FocusTap(PadButton.Right);
-            var right = WidgetName(FocusNav.Focused);
-            yield return FocusTap(PadButton.Up);
-            var up = WidgetName(FocusNav.Focused);
-            yield return FocusTap(PadButton.Down);
-            Check(Dialogs.Kind == "confirm" && start == "Right" && left == "Left" && right == "Right"
-                && up == "Close" && WidgetName(FocusNav.Focused) == "Right" && FocusNav.InDialog,
-                $"the question starts on its answer ('{start}'), left goes to Cancel ('{left}'), right "
-                + $"back ('{right}'), up to the X ('{up}'), down back ('{WidgetName(FocusNav.Focused)}')");
-
-            yield return FocusTap(PadButton.Circle);
-            yield return null;
-            yield return null;
-            Check(!Dialogs.IsOpen, "circle closes the question and nothing was answered");
-        }
-
-        /// <summary>
-        /// Deleting one of the player's blueprints with the pad alone, in a folder of the test's
-        /// own: right from its row to Delete, cross asks first on Cancel, circle and Cancel both
-        /// come back to the list on the same row, the answer deletes the file and the walk lands
-        /// on the row that took its place, or the one above after the last. The blueprint open
-        /// from that file stays open, as not saved.
-        /// </summary>
-        private static IEnumerator FocusDelete(PieceEntry wall)
-        {
-            var before = FocusNav.Current;
-            var folder = Path.Combine(OutDir, "focus-delete");
-            var wasFolder = BlueprintLibrary.UserFolder;
-            var wasDocument = EditorSession.Document;
-            if (Directory.Exists(folder))
-            {
-                Directory.Delete(folder, true);
-            }
-
-            Directory.CreateDirectory(folder);
-            BlueprintLibrary.UserFolder = folder;
-            foreach (var name in new[] { "Alpha", "Beta", "Gamma" })
-            {
-                var made = BlueprintDocument.New(name);
-                made.AddPiece(wall.PrefabName, Vector3.zero, Quaternion.identity);
-                Check(DocumentStore.SaveAs(made, name, true, out var error), $"wrote {name}: {error ?? "ok"}");
-            }
-
-            var beta = Path.Combine(folder, BlueprintFormat.FileNameFor("Beta"));
-            Check(DocumentStore.Open(beta, out var opened, out var openError), $"opened Beta: {openError ?? "ok"}");
-            EditorSession.Replace(opened);
-
-            EditorCommands.OpenDialog();
-            yield return null;
-            yield return null;
-            var rows = Dialogs.RowCount;
-            var at = -1;
-            for (var i = 0; i < rows; i++)
-            {
-                if (Dialogs.Row(i).Path == beta)
-                {
-                    at = i;
-                }
-            }
-
-            var taps = 0;
-            while (at >= 0 && FocusNav.Focused != Dialogs.RowWidget(at) && taps < 30)
-            {
-                yield return FocusTap(PadButton.Down);
-                taps++;
-            }
-
-            yield return FocusTap(PadButton.Right);
-            Check(at > 0 && FocusNav.InDialog && FocusNav.Focused == Dialogs.DeleteButton(at),
-                $"down {taps} times to Beta's row, right to its Delete button: '{WidgetName(FocusNav.Focused)}'");
-            yield return FocusTap(PadButton.Left);
-            var back = FocusNav.Focused == Dialogs.RowWidget(at);
-            yield return FocusTap(PadButton.Right);
-            yield return FocusTap(PadButton.Down);
-            var down = FocusNav.Focused == Dialogs.DeleteButton(at + 1);
-            yield return FocusTap(PadButton.Up);
-            Check(back && down && FocusNav.Focused == Dialogs.DeleteButton(at),
-                "left goes back to the row, down goes to the Delete button under it, up comes back");
-
-            yield return FocusTap(PadButton.Cross);
-            var text = ModalText();
-            Check(Dialogs.Kind == "confirm" && Dialogs.TitleText == "Delete the blueprint?"
-                && WidgetName(FocusNav.Focused) == "Left" && text.Contains("Beta") && text.Contains("stays open"),
-                $"cross asks first, on Cancel ('{WidgetName(FocusNav.Focused)}'): '{text}'");
-
-            yield return FocusTap(PadButton.Circle);
-            yield return null;
-            Check(Dialogs.Kind == "open" && File.Exists(beta) && FocusNav.Focused == Dialogs.DeleteButton(at)
-                && Dialogs.Row(at).Path == beta,
-                $"circle goes back to the list, on Beta's Delete button, and the file stays: '{WidgetName(FocusNav.Focused)}'");
-
-            yield return FocusTap(PadButton.Cross);
-            yield return FocusTap(PadButton.Cross);
-            yield return null;
-            Check(Dialogs.Kind == "open" && File.Exists(beta) && FocusNav.Focused == Dialogs.DeleteButton(at),
-                "cross twice (ask, then Cancel) comes back the same way and deletes nothing");
-
-            yield return FocusTap(PadButton.Cross);
-            yield return FocusTap(PadButton.Right);
-            var answer = WidgetName(FocusNav.Focused);
-            yield return FocusTap(PadButton.Cross);
-            yield return null;
-            Check(answer == "Right" && !File.Exists(beta) && Dialogs.Kind == "open" && Dialogs.RowCount == rows - 1
-                && FocusNav.Focused == Dialogs.DeleteButton(at) && Dialogs.Row(at).Name == "Gamma",
-                $"right to Delete ('{answer}') and cross: the file is gone, {Dialogs.RowCount} of {rows} rows, "
-                + $"the walk is on the Delete button of '{(Dialogs.Row(at) != null ? Dialogs.Row(at).Name : "none")}'");
-            Check(opened.SourcePath == null && opened.Dirty && TopBar.FileText.Contains("not saved yet"),
-                $"the blueprint from that file stays open, as not saved: '{Strip(TopBar.FileText)}'");
-
-            yield return FocusTap(PadButton.Cross);
-            yield return FocusTap(PadButton.Right);
-            yield return FocusTap(PadButton.Cross);
-            yield return null;
-            Check(Dialogs.RowCount == rows - 2 && FocusNav.Focused == Dialogs.DeleteButton(at - 1)
-                && Dialogs.Row(at - 1).Name == "Alpha",
-                $"deleting the last row puts the walk on the one above: "
-                + $"'{(Dialogs.Row(at - 1) != null ? Dialogs.Row(at - 1).Name : "none")}'");
-            yield return Screenshot("editor-focus-delete");
-
-            yield return FocusTap(PadButton.Circle);
-            yield return null;
-            yield return null;
-            Check(!Dialogs.IsOpen && FocusNav.Active && FocusNav.Current == before,
-                $"circle closes the list, the walk is back on the {FocusNav.Current} region");
-
-            BlueprintLibrary.UserFolder = wasFolder;
-            EditorSession.Replace(wasDocument);
-            Directory.Delete(folder, true);
-        }
-
-        /// <summary>Every text the dialog shows, in one line.</summary>
-        private static string ModalText()
-        {
-            return Dialogs.Modal == null
-                ? ""
-                : string.Join(" | ", Dialogs.Modal.GetComponentsInChildren<TMPro.TextMeshProUGUI>(false).Select(t => t.text));
-        }
-
-        /// <summary>The help: the Close button at the bottom and the X at the top.</summary>
-        private static IEnumerator FocusHelp()
-        {
-            yield return FocusTap(PadButton.Options);
-            yield return null;
-            var start = WidgetName(FocusNav.Focused);
-            yield return FocusTap(PadButton.Up);
-            var up = WidgetName(FocusNav.Focused);
-            yield return FocusTap(PadButton.Down);
-            Check(Dialogs.Kind == "help" && start == "Left" && up == "Close"
-                && WidgetName(FocusNav.Focused) == "Left" && FocusNav.InDialog,
-                $"the help starts on Close ('{start}'), up goes to the X ('{up}'), down back "
-                + $"('{WidgetName(FocusNav.Focused)}')");
-
-            yield return FocusTap(PadButton.Circle);
-            yield return null;
-            yield return null;
-            Check(!Dialogs.IsOpen, "circle closes the help");
-        }
-
-        /// <summary>Circle gives the pane back, and the sticks fly again.</summary>
-        private static IEnumerator FocusLeave()
-        {
-            var camera = ViewportHost.Camera;
-            var from = camera.Position;
-            yield return FocusTap(PadButton.Circle);
-            Check(!FocusNav.Active && FocusNav.Focused == null, "circle leaves the walk");
-            Check(FocusNav.Ring == null || !FocusNav.Ring.gameObject.activeSelf, "and the ring goes with it");
-
-            _pad.Ls = new Vector2(1f, 0f);
-            yield return Wait(0.25f);
-            _pad.Ls = Vector2.zero;
-            yield return null;
-            var moved = Vector3.Distance(camera.Position, from);
-            Check(moved > 0.5f, $"the left stick flies the camera again: {moved:0.0} m");
-        }
-
-        /// <summary>A tap that also watches the rule the double-press trap hangs on.</summary>
-        private static IEnumerator FocusTap(PadButton button)
-        {
-            yield return Tap(button);
-            if (ModUi.HasSelection && !ModUi.Typing)
-            {
-                _focusSelected++;
-            }
-        }
-
-        /// <summary>The left stick pushed one way for one read, then let go, watched like a tap.</summary>
-        private static IEnumerator FocusStick(Vector2 stick)
-        {
-            _pad.Ls = stick;
-            yield return null;
-            yield return null;
-            _pad.Ls = Vector2.zero;
-            yield return null;
-            if (ModUi.HasSelection && !ModUi.Typing)
-            {
-                _focusSelected++;
-            }
-        }
-
-        private static Vector3 Mid(UnityEngine.UI.Selectable widget)
-        {
-            return widget != null ? Middle((RectTransform)widget.transform) : Vector3.zero;
-        }
-
-        /// <summary>The widget's middle is inside the dialog, and inside its scroll list's window if it has one.</summary>
-        private static bool InModal(UnityEngine.UI.Selectable widget)
-        {
-            if (widget == null || Dialogs.Modal == null)
-            {
-                return false;
-            }
-
-            var middle = Mid(widget);
-            var scroll = widget.GetComponentInParent<UnityEngine.UI.ScrollRect>();
-            var inList = scroll == null || scroll.viewport == null || Inside(scroll.viewport, middle);
-            return inList && Inside(Dialogs.Modal, middle);
-        }
 
         private static bool Inside(RectTransform rect, Vector3 point)
         {
@@ -11014,26 +9309,6 @@ namespace ValheimTomrer.Dev
         private static string WidgetName(UnityEngine.UI.Selectable widget)
         {
             return widget != null ? widget.name : "none";
-        }
-
-        private static int Interactable(RectTransform region)
-        {
-            return region == null
-                ? 0
-                : region.GetComponentsInChildren<UnityEngine.UI.Selectable>(false).Count(s => s.interactable);
-        }
-
-        /// <summary>How far the ring's middle is from the focused widget's, in canvas pixels.</summary>
-        private static float RingGap()
-        {
-            var ring = FocusNav.Ring;
-            var target = FocusNav.Focused != null ? (RectTransform)FocusNav.Focused.transform : null;
-            if (ring == null || target == null || !ring.gameObject.activeInHierarchy)
-            {
-                return 999f;
-            }
-
-            return Vector3.Distance(Middle(ring), Middle(target));
         }
 
         private static Vector3 Middle(RectTransform rect)
@@ -11080,7 +9355,7 @@ namespace ValheimTomrer.Dev
             EditorSession.Forget();
             yield return new WaitForSeconds(0.5f);
             Check(!ModUi.Open && !EditorSession.Kept && EditorSession.Document == null, "Forget dropped the blueprint");
-            Check(!Dialogs.IsOpen && !PiecePicker.IsOpen && !FocusNav.Active, "and the dialog, the piece menu and the walk");
+            Check(!Dialogs.IsOpen && !QuickAdd.IsOpen && !FocusNav.Active, "and the dialog, Quick add and the walk");
             Check(ViewportHost.Scene == null && ViewportHost.Leaked() == 0,
                 $"and the pane, with nothing left behind: {ViewportHost.Leaked()} objects still alive");
 
@@ -11102,9 +9377,9 @@ namespace ValheimTomrer.Dev
             EditorState.Select(new[] { first, second });
             EditorSession.StartAdd(wall);
             EditorState.SetPlaceSteps(3);
-            EditorWindow.SetLeftTab(1);
-            Palette.SetSearch("wood");
-            PiecePicker.Open();
+            Inspector.SetTab(Inspector.BlueprintTab);
+            LayersPanel.SetSearch("wood");
+            EditorWindow.SetInspector(true);
             var camera = ViewportHost.Camera;
             camera.Turn(40f, -10f);
             camera.Zoom(-300f, new Vector2(0.5f, 0.5f));
@@ -11139,10 +9414,8 @@ namespace ValheimTomrer.Dev
                 $"the same two pieces are selected ({EditorState.SelectionCount})");
             Check(EditorState.Mode == EditMode.Place && EditorState.Held == wall && EditorState.Steps == 3,
                 $"the wall is still in hand, turned {EditorState.Steps} steps");
-            Check(Palette.Selected == wall, "and its tile is still marked in the palette");
-            Check(EditorWindow.LeftTab == 1, "the In blueprint tab is still open");
-            Check(Palette.Search == "wood", $"the search still says '{Palette.Search}'");
-            Check(PiecePicker.IsOpen, "the piece menu is still up");
+            Check(Inspector.Tab == Inspector.BlueprintTab, "the Inspector is still on its Blueprint tab");
+            Check(LayersPanel.Search == "wood", $"the Layers search still says '{LayersPanel.Search}'");
             Check(ViewportHost.Scene == scene && scene.Root.gameObject.activeSelf, "the same scene, switched on again");
 
             camera = ViewportHost.Camera;
@@ -11158,10 +9431,9 @@ namespace ValheimTomrer.Dev
             Check(Painted(picture) > 0.2f, $"the pane draws again: {Painted(picture) * 100f:0} % of it is not background");
             yield return Screenshot("editor-keep-2-opened-again");
 
-            PiecePicker.Close();
             EditorState.CancelMode();
-            Palette.SetSearch("");
-            EditorWindow.SetLeftTab(0);
+            LayersPanel.SetSearch("");
+            Inspector.SetTab(Inspector.DesignTab);
         }
 
         /// <summary>
@@ -11443,10 +9715,9 @@ namespace ValheimTomrer.Dev
             Check(document.Dirty, "an edit made it dirty again");
             var moved = document.Pieces[0].Position;
 
-            TopBar.Tick();
-            Check(TopBar.BuildEnabled && TopBar.BuildText == "Build this",
-                $"the top bar's Build button is ready: '{TopBar.BuildText}'");
-            TopBar.ClickBuild();
+            Header.Tick();
+            Check(Header.BuildEnabled, "the header's Build in world button is ready");
+            Header.ClickBuild();
             yield return new WaitForSeconds(0.5f);
 
             Check(!document.Dirty, "Build this saved the change first");
@@ -13418,7 +11689,7 @@ namespace ValheimTomrer.Dev
             GifQuiet();
 
             StartGif("editor");
-            GifCrop(EditorWindow.TopBar, EditorWindow.LeftPanel, EditorWindow.RightPanel, EditorWindow.StatusBar);
+            GifCrop(EditorWindow.Header, EditorWindow.LeftDock, EditorWindow.RightDock, EditorWindow.Toolbar);
             yield return new WaitForSeconds(0.5f);
 
             var offset = new Vector3(0f, -0.0477f, 0f);

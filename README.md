@@ -64,25 +64,29 @@ a pad.
 
 1. Press F7 (pad: L2 + □) to open the editor. You don't need the hammer for this. The same key
    closes it.
-2. Click New in the top bar.
-3. Pick a piece from the list on the left and click in the 3D view to place it. It snaps to other
-   pieces the same way the hammer does. Hold Shift to place it without snapping.
+2. Open the menu at the top left (Tømrer) and pick New blueprint.
+3. Press Tab, type what you want ("wall", "roof"), and press Enter or click it. Click in the 3D
+   view to place it. It snaps to other pieces the same way the hammer does. Hold Shift to place it
+   without snapping.
 4. The piece stays in your hand, so keep clicking to place more. Esc puts it away.
-5. Give the blueprint a name on the right (and an icon, if you like) and press Ctrl+S.
-6. Take out the hammer, open the editor and click Build this in the top bar. The editor closes
-   and the blueprint is in your hand.
+5. Give the blueprint a name in the Blueprint tab on the right (and an icon, if you like) and
+   press Ctrl+S.
+6. Take out the hammer, open the editor and click Build in world at the top right. The editor
+   closes and the blueprint is in your hand.
 
 Some things that help:
 
 - A piece's colour shows how well it is held up, the same colours the hammer uses. Red and
   blinking means it would fall down, so the click does nothing. Put a pole or a wall under it
   first.
-- Click a piece to select it. G moves it, R turns it, Delete removes it and Ctrl+Z undoes. Drag a
-  box to select several pieces.
-- The Checks list on the right tells you what is wrong with the blueprint, for example pieces
+- Click a piece to select it, or drag it to move it. G moves it too, R turns it, Delete removes it
+  and Ctrl+Z undoes. Drag a box on empty space to select several pieces.
+- The Layers list on the left has every piece, grouped by kind. Hide and Lock show when you point
+  at a row.
+- The Checks tab on the right tells you what is wrong with the blueprint, for example pieces
   that would fall down.
 - The workshop that comes with the mod is read only. Use Save as to make your own copy of it.
-- Blueprints in the top bar lists all of them. You can open or delete yours from there.
+- Open… in the menu lists all your blueprints. You can open or delete yours from there.
 
 ### Copy a building
 
@@ -233,7 +237,7 @@ layout and has no setting.
 | Alt + R | Turn step: 22.5° (the game's), 45°, 90°, 5°, 15° |
 | Alt + S | Snap points on or off. The grid still works. Shift held turns all snapping off for a moment. |
 | Tab | Quick add: the list of pieces over the view. Type to search, click a piece to place it, right click stars it. Tab or Esc closes it. |
-| Alt + 1, Alt + 2 | Fold the Layers card (left) or the Inspector card (right) in or out |
+| Alt + 1, Alt + 2 | Fold the Layers panel (left) or the Inspector (right) away, or bring it back |
 | Ctrl + \ | Hide the whole interface and keep the view. The same keys, or Esc, bring it back. |
 | F6, Shift + F6 | Move between the buttons and cards without the mouse. Arrow keys step, Enter presses. |
 | Esc | Go back one step, for example stop typing, close a window or put away the piece in your hand. When there is nothing left, it closes the editor. |
@@ -260,7 +264,7 @@ The controller works from the crosshair in the middle of the 3D view.
 | L1 (LB), held | No snapping |
 | L3, R3 while placing | Change the snap point |
 | R3 | Look at the selection |
-| × (A) | Pieces menu (the pad's Quick add): D-pad picks, L1 and R1 change the tab, × places, ○ closes |
+| × (A) | Quick add: D-pad moves, L1 and R1 change the tag (All, Recent, Starred, Wall...), × places, ○ closes |
 | L2 (LT) + L3 | Hide the interface and keep the view, or bring it back |
 | □ (X) | Move the piece under the crosshair. R2 drops it. |
 | △ (Y) | Copy it. It keeps making copies until you press ○. |
@@ -279,7 +283,7 @@ Buttons and panels:
 |---|---|
 | L3 (LS), nothing in hand | Go to the buttons and panels. An orange ring shows where you are. |
 | D-pad, left stick | Move the ring |
-| L1 (LB), R1 (RB) | Next card: top bar, Layers, Inspector. A folded card is skipped. |
+| L1 (LB), R1 (RB) | Next area: Layers, the header, the Inspector, the toolbar. A folded panel is skipped. |
 | × (A) | Press what the ring is on. On a text box, start typing. |
 | Right stick up, down | Scroll the panel, for example a long materials list |
 | ○ (B) | Back to the 3D view. In a text box, stop typing first. |
@@ -290,9 +294,10 @@ Windows like Blueprints and Save as, and every question, put the ring on themsel
 they open: the D-pad moves, × picks, ○ closes. In Save as the name box is selected but not typing,
 so down and × saves with the name shown. Press × on the box to type a new one.
 
-The rows in the Layers list and the Checks list can't be picked with the pad. Use the pieces menu
-(×) to place pieces. Hide, Lock, Same kind, the align buttons (Along X, Low, Mid, High, Spread)
-and the theme button are in the Selection card and the top bar, so the pad reaches them with L3.
+The rows in the Layers list and the Checks tab can't be picked with the pad. Use Quick add (×) to
+place pieces. Hide, Lock, Same kind, align and spread, mirror and the rest are buttons in the
+Inspector's Design tab, the menu and the theme are in the header, and the snapping settings are in
+the toolbar, so the pad reaches all of them with L3.
 
 Hidden and locked pieces are only for this editing session. They are not saved in the file.
 
@@ -319,13 +324,13 @@ you can change it in the game (F1).
 | Editor | `AngleStep` | `22.5` | Degrees per turn step (5, 15, 22.5, 45, 90) |
 | Editor | `SnapPoints` | `true` | Snap to the pieces' snap points, like the game |
 | Editor | `Theme` | `Dark` | `Dark` or `Light`, the editor's look. The Light / Dark button in the editor changes it. |
-| Editor | `LayersOpen` | `false` | The Layers card on the left (the pieces of the blueprint). Alt + 1 or the Layers button. |
-| Editor | `InspectorOpen` | `true` | The Inspector card on the right (blueprint, selection, problems). Alt + 2 or the Inspector button. |
+| Editor | `LayersOpen` | `true` | The Layers panel on the left (the pieces of the blueprint). Alt + 1 folds it. |
+| Editor | `InspectorOpen` | `true` | The Inspector on the right (Design, Blueprint, Checks). Alt + 2 folds it. |
 | Editor | `RecentPieces`, `FavouritePieces` | empty | Kept by the editor: the pieces you used last and the ones you starred. Quick add shows them first. |
 | Build | `UseChests` | `true` | Takes materials from nearby chests too, not only from your inventory |
 | Build | `ChestRange` | `20` | How close a chest must be, in metres (0 to 100) |
 
-The snap bar under the editor's top bar (Grid, Turn, Snap points, Dots, Boxes) changes these settings too. The controller buttons
+The toolbar at the bottom of the editor's view (Grid, Turn, Snap points, Dots, Boxes) changes these settings too. The controller buttons
 follow the game's controller layout.
 
 ## Blueprint files

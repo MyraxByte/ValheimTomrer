@@ -32,11 +32,26 @@ Asked by the owner on 2026-10-03. Decisions made with the owner are marked **Dec
 | 5 | Extras | Command search Ctrl+K, mirror X and Z, copy in a row, sizes in metres | done, not run in the game |
 | 6 | Snapping | Grid 0.25 to 4 m, turn step 5 to 90 degrees, snap points on and off, the snap bar | done, not run in the game |
 
+## Phase 7: the editor screen from scratch (owner's request after phase 6)
+
+Mockup approved by the owner: https://claude.ai/artifact/9DauTNnkyk49g1KXuqLhKm. One menu button
+instead of desktop menus (the owner's note: it runs inside a game).
+
+- Own root canvas, exactly the screen (the old window was cut off at the edges).
+- Header: menu, blueprint name and state, modes (Select, Add, Move, Copy), undo, redo, commands,
+  theme, help, Build in world.
+- Layers docked left, grouped by kind, Hide and Lock on hover. Inspector docked right with Design,
+  Blueprint and Checks tabs. The view between them; a floating toolbar for snapping and view.
+- Quick add rewritten as the only piece picker, search first, keyboard, mouse and pad.
+- Old panels removed: TopBar, PieceListPanel, SelectionPanel, BlueprintPanel, ChecksPanel, Palette,
+  PiecePicker. Their scenarios (editor_palette, editor_panels, editor_focus) were removed; editor_ui
+  covers the new screen.
+
 ## Left for the first run in the game
 
-- `npm run build`, then `npm run autotest -- editor_redesign`, then `editor_all`.
-- The older scenarios check the old layout in places (the left panel's tabs in `editor_focus`, exact
-  widget counts, the Tab walk). Expect FAIL lines there; they get fixed from the run's output.
+- `npm run build`, then `npm run autotest -- editor_ui`, then `editor_all`.
+- Some older scenarios still count widgets of the old layout (`editor_keys`, `editor_pad`,
+  `editor_keep`). Expect FAIL lines there; they get fixed from the run's output.
 
 ## Rules for every phase
 

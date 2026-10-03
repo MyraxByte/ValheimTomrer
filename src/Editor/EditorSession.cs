@@ -92,18 +92,11 @@ namespace ValheimTomrer.Editor
             }
 
             ViewportHost.Tick();
-            if (QuickAdd.IsOpen)
-            {
-                Palette.Tick();
-            }
-
             QuickAdd.Tick();
-            PiecePicker.Tick();
-            PieceListPanel.Tick();
-            BlueprintPanel.Tick();
-            SelectionPanel.Tick();
-            ChecksPanel.Tick();
-            TopBar.Tick();
+            LayersPanel.Tick();
+            Inspector.Tick();
+            Header.Tick();
+            Toolbar.Tick();
             Dialogs.Tick();
             Toasts.Tick();
             SyncSelection();
@@ -237,13 +230,10 @@ namespace ValheimTomrer.Editor
             }
 
             EditorState.Open(document);
-            PiecePicker.Close();
+            QuickAdd.Close();
             ViewportHost.Show(blueprint);
-            Palette.Selected = null;
-            PieceListPanel.Show(document);
-            BlueprintPanel.Show(document);
-            SelectionPanel.Show();
-            ChecksPanel.Show(document);
+            LayersPanel.Show(document);
+            Inspector.Show(document);
             _syncedSelection = -1;
             ValheimTomrerPlugin.Log.LogInfo($"editor now on '{document.Name}' ({document.Pieces.Count} pieces)");
         }
@@ -291,30 +281,15 @@ namespace ValheimTomrer.Editor
                 ViewportHost.Wake();
             }
 
-            // The palette measures its text while it builds, and a switched-off popup measures
-            // nothing: it is on for this and folded away right after.
-            EditorWindow.PopupHost.SetActive(true);
-            Palette.Ensure(EditorWindow.PalettePane);
-            Palette.Show();
-            Palette.PieceChosen = piece =>
-            {
-                StartAdd(piece);
-                QuickAdd.Close();
-            };
-            QuickAdd.Close();
-            PiecePicker.Ensure(EditorWindow.Root);
-            PiecePicker.PieceChosen = StartAdd;
-            PieceListPanel.Ensure(EditorWindow.PieceListPane);
-            PieceListPanel.Show(Document);
-            PieceListPanel.PieceClicked = RowClicked;
-
-            BlueprintPanel.Ensure(EditorWindow.BlueprintPane);
-            BlueprintPanel.Show(Document);
-            SelectionPanel.Ensure(EditorWindow.SelectionPane);
-            SelectionPanel.Show();
-            ChecksPanel.Ensure(EditorWindow.ChecksPane);
-            ChecksPanel.Show(Document);
-            TopBar.Ensure(EditorWindow.TopBar);
+            Header.Ensure(EditorWindow.Header);
+            LayersPanel.Ensure(EditorWindow.LeftDock);
+            LayersPanel.Show(Document);
+            LayersPanel.PieceClicked = RowClicked;
+            Inspector.Ensure(EditorWindow.RightDock);
+            Inspector.Show(Document);
+            Toolbar.Ensure(EditorWindow.Toolbar);
+            QuickAdd.Ensure(EditorWindow.Root);
+            QuickAdd.PieceChosen = StartAdd;
             Dialogs.Ensure(EditorWindow.Root);
             Toasts.Ensure(EditorWindow.Root);
             FocusNav.Ensure(EditorWindow.Root);
@@ -347,15 +322,11 @@ namespace ValheimTomrer.Editor
             FocusNav.StopTyping();
             QuickAdd.Close();
             ViewportHost.Sleep();
-            PiecePicker.PieceChosen = null;
-            Palette.PieceChosen = null;
-            Palette.Selected = null;
-            Palette.Close();
-            PieceListPanel.PieceClicked = null;
-            PieceListPanel.Close();
-            BlueprintPanel.Close();
-            SelectionPanel.Close();
-            ChecksPanel.Close();
+            QuickAdd.PieceChosen = null;
+            Header.CloseMenu();
+            LayersPanel.PieceClicked = null;
+            LayersPanel.Close();
+            Inspector.Close();
             Toasts.Clear();
             EditorCommands.Reset();
             Bindings.Reset();
@@ -378,7 +349,7 @@ namespace ValheimTomrer.Editor
         {
             Close();
             Dialogs.Close();
-            PiecePicker.Close();
+            QuickAdd.Close();
             FocusNav.Leave();
             ViewportHost.Close();
             EditorState.Close();
@@ -390,7 +361,6 @@ namespace ValheimTomrer.Editor
             if (EditorState.StartAdd(entry))
             {
                 PieceMemory.Use(entry.PrefabName);
-                Palette.Selected = entry;
             }
         }
 
@@ -400,17 +370,10 @@ namespace ValheimTomrer.Editor
             EditorState.Select(id, additive ? SelectHow.Toggle : SelectHow.Set);
         }
 
-        /// <summary>Pushes the selection into the piece list, and the piece in hand into the palette.</summary>
+        /// <summary>The panels read the selection themselves; this only notes that it was seen.</summary>
         private static void SyncSelection()
         {
-            if (_syncedSelection == EditorState.Version)
-            {
-                return;
-            }
-
             _syncedSelection = EditorState.Version;
-            PieceListPanel.SetSelection(EditorState.Selection);
-            Palette.Selected = EditorState.Mode == EditMode.Place ? EditorState.Held : null;
         }
 
         /// <summary>Plugin OnDestroy: drop the canvas and the cached sprites for a hot reload.</summary>

@@ -13,13 +13,14 @@ using UnityEngine.UI;
 namespace ValheimTomrer.Dev
 {
     /// <summary>
-    /// Scenario "editor_redesign": the view-first window, Quick add, the wheel, the themes, the keymap,
-    /// the Keys window and the command search, hide and lock, and the Figma-like edits (align, spread,
-    /// mirror, copy in a row, Shift + arrow). Keyboard and pad where both exist.
+    /// Scenario "editor_ui": the new screen (header and its menu, the docked Layers and Inspector, the
+    /// toolbar, the view between them), Quick add, the wheel, the themes, the keymap, the Keys window
+    /// and the command search, hide and lock, the Figma-like edits (align, spread, mirror, copy in a
+    /// row, Shift + arrow) and the snapping settings. Keyboard and pad where both exist.
     /// </summary>
     internal static partial class AutoTest
     {
-        private static IEnumerator TestEditorRedesign(Player player)
+        private static IEnumerator TestEditorUi(Player player)
         {
             yield return new WaitForSeconds(0.5f);
             yield return PressKey(UnityEngine.InputSystem.Key.F7);
@@ -44,35 +45,42 @@ namespace ValheimTomrer.Dev
             EditorSession.Close();
         }
 
-        /// <summary>The view fills the window; the cards fold with Alt+1, Alt+2 and come back; Ctrl+\ and L2 + L3 hide everything.</summary>
+        /// <summary>
+        /// The window is the screen; the view sits between the two docked panels and grows when they fold
+        /// (Alt+1, Alt+2); Ctrl+\ and L2 + L3 hide everything but the view; the header's menu opens and
+        /// Esc closes it; the Inspector's tabs switch; the toolbar shows the settings.
+        /// </summary>
         private static IEnumerator RedesignLayout()
         {
+            EditorWindow.SetLayers(true);
+            EditorWindow.SetInspector(true);
             yield return Frames(2);
             var root = EditorWindow.Root.rect;
             var view = EditorWindow.ViewportHost.rect;
-            Check(Mathf.Abs(view.width - root.width) < 1f && Mathf.Abs(view.height - root.height) < 1f,
-                $"the 3D view fills the whole window: {view.width:0}x{view.height:0} of {root.width:0}x{root.height:0}");
-
-            EditorWindow.SetLayers(false);
-            EditorWindow.SetInspector(true);
-            yield return null;
-            Check(!EditorWindow.LeftShown && EditorWindow.LeftPanel.anchoredPosition.x < -1000f,
-                $"a folded Layers card is slid off the screen (x {EditorWindow.LeftPanel.anchoredPosition.x:0})");
+            Check(Mathf.Abs(root.width - Screen.width / EditorWindow.Root.lossyScale.x) < 2f,
+                $"the window is exactly the screen: {root.width:0} units, screen {Screen.width} px");
+            Check(Mathf.Abs(view.width - (root.width - EditorWindow.LeftWidth - EditorWindow.RightWidth)) < 1f
+                && Mathf.Abs(view.height - (root.height - EditorWindow.HeaderHeight)) < 1f,
+                $"the view fills the room between the panels and under the header: {view.width:0}x{view.height:0}");
 
             Bindings.Press(KeyCode.Alpha1, KeyMods.Alt);
             Bindings.Press(KeyCode.Alpha2, KeyMods.Alt);
             yield return null;
-            Check(EditorWindow.LayersOpen && !EditorWindow.InspectorOpen
-                && Mathf.Abs(EditorWindow.LeftPanel.anchoredPosition.x) < 0.5f && EditorWindow.RightPanel.anchoredPosition.x > 1000f,
-                "Alt+1 unfolds Layers and Alt+2 folds the Inspector");
+            Check(!EditorWindow.LayersOpen && !EditorWindow.InspectorOpen
+                && EditorWindow.LeftDock.anchoredPosition.x < -1000f && EditorWindow.RightDock.anchoredPosition.x > 1000f
+                && Mathf.Abs(EditorWindow.ViewportHost.rect.width - root.width) < 1f,
+                $"Alt+1 and Alt+2 fold both panels away and the view takes the whole width ({EditorWindow.ViewportHost.rect.width:0})");
+            Bindings.Press(KeyCode.Alpha1, KeyMods.Alt);
             Bindings.Press(KeyCode.Alpha2, KeyMods.Alt);
-            Check(EditorWindow.InspectorOpen, "Alt+2 again brings the Inspector back");
+            yield return null;
+            Check(EditorWindow.LayersOpen && EditorWindow.InspectorOpen, "and back");
 
             EditorState.Select(new int[0]);
             Bindings.Press(KeyCode.Backslash, KeyMods.Ctrl);
             yield return null;
-            Check(EditorWindow.UiHidden && EditorWindow.TopBar.anchoredPosition.y > 1000f && !EditorWindow.LeftShown && !EditorWindow.RightShown,
-                "Ctrl+\\ hides the top bar and both cards");
+            Check(EditorWindow.UiHidden && EditorWindow.Header.anchoredPosition.y > 1000f && !EditorWindow.LeftShown
+                && !EditorWindow.RightShown && Mathf.Abs(EditorWindow.ViewportHost.rect.height - root.height) < 1f,
+                "Ctrl+\\ hides the header, both panels and the toolbar, and the view takes the whole screen");
             Check(Bindings.Cancel() && !EditorWindow.UiHidden && ModUi.Open, "Esc brings the interface back and keeps the window open");
 
             _pad = new PadState();
@@ -83,9 +91,41 @@ namespace ValheimTomrer.Dev
             Check(EditorWindow.UiHidden && !FocusNav.Active, "L2 + L3 on the pad hides the interface, no panel walk");
             yield return Tap(PadButton.L2, PadButton.L3);
             Check(!EditorWindow.UiHidden, "L2 + L3 again brings it back");
+
+            // The pad walk reaches the header, both panels and the toolbar.
+            yield return Tap(PadButton.L3);
+            var regions = new System.Collections.Generic.HashSet<FocusRegion> { FocusNav.Current };
+            for (var i = 0; i < 4; i++)
+            {
+                yield return Tap(PadButton.R1);
+                regions.Add(FocusNav.Current);
+            }
+
+            Check(regions.Contains(FocusRegion.TopBar) && regions.Contains(FocusRegion.Left) && regions.Contains(FocusRegion.Right)
+                && regions.Contains(FocusRegion.Bottom),
+                $"L3 and R1 walk the header, Layers, the Inspector and the toolbar: {string.Join(", ", regions)}");
+            yield return Tap(PadButton.Circle);
             PadReader.Fake = null;
             _pad = null;
             yield return Frames(2);
+
+            Header.ToggleMenu();
+            yield return null;
+            Check(Header.MenuOpen, "the menu button opens the menu");
+            Check(Bindings.Cancel() && !Header.MenuOpen && ModUi.Open, "Esc closes the menu first");
+
+            Inspector.SetTab(Inspector.BlueprintTab);
+            yield return null;
+            Check(Inspector.Tab == Inspector.BlueprintTab && BlueprintPage.NameField != null && BlueprintPage.ChoiceCount > 1,
+                $"the Blueprint tab has the name box and {BlueprintPage.ChoiceCount} icon choices");
+            Inspector.SetTab(Inspector.ChecksTab);
+            yield return null;
+            Check(Inspector.Tab == Inspector.ChecksTab, $"the Checks tab: '{ChecksPage.SummaryText}'");
+            Inspector.SetTab(Inspector.DesignTab);
+            Check(LayersPanel.GroupCount > 0 && LayersPanel.RowCount > 0,
+                $"Layers groups the pieces: {LayersPanel.GroupCount} groups, {LayersPanel.RowCount} rows");
+            Check(Toolbar.GridText.StartsWith("Grid"), $"the toolbar shows the grid: '{Toolbar.GridText}'");
+            yield return Screenshot("editor-ui-1-window");
         }
 
         /// <summary>Tab opens Quick add with the search box typing; a pick goes in hand, closes it and heads Recent; stars filter.</summary>
@@ -108,10 +148,12 @@ namespace ValheimTomrer.Dev
 
             QuickAdd.Open();
             yield return Frames(2);
-            Palette.SetSearch("woodwall");
+            QuickAdd.SetSearch("woodwall");
             yield return Frames(2);
-            Check(Palette.ShownCount >= 1, $"the search finds the wall: {Palette.ShownCount} shown");
-            Palette.PieceChosen?.Invoke(wall);
+            Check(QuickAdd.ShownCount >= 1 && QuickAdd.Lit == wall,
+                $"the search finds the wall and lights it first: {QuickAdd.ShownCount} shown, lit '{(QuickAdd.Lit != null ? QuickAdd.Lit.PrefabName : "none")}'");
+            yield return Screenshot("editor-ui-2-quick-add");
+            QuickAdd.Pick();
             yield return null;
             Check(!QuickAdd.IsOpen && EditorState.Mode == EditMode.Place && EditorState.Held == wall,
                 "a piece picked in Quick add goes in hand and the popup closes");
@@ -120,15 +162,15 @@ namespace ValheimTomrer.Dev
 
             QuickAdd.Open();
             yield return Frames(2);
-            Palette.SetSearch("");
-            Palette.ToggleStar(wall);
-            Palette.SetTag(Palette.FavouriteKey);
-            Check(PieceMemory.IsFavourite("woodwall") && Palette.ShownCount == 1,
-                $"a starred piece is the only one under Starred: {Palette.ShownCount} shown");
-            Palette.SetTag(Palette.RecentKey);
-            Check(Palette.ShownCount >= 1, $"Recent lists what was used: {Palette.ShownCount} shown");
-            Palette.ToggleStar(wall);
-            Palette.SetTag(null);
+            QuickAdd.SetSearch("");
+            QuickAdd.ToggleStar(wall);
+            QuickAdd.SetTag(QuickAdd.FavouriteKey);
+            Check(PieceMemory.IsFavourite("woodwall") && QuickAdd.ShownCount == 1,
+                $"a starred piece is the only one under Starred: {QuickAdd.ShownCount} shown");
+            QuickAdd.SetTag(QuickAdd.RecentKey);
+            Check(QuickAdd.ShownCount >= 1 && QuickAdd.Lit == wall, $"Recent lists what was used, newest first: {QuickAdd.ShownCount} shown");
+            QuickAdd.ToggleStar(wall);
+            QuickAdd.SetTag(null);
             Check(!PieceMemory.IsFavourite("woodwall"), "a second right click takes the star off");
             Check(Bindings.Cancel() && !QuickAdd.IsOpen, "Esc closes Quick add");
         }
@@ -137,11 +179,11 @@ namespace ValheimTomrer.Dev
         private static IEnumerator RedesignWheel()
         {
             QuickAdd.Open();
-            Palette.SetSearch("");
+            QuickAdd.SetSearch("");
             yield return Frames(3);
-            var grid = EditorWindow.PalettePane.GetComponentsInChildren<ScrollRect>(true).FirstOrDefault(s => s.name == "Grid");
+            var grid = EditorWindow.Root.GetComponentsInChildren<ScrollRect>(false).FirstOrDefault(s => s.name == "Grid");
             var wheel = grid != null ? grid.GetComponent<WheelScroll>() : null;
-            Check(wheel != null, "the palette grid scrolls with WheelScroll");
+            Check(wheel != null, "the Quick add grid scrolls with WheelScroll");
             if (wheel == null || EventSystem.current == null)
             {
                 QuickAdd.Close();
@@ -305,9 +347,9 @@ namespace ValheimTomrer.Dev
 
             EditorCommands.CycleAngle();
             Check(Mathf.Approximately(EditorState.AngleStep, 45f), $"Alt+R's next turn step is 45 degrees: {EditorState.AngleStep}");
-            var yaw = SelectionPanel.YawOf(document.Find(id).Rotation);
+            var yaw = DesignPage.YawOf(document.Find(id).Rotation);
             Bindings.Press(KeyCode.R, KeyMods.None);
-            var turned = SelectionPanel.YawOf(document.Find(id).Rotation);
+            var turned = DesignPage.YawOf(document.Find(id).Rotation);
             Check(Mathf.Abs(Mathf.DeltaAngle(yaw + 45f, turned)) < 0.01f, $"and R turns 45 degrees: {yaw:0.#} -> {turned:0.#}");
             EditorState.Undo();
 

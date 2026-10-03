@@ -56,10 +56,11 @@ namespace ValheimTomrer.Editor.Ui
             _generation = UiTheme.Generation;
             Live.Clear();
             _root = UiBuild.Rect("Toasts", host);
-            _root.anchorMin = new Vector2(1f, 0f);
-            _root.anchorMax = new Vector2(1f, 0f);
-            _root.pivot = new Vector2(1f, 0f);
-            _root.anchoredPosition = new Vector2(-40f, 52f);
+            // Bottom middle, over the toolbar and the hints, clear of both side panels.
+            _root.anchorMin = new Vector2(0.5f, 0f);
+            _root.anchorMax = new Vector2(0.5f, 0f);
+            _root.pivot = new Vector2(0.5f, 0f);
+            _root.anchoredPosition = new Vector2((EditorWindow.LeftWidth - EditorWindow.RightWidth) * 0.5f, 104f);
             _root.sizeDelta = new Vector2(Width, 10f);
         }
 

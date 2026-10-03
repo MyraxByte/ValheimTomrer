@@ -45,7 +45,7 @@ namespace ValheimTomrer.Editor
         /// <summary>Starred pieces, prefab names. Written by <see cref="PieceMemory"/>.</summary>
         public static ConfigEntry<string> FavouritePieces;
 
-        /// <summary>The Layers card (the pieces of the blueprint). Closed by default: the view comes first.</summary>
+        /// <summary>The Layers panel (the pieces of the blueprint) on the left.</summary>
         public static ConfigEntry<bool> LayersOpen;
 
         /// <summary>The Inspector card (blueprint, selection, problems).</summary>
@@ -119,14 +119,14 @@ namespace ValheimTomrer.Editor
             LayersOpen = config.Bind(
                 "Editor",
                 "LayersOpen",
-                false,
-                "Show the Layers card (the pieces of the open blueprint) on the left. Alt+1 or the Layers button.");
+                true,
+                "Show the Layers panel (the pieces of the open blueprint) on the left. Alt+1 folds it.");
 
             InspectorOpen = config.Bind(
                 "Editor",
                 "InspectorOpen",
                 true,
-                "Show the Inspector card (blueprint, selection, problems) on the right. Alt+2 or the Inspector button.");
+                "Show the Inspector (the selection, the blueprint, the problems) on the right. Alt+2 folds it.");
 
             GridStep = config.Bind(
                 "Editor",

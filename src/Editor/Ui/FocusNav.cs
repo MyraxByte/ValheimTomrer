@@ -16,6 +16,9 @@ namespace ValheimTomrer.Editor.Ui
         TopBar,
         Right,
 
+        /// <summary>The floating toolbar along the bottom of the view.</summary>
+        Bottom,
+
         /// <summary>The dialog on top. It stands on its own: L1 and R1 cannot walk out of it.</summary>
         Dialog,
     }
@@ -50,7 +53,7 @@ namespace ValheimTomrer.Editor.Ui
 
         private const float Outset = 3f;
 
-        private const int Regions = 3;
+        private const int Regions = 4;
 
         /// <summary>The right stick pushed all the way scrolls this far a second, in the list's own units.</summary>
         public const float ScrollSpeed = 700f;
@@ -58,13 +61,13 @@ namespace ValheimTomrer.Editor.Ui
         // Where the walk starts. The top bar, whatever the left-to-right order above is.
         private static readonly FocusRegion[] EnterOrder =
         {
-            FocusRegion.TopBar, FocusRegion.Left, FocusRegion.Right,
+            FocusRegion.TopBar, FocusRegion.Left, FocusRegion.Right, FocusRegion.Bottom,
         };
 
         // The regions a step can go on into, when its own has nothing on that side.
         private static readonly FocusRegion[] Panels =
         {
-            FocusRegion.Left, FocusRegion.TopBar, FocusRegion.Right,
+            FocusRegion.Left, FocusRegion.TopBar, FocusRegion.Right, FocusRegion.Bottom,
         };
 
         private static readonly List<Selectable> Walk = new List<Selectable>();
@@ -856,10 +859,11 @@ namespace ValheimTomrer.Editor.Ui
         {
             switch (region)
             {
-                case FocusRegion.TopBar: return EditorWindow.UiHidden ? null : EditorWindow.TopBar;
-                case FocusRegion.Left: return EditorWindow.LeftShown ? EditorWindow.LeftPanel : null;
+                case FocusRegion.TopBar: return EditorWindow.UiHidden ? null : EditorWindow.Header;
+                case FocusRegion.Left: return EditorWindow.LeftShown ? EditorWindow.LeftDock : null;
+                case FocusRegion.Bottom: return EditorWindow.UiHidden ? null : Toolbar.Root;
                 case FocusRegion.Dialog: return Dialogs.Modal;
-                default: return EditorWindow.RightShown ? EditorWindow.RightPanel : null;
+                default: return EditorWindow.RightShown ? EditorWindow.RightDock : null;
             }
         }
 
