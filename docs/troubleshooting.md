@@ -26,5 +26,5 @@ Symptoms whose cause is not already a rule above. The rest are named next to the
 | Save as saves its first name and closes on the pad's cross | a text box built as a plain `TMP_InputField` instead of `UiBuild.InputField` |
 | A name box stops typing on the first pad or mouse press after the other device | `BuildUiOnLayoutChangedPatch` did not apply (`BuildUi.OnLayoutChanged` renamed) |
 | A pad test presses a button and nothing happens | the button went to a real pad: test presses go to `AutoTest`'s own "AutoTestPad DualSense" device, never `InputSystem.FindControl`, which can pick the real DualSense |
-| `error CS9273: 'field' is a keyword` | a newer SDK (C# 14) with `LangVersion latest`. The csproj pins `LangVersion` 13.0, pull the latest |
+| `error CS9273: 'field' is a keyword` | C# 14 (SDK 10) reads a variable named `field` inside a property as its new keyword. Rename the variable. Other new keywords can break old code the same way |
 | The mod loads two or three times, or `valheim.exe not found` while the build works | the repo is cloned inside `BepInEx\plugins`: move it out. The game folder comes from `VALHEIM_INSTALL` or `Directory.Build.props.user` (the scripts ask MSBuild, so both agree) |
