@@ -574,7 +574,7 @@ namespace ValheimTomrer.Editor.Ui
             TagChips.Clear();
             TagChips.Add(MakeChip(_tagRow, null, "All", () => SetTag(null), out _, out _));
             TagChips.Add(MakeChip(_tagRow, RecentKey, "Recent", () => SetTag(_tag == RecentKey ? null : RecentKey), out _, out _));
-            TagChips.Add(MakeChip(_tagRow, FavouriteKey, "★ Starred", () => SetTag(_tag == FavouriteKey ? null : FavouriteKey), out _, out _));
+            TagChips.Add(MakeChip(_tagRow, FavouriteKey, "Starred", () => SetTag(_tag == FavouriteKey ? null : FavouriteKey), out _, out _));
             foreach (var tag in PieceCatalog.Tags)
             {
                 var key = tag;
@@ -669,7 +669,7 @@ namespace ValheimTomrer.Editor.Ui
                 }
             }
 
-            _materialLabel.text = (_materialsOpen ? "▾ " : "▸ ") + name;
+            _materialLabel.text = (_materialsOpen ? "- " : "+ ") + name;
             _materialLabel.color = _material != null ? UiTheme.Accent : UiTheme.Text;
         }
 
@@ -682,15 +682,11 @@ namespace ValheimTomrer.Editor.Ui
             out Image background,
             Sprite icon = null)
         {
-            background = UiBuild.Panel("Chip " + text, parent, UiTheme.Button);
+            background = UiBuild.Panel("Chip " + text, parent, null, UiTheme.Surface);
+            background.type = Image.Type.Simple;
             var button = background.gameObject.AddComponent<UnityEngine.UI.Button>();
             button.targetGraphic = background;
-            button.transition = Selectable.Transition.SpriteSwap;
-            button.spriteState = new SpriteState
-            {
-                highlightedSprite = UiTheme.ButtonHighlight,
-                pressedSprite = UiTheme.ButtonPressed,
-            };
+            button.transition = Selectable.Transition.None;
             button.onClick.AddListener(onClick);
 
             var textLeft = ChipPadX;
@@ -725,7 +721,8 @@ namespace ValheimTomrer.Editor.Ui
 
         private static Tile NewTile(Transform parent)
         {
-            var background = UiBuild.Panel("Tile", parent, UiTheme.ItemBackground);
+            var background = UiBuild.Panel("Tile", parent, null, UiTheme.Surface);
+            background.type = Image.Type.Simple;
             background.rectTransform.anchorMin = new Vector2(0f, 1f);
             background.rectTransform.anchorMax = new Vector2(0f, 1f);
             background.rectTransform.pivot = new Vector2(0f, 1f);
@@ -749,12 +746,14 @@ namespace ValheimTomrer.Editor.Ui
             badge.rectTransform.sizeDelta = new Vector2(12f, 14f);
             badge.gameObject.SetActive(false);
 
-            var star = UiBuild.Label("Star", background.transform, "★", 13f, TextAlignmentOptions.Center, UiTheme.Accent);
+            // A starred tile gets a small accent dot in its corner: a shape, not a glyph, so no font lacks it.
+            var star = UiBuild.Panel("Star", background.transform, null, UiTheme.Accent);
+            star.type = Image.Type.Simple;
             star.rectTransform.anchorMin = new Vector2(0f, 1f);
             star.rectTransform.anchorMax = new Vector2(0f, 1f);
             star.rectTransform.pivot = new Vector2(0f, 1f);
-            star.rectTransform.anchoredPosition = new Vector2(2f, -1f);
-            star.rectTransform.sizeDelta = new Vector2(14f, 16f);
+            star.rectTransform.anchoredPosition = new Vector2(4f, -4f);
+            star.rectTransform.sizeDelta = new Vector2(7f, 7f);
             star.raycastTarget = false;
             star.gameObject.SetActive(false);
 
@@ -896,7 +895,7 @@ namespace ValheimTomrer.Editor.Ui
 
             public void SetOn(bool on)
             {
-                Background.color = on ? UiTheme.Accent : Color.white;
+                Background.color = on ? UiTheme.Accent : UiTheme.Surface;
                 Label.color = on ? UiTheme.TextOnAccent : UiTheme.Text;
             }
         }
@@ -908,7 +907,7 @@ namespace ValheimTomrer.Editor.Ui
             public Image Icon;
             public TextMeshProUGUI Name;
             public TextMeshProUGUI Badge;
-            public TextMeshProUGUI Star;
+            public Image Star;
             public PieceEntry Entry;
             public int Index = -1;
             public float Size;
@@ -942,7 +941,7 @@ namespace ValheimTomrer.Editor.Ui
                     return;
                 }
 
-                Background.color = Entry == Selected ? UiTheme.Accent : Color.white;
+                Background.color = Entry == Selected ? UiTheme.Accent : UiTheme.Surface;
                 Star.gameObject.SetActive(PieceMemory.IsFavourite(Entry.PrefabName));
             }
 
@@ -990,7 +989,7 @@ namespace ValheimTomrer.Editor.Ui
 
             public static Card Build(RectTransform frame)
             {
-                var panel = UiBuild.Panel("PieceCard", frame, UiTheme.Panel);
+                var panel = UiBuild.Card("PieceCard", frame);
                 var root = panel.rectTransform;
                 root.anchorMin = new Vector2(0f, 1f);
                 root.anchorMax = new Vector2(0f, 1f);

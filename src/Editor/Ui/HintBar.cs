@@ -168,9 +168,9 @@ namespace ValheimTomrer.Editor.Ui
 
         private static void Cap(Transform parent, string text)
         {
-            var hasSprite = UiTheme.Button != null;
-            var background = UiBuild.Panel("Cap", parent, UiTheme.Button,
-                hasSprite ? Color.white : new Color(1f, 1f, 1f, 0.16f));
+            var background = UiBuild.Panel("Cap", parent, null, UiTheme.Cap);
+            background.type = Image.Type.Simple;
+            UiBuild.Border(background);
             background.raycastTarget = false;
 
             var label = UiBuild.Label("Text", background.transform, text, CapTextSize, TextAlignmentOptions.Center);

@@ -474,7 +474,7 @@ namespace ValheimTomrer.Editor.Ui
         /// <summary>One action of the Keys window: its name on the left, its keys on the right.</summary>
         private static void KeyBinderRow(Transform parent, ActionDef def)
         {
-            var background = UiBuild.Panel("Row " + def.Name, parent, UiTheme.ItemBackground, UiTheme.Slot);
+            var background = UiBuild.Panel("Row " + def.Name, parent, null, UiTheme.Slot);
             background.gameObject.AddComponent<LayoutElement>().preferredHeight = RowHeight;
             var button = background.gameObject.AddComponent<Button>();
             button.targetGraphic = background;
@@ -684,7 +684,7 @@ namespace ValheimTomrer.Editor.Ui
                 // stays white. A colour transition would tint it a second time on hover and undo
                 // that, so the row has none: the walk's ring is what marks the current one.
                 var line = deletable ? UiBuild.Rect("Line", parent) : null;
-                var background = UiBuild.Panel("Row", deletable ? line : parent, UiTheme.ItemBackground, UiTheme.Slot);
+                var background = UiBuild.Panel("Row", deletable ? line : parent, null, UiTheme.Slot);
                 (deletable ? line : background.rectTransform).gameObject.AddComponent<LayoutElement>().preferredHeight =
                     RowHeight;
                 DeleteButtons.Add(deletable ? DeleteAfter(line, background.rectTransform, index) : null);
@@ -851,14 +851,14 @@ namespace ValheimTomrer.Editor.Ui
             UiBuild.Stretch(backdrop.rectTransform);
             backdrop.gameObject.AddComponent<Button>().onClick.AddListener(() => Dismiss());
 
-            var panel = UiBuild.Panel("Modal", _root, UiTheme.Panel);
+            var panel = UiBuild.Card("Modal", _root);
             _modal = panel.rectTransform;
             _modal.anchorMin = _modal.anchorMax = new Vector2(0.5f, 0.5f);
             _modal.pivot = new Vector2(0.5f, 0.5f);
             _modal.anchoredPosition = Vector2.zero;
             _modal.sizeDelta = new Vector2(700f, 500f);
 
-            _title = UiBuild.Label("Title", _modal, "", 22f, TextAlignmentOptions.Left, UiTheme.Accent);
+            _title = UiBuild.Label("Title", _modal, "", 20f, TextAlignmentOptions.Left, UiTheme.Text);
             _title.rectTransform.anchorMin = new Vector2(0f, 1f);
             _title.rectTransform.anchorMax = new Vector2(1f, 1f);
             _title.rectTransform.pivot = new Vector2(0.5f, 1f);

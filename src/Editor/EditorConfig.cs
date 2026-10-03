@@ -9,11 +9,11 @@ namespace ValheimTomrer.Editor
     /// Config for the in-game blueprint editor. Bound from the plugin so every editor
     /// setting sits in one place instead of growing the plugin file.
     /// </summary>
-    /// <summary>The editor's look: the game's wood in daylight, or the same wood dimmed for night work.</summary>
+    /// <summary>The editor's look: dark (the default, easy on the eyes) or light.</summary>
     internal enum EditorTheme
     {
-        Day,
-        Night,
+        Dark,
+        Light,
     }
 
     internal static class EditorConfig
@@ -51,7 +51,7 @@ namespace ValheimTomrer.Editor
         /// <summary>The Inspector card (blueprint, selection, problems).</summary>
         public static ConfigEntry<bool> InspectorOpen;
 
-        /// <summary>Day or Night. The top bar's Night button writes this.</summary>
+        /// <summary>Dark or Light. The top bar's theme button writes this.</summary>
         public static ConfigEntry<EditorTheme> Theme;
 
         public static void Bind(ConfigFile config)
@@ -91,9 +91,9 @@ namespace ValheimTomrer.Editor
             Theme = config.Bind(
                 "Editor",
                 "Theme",
-                EditorTheme.Day,
-                "Day is the game's own wood and a light pane. Night dims the panels, and the 3D pane gets a dark "
-                + "sky, ground and grid, easier on the eyes in a dark room.");
+                EditorTheme.Dark,
+                "The editor's look. Dark: dark panels and a dark 3D view, easy on the eyes at night. Light: "
+                + "white panels and a light grey view.");
 
             RecentPieces = config.Bind(
                 "Editor",

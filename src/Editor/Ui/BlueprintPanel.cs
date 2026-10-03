@@ -429,7 +429,9 @@ namespace ValheimTomrer.Editor.Ui
         /// </summary>
         private static void BuildCard(RectTransform parent)
         {
-            var panel = UiBuild.Panel("Card", parent, UiTheme.Sunken, UiTheme.Inset);
+            var panel = UiBuild.Panel("Card", parent, null, UiTheme.Inset);
+            panel.type = Image.Type.Simple;
+            UiBuild.Border(panel);
             _cardPanel = panel.rectTransform;
             var column = panel.gameObject.AddComponent<VerticalLayoutGroup>();
             column.spacing = 4f;
@@ -465,7 +467,8 @@ namespace ValheimTomrer.Editor.Ui
 
         private static Choice NewChoice(string prefab, string text, Sprite icon)
         {
-            var background = UiBuild.Panel("Choice", _choiceArea, UiTheme.ItemBackground);
+            var background = UiBuild.Panel("Choice", _choiceArea, null, UiTheme.Surface);
+            background.type = Image.Type.Simple;
             var button = background.gameObject.AddComponent<Button>();
             button.targetGraphic = background;
             button.onClick.AddListener(() => ChooseIcon(prefab));
@@ -549,7 +552,7 @@ namespace ValheimTomrer.Editor.Ui
 
             public void SetOn(bool on)
             {
-                Background.color = on ? UiTheme.Accent : Color.white;
+                Background.color = on ? UiTheme.Accent : UiTheme.Surface;
                 if (Label != null)
                 {
                     Label.color = on ? UiTheme.TextOnAccent : UiTheme.Text;

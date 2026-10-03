@@ -46,6 +46,9 @@ namespace ValheimTomrer.Editor.Ui
         private static TextMeshProUGUI _count;
         private static TextMeshProUGUI _kinds;
         private static RectTransform _buttons;
+        private static RectTransform _moreButtons;
+        private static RectTransform _alignRow;
+        private static TextMeshProUGUI _axisLabel;
 
         private static readonly NumberField[] Numbers = new NumberField[4];
 
@@ -138,6 +141,9 @@ namespace ValheimTomrer.Editor.Ui
             _one.gameObject.SetActive(Mode == 1);
             _many.gameObject.SetActive(Mode == 2);
             _buttons.gameObject.SetActive(Mode != 0);
+            _moreButtons.gameObject.SetActive(Mode != 0);
+            _alignRow.gameObject.SetActive(Mode == 2);
+            _axisLabel.text = "Along " + EditorState.AlignAxisName;
 
             if (Mode == 1)
             {
@@ -289,10 +295,29 @@ namespace ValheimTomrer.Editor.Ui
             ActionButton("Copy", () => EditorState.StartDuplicate());
             ActionButton("Delete", EditorState.DeleteSelection);
 
+            // Hide and Lock last for this editing session only: they are not in the file.
+            _moreButtons = Row("MoreButtons", _root, 4f);
+            _moreButtons.gameObject.AddComponent<LayoutElement>().minHeight = ButtonHeight;
+            ActionButton(_moreButtons, "Hide", EditorState.HideSelection);
+            ActionButton(_moreButtons, "Lock", EditorState.LockSelection);
+            ActionButton(_moreButtons, "Same kind", EditorState.SelectSimilar);
+
+            // Several pieces: line them up, or spread them out, along one axis.
+            _alignRow = Row("Align", _root, 4f);
+            _alignRow.gameObject.AddComponent<LayoutElement>().minHeight = ButtonHeight;
+            var axis = ActionButton(_alignRow, "Along X", EditorState.CycleAlignAxis);
+            _axisLabel = axis.GetComponentInChildren<TextMeshProUGUI>();
+            ActionButton(_alignRow, "Low", () => EditorState.AlignSelection(-1));
+            ActionButton(_alignRow, "Mid", () => EditorState.AlignSelection(0));
+            ActionButton(_alignRow, "High", () => EditorState.AlignSelection(1));
+            ActionButton(_alignRow, "Spread", () => EditorState.SpreadSelection());
+
             _nothing.gameObject.SetActive(true);
             _one.gameObject.SetActive(false);
             _many.gameObject.SetActive(false);
             _buttons.gameObject.SetActive(false);
+            _moreButtons.gameObject.SetActive(false);
+            _alignRow.gameObject.SetActive(false);
             _tilt.gameObject.SetActive(false);
             _kept.gameObject.SetActive(false);
             _scale.gameObject.SetActive(false);
@@ -301,11 +326,17 @@ namespace ValheimTomrer.Editor.Ui
 
         private static void ActionButton(string text, UnityEngine.Events.UnityAction onClick)
         {
-            var button = UiBuild.Button(text, _buttons, text, onClick, ButtonHeight);
+            ActionButton(_buttons, text, onClick);
+        }
+
+        private static Button ActionButton(Transform row, string text, UnityEngine.Events.UnityAction onClick)
+        {
+            var button = UiBuild.Button(text, row, text, onClick, ButtonHeight);
             var element = button.GetComponent<LayoutElement>();
             element.flexibleWidth = 1f;
             element.minWidth = 40f;
             button.GetComponentInChildren<TextMeshProUGUI>().fontSize = 14f;
+            return button;
         }
 
         /// <summary>The x, y or z box moved one piece.</summary>

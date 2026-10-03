@@ -29,10 +29,10 @@ namespace ValheimTomrer.Editor.Ui
         private const float Gap = 8f;       // region to region
         private const float TopBarHeight = 36f;
         private const float StatusBarHeight = 22f;
-        private const float LeftWidth = 260f;
+        private const float LeftWidth = 300f;
         private const float RightWidth = 300f;
         private const float BlueprintHeight = 368f;
-        private const float SelectionHeight = 252f;
+        private const float SelectionHeight = 300f;
         private const float PaneEdge = 6f;  // right card frame to its three regions
         private const float PopupWidth = 760f;
         private const float PopupHeight = 600f;
@@ -310,27 +310,27 @@ namespace ValheimTomrer.Editor.Ui
             ViewportHost = Region("ViewportHost", root, null, UiTheme.Viewport);
             UiBuild.Stretch(ViewportHost);
 
-            TopBar = Region("TopBar", root, UiTheme.PanelWood, UiTheme.PanelFloat);
+            TopBar = Region("TopBar", root, null, UiTheme.PanelFloat);
             TopBar.anchorMin = new Vector2(0f, 1f);
             TopBar.anchorMax = new Vector2(1f, 1f);
             TopBar.offsetMin = new Vector2(0f, -TopBarHeight);
             TopBar.offsetMax = Vector2.zero;
 
-            LeftPanel = Region("LeftPanel", root, UiTheme.PanelWood, UiTheme.PanelFloat);
+            LeftPanel = Region("LeftPanel", root, null, UiTheme.PanelFloat);
             LeftPanel.anchorMin = new Vector2(0f, 0.34f);
             LeftPanel.anchorMax = new Vector2(0f, 1f);
             LeftPanel.pivot = new Vector2(0.5f, 0.5f);
             LeftPanel.offsetMin = new Vector2(Edge, 0f);
             LeftPanel.offsetMax = new Vector2(Edge + LeftWidth, -(TopBarHeight + Edge));
 
-            RightPanel = Region("RightPanel", root, UiTheme.PanelWood, UiTheme.PanelFloat);
+            RightPanel = Region("RightPanel", root, null, UiTheme.PanelFloat);
             RightPanel.anchorMin = new Vector2(1f, 0f);
             RightPanel.anchorMax = new Vector2(1f, 1f);
             RightPanel.pivot = new Vector2(0.5f, 0.5f);
             RightPanel.offsetMin = new Vector2(-Edge - RightWidth, BottomInset);
             RightPanel.offsetMax = new Vector2(-Edge, -(TopBarHeight + Edge));
 
-            StatusBar = Region("StatusBar", root, UiTheme.PanelWood, UiTheme.PanelFloat);
+            StatusBar = Region("StatusBar", root, null, UiTheme.PanelFloat);
             StatusBar.anchorMin = new Vector2(0f, 0f);
             StatusBar.anchorMax = new Vector2(0f, 0f);
             StatusBar.pivot = new Vector2(0.5f, 0.5f);
@@ -424,7 +424,7 @@ namespace ValheimTomrer.Editor.Ui
         private static void BuildLeftCard()
         {
             const float Title = 28f;
-            var title = UiBuild.Label("Title", LeftPanel, "Layers", 17f, TextAlignmentOptions.Left, UiTheme.Accent);
+            var title = UiBuild.Label("Title", LeftPanel, "Layers", 15f, TextAlignmentOptions.Left, UiTheme.TextDim);
             title.rectTransform.anchorMin = new Vector2(0f, 1f);
             title.rectTransform.anchorMax = new Vector2(1f, 1f);
             title.rectTransform.pivot = new Vector2(0.5f, 1f);
@@ -475,14 +475,14 @@ namespace ValheimTomrer.Editor.Ui
             navigation.mode = Navigation.Mode.None;
             click.navigation = navigation;
 
-            var frame = UiBuild.Panel("QuickAddFrame", dim.transform, UiTheme.Panel);
+            var frame = UiBuild.Card("QuickAddFrame", dim.transform);
             Popup = frame.rectTransform;
             Popup.anchorMin = Popup.anchorMax = new Vector2(0.5f, 0.5f);
             Popup.pivot = new Vector2(0.5f, 0.5f);
             Popup.anchoredPosition = Vector2.zero;
             Popup.sizeDelta = new Vector2(PopupWidth, PopupHeight);
 
-            var title = UiBuild.Label("Title", Popup, "Add a piece", 20f, TextAlignmentOptions.Left, UiTheme.Accent);
+            var title = UiBuild.Label("Title", Popup, "Add a piece", 20f, TextAlignmentOptions.Left, UiTheme.Text);
             title.rectTransform.anchorMin = new Vector2(0f, 1f);
             title.rectTransform.anchorMax = new Vector2(1f, 1f);
             title.rectTransform.pivot = new Vector2(0.5f, 1f);
@@ -500,9 +500,17 @@ namespace ValheimTomrer.Editor.Ui
             UiBuild.Stretch(PalettePane, 14f, 14f, 14f, 46f);
         }
 
+        /// <summary>A flat region: the view's backing, or a card with a thin border.</summary>
         private static RectTransform Region(string name, Transform parent, Sprite sprite, Color tint)
         {
-            return UiBuild.Panel(name, parent, sprite, tint).rectTransform;
+            var image = UiBuild.Panel(name, parent, sprite, tint);
+            image.type = Image.Type.Simple;
+            if (name != "ViewportHost")
+            {
+                UiBuild.Border(image);
+            }
+
+            return image.rectTransform;
         }
 
         private static TextMeshProUGUI Caption(RectTransform parent, string text, float size, TextAlignmentOptions align, Color color)

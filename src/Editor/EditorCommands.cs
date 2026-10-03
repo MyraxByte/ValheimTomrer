@@ -292,13 +292,13 @@ namespace ValheimTomrer.Editor
             Toasts.Info(EditorState.SnapDotsOn ? "Snap dots on." : "Snap dots off.");
         }
 
-        /// <summary>Day and Night. The window is built again in the other colours, nothing else changes.</summary>
+        /// <summary>Dark and Light. The window is built again in the other colours, nothing else changes.</summary>
         public static void ToggleTheme()
         {
-            var night = EditorConfig.Theme.Value != EditorTheme.Night;
-            EditorConfig.Theme.Value = night ? EditorTheme.Night : EditorTheme.Day;
+            var dark = EditorConfig.Theme.Value != EditorTheme.Dark;
+            EditorConfig.Theme.Value = dark ? EditorTheme.Dark : EditorTheme.Light;
             EditorSession.Retheme();
-            Toasts.Info(night ? "Night theme." : "Day theme.");
+            Toasts.Info(dark ? "Dark theme." : "Light theme.");
         }
 
         /// <summary>A view switch is kept, so the editor opens the way it was left.</summary>

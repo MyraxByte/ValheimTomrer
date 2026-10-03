@@ -7,63 +7,125 @@ using UnityEngine.U2D;
 namespace ValheimTomrer.Editor.Ui
 {
     /// <summary>
-    /// Every pixel the editor draws comes from the running game: the TMP font off the HUD and
-    /// the chrome sprites out of the UIAtlas. Nothing is shipped on disk.
+    /// The editor's look: flat, modern panels in a Dark or a Light theme, a clean sans font, and a
+    /// blue accent. It does not copy the game's wood on purpose: the editor is a tool, and it reads
+    /// best like one. Every colour is plain code; the font is one the game already loaded. Nothing
+    /// is shipped on disk and nothing is written.
+    ///
+    /// The game's own look is still here for the widgets that sit inside the game's HUD (the
+    /// materials list on the hammer's build card, the capture's status line): code that builds or
+    /// refreshes those wraps itself in <see cref="GameLook"/>, and every colour and the font answer
+    /// with the game's while that is open.
     ///
     /// The HUD is rebuilt on every world load, so the cache is keyed on the live Hud object.
     /// SpriteAtlas.GetSprite hands out a copy, so the copies are destroyed on rebuild.
     /// </summary>
     internal static class UiTheme
     {
-        // Text is white. Not off-white, not parchment, not a tint of the wood behind it.
-        public static readonly Color Text = Color.white;
-
-        /// <summary>Captions, footers, hints and placeholders. Also white, on purpose.</summary>
-        public static readonly Color TextDim = Color.white;
-        public static readonly Color Accent = new Color32(0xFF, 0xB4, 0x4C, 0xFF);
-
-        /// <summary>The label on an orange chip or button. Dark text on that orange is unreadable.</summary>
-        public static readonly Color TextOnAccent = Color.white;
-        public static readonly Color Warn = new Color32(0xE8, 0x6A, 0x4A, 0xFF);
-        public static readonly Color Good = new Color32(0x8C, 0xD0, 0x7A, 0xFF);
-        public static readonly Color Backdrop = new Color(0f, 0f, 0f, 0.65f);
-        public static Color Inset => Night ? new Color(0.45f, 0.45f, 0.48f, 0.92f) : new Color(1f, 1f, 1f, 0.85f);
+        private static int _gameLook;
 
         /// <summary>
-        /// The hint text drawn straight over the 3D picture: dark and plain, for the pane's light
-        /// sky and floor.
+        /// Inside this scope every colour and the font are the game's (white text, orange accent, the HUD
+        /// font). For widgets that live in the game's own HUD. Scopes nest.
         /// </summary>
-        public static Color TextOnPicture => Night ? new Color32(0xE9, 0xE4, 0xD8, 0xFF) : new Color32(0x1A, 0x14, 0x0E, 0xFF);
+        public static System.IDisposable GameLook()
+        {
+            _gameLook++;
+            return new Scope();
+        }
 
-        /// <summary>
-        /// A row or a tile that carries text. <c>item_background</c> is a pale sprite, so white
-        /// text on it at full tint is white on white: it is tinted dark instead.
-        /// </summary>
-        public static Color Slot => Night ? new Color(0.07f, 0.06f, 0.05f, 0.96f) : new Color(0.17f, 0.14f, 0.11f, 0.94f);
+        private sealed class Scope : System.IDisposable
+        {
+            private bool _done;
+
+            public void Dispose()
+            {
+                if (!_done)
+                {
+                    _done = true;
+                    _gameLook--;
+                }
+            }
+        }
+
+        public static bool InGame => _gameLook > 0;
+
+        /// <summary>True in the Dark theme (the default). Read live: a switch shows at the next build of the window.</summary>
+        public static bool Dark => EditorConfig.Theme == null || EditorConfig.Theme.Value == EditorTheme.Dark;
+
+        public static Color Text => InGame ? Color.white : Dark ? Hex(0xE8EAED) : Hex(0x1C1F24);
+
+        /// <summary>Captions, footers, hints and placeholders.</summary>
+        public static Color TextDim => InGame ? Color.white : Dark ? Hex(0x9AA0A9) : Hex(0x667080);
+
+        public static Color Accent => InGame ? (Color)new Color32(0xFF, 0xB4, 0x4C, 0xFF) : Dark ? Hex(0x4C8DFF) : Hex(0x0B6CF0);
+
+        /// <summary>The label on an accent chip or button.</summary>
+        public static Color TextOnAccent => Color.white;
+
+        public static Color Warn => InGame ? (Color)new Color32(0xE8, 0x6A, 0x4A, 0xFF) : Dark ? Hex(0xFF6B5E) : Hex(0xD9372B);
+
+        public static Color Good => InGame ? (Color)new Color32(0x8C, 0xD0, 0x7A, 0xFF) : Dark ? Hex(0x4CC77F) : Hex(0x1E9E55);
+
+        public static Color Backdrop => InGame ? new Color(0f, 0f, 0f, 0.65f) : new Color(0f, 0f, 0f, Dark ? 0.55f : 0.35f);
+
+        /// <summary>A floating card: the Layers and Inspector cards, the top bar, dialogs, popups, toasts.</summary>
+        public static Color PanelFloat => Dark ? Alpha(Hex(0x1C1D21), 0.97f) : Alpha(Hex(0xFFFFFF), 0.97f);
+
+        /// <summary>The same as <see cref="PanelFloat"/>. Kept for the code that still says interior.</summary>
+        public static Color PanelInterior => PanelFloat;
+
+        /// <summary>A row, a tile, a chip or a button on a card.</summary>
+        public static Color Surface => InGame ? new Color(0.17f, 0.14f, 0.11f, 0.94f) : Dark ? Hex(0x2A2C31) : Hex(0xEEF0F3);
+
+        /// <summary>The same under the mouse.</summary>
+        public static Color SurfaceHover => Dark ? Hex(0x363940) : Hex(0xE1E4E9);
+
+        /// <summary>A pressed button.</summary>
+        public static Color SurfacePressed => Dark ? Hex(0x41454D) : Hex(0xD3D7DD);
+
+        /// <summary>The inside of a text box.</summary>
+        public static Color Field => Dark ? Hex(0x131417) : Hex(0xFFFFFF);
+
+        /// <summary>The thin line round a card, a text box or a key cap.</summary>
+        public static Color Border => Dark ? Hex(0x34373D) : Hex(0xD6DAE0);
+
+        /// <summary>A row or a tile that carries text.</summary>
+        public static Color Slot => Surface;
 
         /// <summary>The same, weaker, for a row that cannot be clicked.</summary>
-        public static Color SlotDim => Night ? new Color(0.07f, 0.06f, 0.05f, 0.72f) : new Color(0.17f, 0.14f, 0.11f, 0.72f);
+        public static Color SlotDim => Alpha(Surface, 0.6f);
 
-        /// <summary>The panel interiors: the game's wood at 70 per cent, so light text still reads.</summary>
-        public static Color PanelInterior => Night ? new Color(0.36f, 0.36f, 0.38f, 1f) : new Color(0.70f, 0.70f, 0.70f, 1f);
-        /// <summary>The floating cards: the panel tint, a little see-through so the view shows at the edges.</summary>
-        public static Color PanelFloat => Night ? new Color(0.36f, 0.36f, 0.38f, 0.94f) : new Color(0.70f, 0.70f, 0.70f, 0.94f);
+        /// <summary>A sunken area inside a card, such as the build card copy.</summary>
+        public static Color Inset => Dark ? Hex(0x16171A) : Hex(0xF6F7F9);
 
-        public static Color Viewport => Night ? new Color(0.03f, 0.04f, 0.05f, 0.98f) : new Color(0.06f, 0.07f, 0.09f, 0.96f);
+        /// <summary>The hint text drawn straight over the 3D picture: light on the dark scene, dark on the light one.</summary>
+        public static Color TextOnPicture => Dark ? Hex(0xD9DCE1) : Hex(0x2A2F36);
 
-        /// <summary>True when the player picked the Night theme. Read live, so a switch shows at the next build of the window.</summary>
-        public static bool Night => EditorConfig.Theme != null && EditorConfig.Theme.Value == EditorTheme.Night;
+        /// <summary>A key cap in the hint row over the picture.</summary>
+        public static Color Cap => Dark ? Alpha(Hex(0x2A2C31), 0.92f) : Alpha(Hex(0xFFFFFF), 0.92f);
 
-        // The 3D pane's own colours. Day is Tomrer's, Night is the same scene with the lights down.
-        public static Color SceneBackground => Night ? Hex(0x12161B) : Hex(0xB9C7D2);
-        public static Color SceneAmbient => Night ? new Color(0.20f, 0.22f, 0.27f, 1f) : new Color(0.42f, 0.45f, 0.5f, 1f);
-        public static Color SceneGround => Night ? Hex(0x2B3239) : Hex(0x8F9B7C);
-        public static Color SceneGrid => Night ? new Color(0.55f, 0.62f, 0.70f, 0.28f) : new Color(0.435f, 0.478f, 0.373f, 0.55f);
-        public static Color SceneRing => Night ? Hex(0xD7DEE6) : Hex(0x20252B);
+        public static Color Viewport => SceneBackground;
+
+        // The 3D pane's own colours: a neutral canvas, like a design tool's.
+        public static Color SceneBackground => Dark ? Hex(0x17191D) : Hex(0xE6E9ED);
+        public static Color SceneAmbient => Dark ? new Color(0.30f, 0.32f, 0.36f, 1f) : new Color(0.48f, 0.50f, 0.54f, 1f);
+        public static Color SceneGround => Dark ? Hex(0x23262B) : Hex(0xD2D6DC);
+        public static Color SceneGrid => Dark ? new Color(0.62f, 0.68f, 0.78f, 0.16f) : new Color(0.22f, 0.27f, 0.34f, 0.20f);
+        public static Color SceneRing => Dark ? Hex(0xC9CED6) : Hex(0x2A2F36);
+
+        /// <summary>The selection's boxes and the box drag in the pane.</summary>
+        public static Color Selection => Dark ? Hex(0x4C8DFF) : Hex(0x0B6CF0);
 
         private static Color Hex(int rgb)
         {
             return new Color32((byte)(rgb >> 16), (byte)(rgb >> 8), (byte)rgb, 0xFF);
+        }
+
+        private static Color Alpha(Color colour, float alpha)
+        {
+            colour.a = alpha;
+            return colour;
         }
 
         /// <summary>
@@ -75,14 +137,23 @@ namespace ValheimTomrer.Editor.Ui
             Generation++;
         }
 
-        public static TMP_FontAsset Font { get; private set; }
-        public static Material FontMaterial { get; private set; }
+        private static TMP_FontAsset _font;
+        private static TMP_FontAsset _gameFont;
+        private static Material _fontMaterial;
+        private static Material _fontOutlined;
+        private static Material _gameMaterial;
+        private static Material _gameOutlined;
+
+        /// <summary>The editor's font: a plain sans the game ships, else the HUD's. The game's inside <see cref="GameLook"/>.</summary>
+        public static TMP_FontAsset Font => InGame ? _gameFont : _font;
+
+        public static Material FontMaterial => InGame ? _gameMaterial : _fontMaterial;
 
         /// <summary>
-        /// The same, with a black outline and a shadow. For the text drawn straight over the 3D
+        /// The same, with a dark outline and a shadow. For the text drawn straight over the 3D
         /// picture, where the background is whatever the camera happens to be looking at.
         /// </summary>
-        public static Material FontOutlined { get; private set; }
+        public static Material FontOutlined => InGame ? _gameOutlined : _fontOutlined;
 
         public static Sprite Panel { get; private set; }         // woodpanel_trophys
         public static Sprite PanelBkg { get; private set; }      // panel_bkg
@@ -97,7 +168,7 @@ namespace ValheimTomrer.Editor.Ui
         /// <summary>Goes up on every rebuild, so anything built from the theme can notice.</summary>
         public static int Generation { get; private set; }
 
-        public static bool Ready => Font != null;
+        public static bool Ready => _font != null;
 
         /// <summary>Switches a text material's edge or shadow off: the shaders read the alpha.</summary>
         private static readonly Color NoColour = new Color(0f, 0f, 0f, 0f);
@@ -117,17 +188,33 @@ namespace ValheimTomrer.Editor.Ui
                 return false;
             }
 
-            if (Font != null && _builtFrom == hud)
+            if (_font != null && _builtFrom == hud)
             {
                 return true;
             }
 
             Clear();
 
-            Font = hud.m_hoverName.font;
-            var source = hud.m_hoverName.fontSharedMaterial;
-            FontMaterial = OwnTextMaterial(source, "ValheimTomrerText", NoColour, 0f, false);
-            FontOutlined = OwnTextMaterial(source, "ValheimTomrerTextOutlined", Color.black, OutlineWidth, true);
+            _gameFont = hud.m_hoverName.font;
+            var gameSource = hud.m_hoverName.fontSharedMaterial;
+            _gameMaterial = OwnTextMaterial(gameSource, "ValheimTomrerGameText", NoColour, 0f, false);
+            _gameOutlined = OwnTextMaterial(gameSource, "ValheimTomrerGameTextOutlined", Color.black, OutlineWidth, true);
+
+            // The editor's own font: a plain sans when the game has one loaded, with its own material
+            // (a material belongs to its font's atlas, so the HUD's cannot be used with another font).
+            var sans = PickSans();
+            if (sans != null && sans.material != null)
+            {
+                _font = sans;
+                _fontMaterial = OwnTextMaterial(sans.material, "ValheimTomrerText", NoColour, 0f, false);
+                _fontOutlined = OwnTextMaterial(sans.material, "ValheimTomrerTextOutlined", Color.black, OutlineWidth, true);
+            }
+            else
+            {
+                _font = _gameFont;
+                _fontMaterial = OwnTextMaterial(gameSource, "ValheimTomrerText", NoColour, 0f, false);
+                _fontOutlined = OwnTextMaterial(gameSource, "ValheimTomrerTextOutlined", Color.black, OutlineWidth, true);
+            }
 
             var atlas = Resources.FindObjectsOfTypeAll<SpriteAtlas>().FirstOrDefault(a => a.name == "UIAtlas");
             if (atlas == null)
@@ -148,8 +235,8 @@ namespace ValheimTomrer.Editor.Ui
             _builtFrom = hud;
             Generation++;
             ValheimTomrerPlugin.Log.LogInfo(
-                $"editor theme ready | font={(Font != null ? Font.name : "none")} | sprites={Copies.Count}/9");
-            return Font != null;
+                $"editor theme ready | font={(_font != null ? _font.name : "none")} | game font={(_gameFont != null ? _gameFont.name : "none")} | sprites={Copies.Count}/9");
+            return _font != null;
         }
 
         public static void Clear()
@@ -164,22 +251,43 @@ namespace ValheimTomrer.Editor.Ui
 
             Copies.Clear();
             PadGlyphs.Clear();
-            Font = null;
-            if (FontMaterial != null)
+            foreach (var material in new[] { _fontMaterial, _fontOutlined, _gameMaterial, _gameOutlined })
             {
-                Object.Destroy(FontMaterial);
+                if (material != null)
+                {
+                    Object.Destroy(material);
+                }
             }
 
-            if (FontOutlined != null)
-            {
-                Object.Destroy(FontOutlined);
-            }
-
-            FontMaterial = null;
-            FontOutlined = null;
+            _font = null;
+            _gameFont = null;
+            _fontMaterial = _fontOutlined = _gameMaterial = _gameOutlined = null;
             Panel = PanelBkg = PanelWood = Button = ButtonHighlight = ButtonPressed = TextField
                 = ItemBackground = Sunken = null;
             _builtFrom = null;
+        }
+
+        /// <summary>Plain sans fonts, best first. The first one the game has loaded wins.</summary>
+        private static readonly string[] SansNames =
+        {
+            "LiberationSans", "Roboto", "Inter", "OpenSans", "NotoSans", "Arial", "AveriaSansLibre",
+        };
+
+        private static TMP_FontAsset PickSans()
+        {
+            var fonts = Resources.FindObjectsOfTypeAll<TMP_FontAsset>();
+            ValheimTomrerPlugin.Log.LogInfo("editor theme: fonts loaded: " + string.Join(", ", fonts.Select(f => f.name).Distinct()));
+            foreach (var name in SansNames)
+            {
+                var font = fonts.FirstOrDefault(f => f != null && f.material != null
+                    && f.name.IndexOf(name, System.StringComparison.OrdinalIgnoreCase) >= 0);
+                if (font != null)
+                {
+                    return font;
+                }
+            }
+
+            return null;
         }
 
         /// <summary>

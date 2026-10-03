@@ -82,18 +82,53 @@ namespace ValheimTomrer.Editor.Ui
             return label;
         }
 
+        /// <summary>A flat card colour with a one-pixel border, the editor's panels and popups.</summary>
+        public static Image Card(string name, Transform parent, Color? colour = null)
+        {
+            var image = Panel(name, parent, null, colour ?? UiTheme.PanelFloat);
+            image.type = Image.Type.Simple;
+            Border(image);
+            return image;
+        }
+
+        /// <summary>A one-pixel line round a widget, in the theme's border colour.</summary>
+        public static void Border(Graphic graphic)
+        {
+            if (graphic == null)
+            {
+                return;
+            }
+
+            var outline = graphic.gameObject.AddComponent<Outline>();
+            outline.effectColor = UiTheme.Border;
+            outline.effectDistance = new Vector2(1f, -1f);
+            outline.useGraphicAlpha = false;
+        }
+
+        /// <summary>The flat button colours: surface, lighter under the mouse, darker while pressed.</summary>
+        public static ColorBlock ButtonColours()
+        {
+            var colours = ColorBlock.defaultColorBlock;
+            colours.normalColor = UiTheme.Surface;
+            colours.highlightedColor = UiTheme.SurfaceHover;
+            colours.selectedColor = UiTheme.SurfaceHover;
+            colours.pressedColor = UiTheme.SurfacePressed;
+            var off = UiTheme.Surface;
+            off.a *= 0.45f;
+            colours.disabledColor = off;
+            colours.colorMultiplier = 1f;
+            colours.fadeDuration = 0.06f;
+            return colours;
+        }
+
         public static UnityEngine.UI.Button Button(string name, Transform parent, string text, UnityAction onClick, float height = 38f)
         {
-            var image = Panel(name, parent, UiTheme.Button);
+            var image = Panel(name, parent, null, Color.white);
+            image.type = Image.Type.Simple;
             var button = image.gameObject.AddComponent<UnityEngine.UI.Button>();
             button.targetGraphic = image;
-            button.transition = Selectable.Transition.SpriteSwap;
-            button.spriteState = new SpriteState
-            {
-                highlightedSprite = UiTheme.ButtonHighlight,
-                selectedSprite = UiTheme.ButtonHighlight,
-                pressedSprite = UiTheme.ButtonPressed,
-            };
+            button.transition = Selectable.Transition.ColorTint;
+            button.colors = ButtonColours();
             if (onClick != null)
             {
                 button.onClick.AddListener(onClick);
@@ -103,14 +138,16 @@ namespace ValheimTomrer.Editor.Ui
             element.minHeight = height;
             element.preferredHeight = height;
 
-            var label = Label("Text", image.transform, text, 18f, TextAlignmentOptions.Center);
+            var label = Label("Text", image.transform, text, 15f, TextAlignmentOptions.Center);
             Stretch(label.rectTransform, 10f, 4f, 10f, 4f);
             return button;
         }
 
         public static TMP_InputField InputField(string name, Transform parent, string placeholder, float height = 34f)
         {
-            var background = Panel(name, parent, UiTheme.TextField);
+            var background = Panel(name, parent, null, UiTheme.Field);
+            background.type = Image.Type.Simple;
+            Border(background);
             var element = background.gameObject.AddComponent<LayoutElement>();
             element.minHeight = height;
             element.preferredHeight = height;
@@ -122,7 +159,7 @@ namespace ValheimTomrer.Editor.Ui
             Stretch(text.rectTransform);
             text.richText = false;
 
-            var hint = Label("Placeholder", area, placeholder, 18f, TextAlignmentOptions.Left, UiTheme.TextDim);
+            var hint = Label("Placeholder", area, placeholder, 16f, TextAlignmentOptions.Left, UiTheme.TextDim);
             Stretch(hint.rectTransform);
 
             var field = background.gameObject.AddComponent<TextBox>();
@@ -131,7 +168,7 @@ namespace ValheimTomrer.Editor.Ui
             field.placeholder = hint;
             field.targetGraphic = background;
             field.fontAsset = UiTheme.Font;
-            field.pointSize = 18f;
+            field.pointSize = 16f;
             field.customCaretColor = true;
             field.caretColor = UiTheme.Text;
             field.lineType = TMP_InputField.LineType.SingleLine;

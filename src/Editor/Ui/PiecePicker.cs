@@ -446,7 +446,7 @@ namespace ValheimTomrer.Editor.Ui
             UiBuild.Stretch(backdrop.rectTransform);
             backdrop.gameObject.AddComponent<Button>().onClick.AddListener(() => Close());
 
-            var panel = UiBuild.Panel("Menu", _root, UiTheme.Panel);
+            var panel = UiBuild.Card("Menu", _root);
             _panel = panel.rectTransform;
             _panel.anchorMin = _panel.anchorMax = new Vector2(0.5f, 0.5f);
             _panel.pivot = new Vector2(0.5f, 0.5f);
@@ -509,15 +509,11 @@ namespace ValheimTomrer.Editor.Ui
 
         private static Chip NewChip(Transform parent, string text, UnityEngine.Events.UnityAction onClick)
         {
-            var background = UiBuild.Panel("Tab " + text, parent, UiTheme.Button);
+            var background = UiBuild.Panel("Tab " + text, parent, null, UiTheme.Surface);
+            background.type = Image.Type.Simple;
             var button = background.gameObject.AddComponent<Button>();
             button.targetGraphic = background;
-            button.transition = Selectable.Transition.SpriteSwap;
-            button.spriteState = new SpriteState
-            {
-                highlightedSprite = UiTheme.ButtonHighlight,
-                pressedSprite = UiTheme.ButtonPressed,
-            };
+            button.transition = Selectable.Transition.None;
             button.onClick.AddListener(onClick);
 
             var label = UiBuild.Label("Text", background.transform, text, 14f, TextAlignmentOptions.Center);
@@ -536,7 +532,8 @@ namespace ValheimTomrer.Editor.Ui
 
         private static Tile NewTile(Transform parent)
         {
-            var background = UiBuild.Panel("Tile", parent, UiTheme.ItemBackground);
+            var background = UiBuild.Panel("Tile", parent, null, UiTheme.Surface);
+            background.type = Image.Type.Simple;
             background.rectTransform.anchorMin = new Vector2(0f, 1f);
             background.rectTransform.anchorMax = new Vector2(0f, 1f);
             background.rectTransform.pivot = new Vector2(0f, 1f);
@@ -628,7 +625,7 @@ namespace ValheimTomrer.Editor.Ui
 
             public void SetOn(bool on)
             {
-                Background.color = on ? UiTheme.Accent : Color.white;
+                Background.color = on ? UiTheme.Accent : UiTheme.Surface;
                 Label.color = on ? UiTheme.TextOnAccent : UiTheme.Text;
             }
         }
@@ -660,7 +657,7 @@ namespace ValheimTomrer.Editor.Ui
                 }
 
                 Badge.gameObject.SetActive(entry.Seasonal);
-                Background.color = on ? UiTheme.Accent : Color.white;
+                Background.color = on ? UiTheme.Accent : UiTheme.Surface;
             }
 
             public void Hide()

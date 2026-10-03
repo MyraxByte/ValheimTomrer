@@ -210,7 +210,12 @@ namespace ValheimTomrer.Blueprints
             // sits at the bottom, with nothing empty under it.
             var card = _panel.rectTransform.parent as RectTransform;
             _list.MinHeight = Mathf.Max(0f, (card != null ? card.rect.height : 0f) - (2f * PaddingY));
-            _list.Show(tally);
+            using (UiTheme.GameLook())
+            {
+                // The list sits inside the game's own card: the game's colours and font, not the editor's.
+                _list.Show(tally);
+            }
+
             _panel.rectTransform.sizeDelta = new Vector2(_list.Width + (2f * Padding), _list.Height + (2f * PaddingY));
             KeepOnScreen();
         }
@@ -357,6 +362,8 @@ namespace ValheimTomrer.Blueprints
 
             // The card's own background (its child "Bkg2", black at half), so the list reads as part of it.
             // A little darker: red numbers over bright grass need it.
+            using (UiTheme.GameLook())
+            {
             var look = BackgroundOf(card);
             var tint = look != null ? look.color : UiTheme.Backdrop;
             tint.a = Mathf.Max(tint.a, MinimumShade);
@@ -375,6 +382,8 @@ namespace ValheimTomrer.Blueprints
 
             _list = MaterialList.Create(rect, OneColumnWidth);
             _list.Root.anchoredPosition = new Vector2(Padding, -PaddingY);
+            }
+
             _builtFor = hud;
             _shownFor = null;
             ValheimTomrerPlugin.Log.LogInfo($"materials list added to the build card '{card.name}'");

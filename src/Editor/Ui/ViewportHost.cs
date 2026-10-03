@@ -65,6 +65,14 @@ namespace ValheimTomrer.Editor.Ui
         private static Vector2 _aimAt = new Vector2(0.5f, 0.5f);
         private static int _aimPiece = -1;
         private static Vector2 _dragStart;
+
+        // A left drag that starts on a piece moves it (Alt copies it), like dragging a layer in Figma.
+        private static int _downPiece = -1;
+        private static bool _dragMoving;
+        private static bool _dragCopy;
+        private static int _lastClickId = -1;
+        private static float _lastClickAt;
+        private const float DoubleClickSeconds = 0.35f;
         private static Vector2 _lastMouse;
         private static bool _hasLastMouse;
         private static bool _boxSelecting;
@@ -493,7 +501,7 @@ namespace ValheimTomrer.Editor.Ui
             }
 
             _pieces.Sync(EditorState.Document);
-            _pieces.Hide(EditorState.Carrying);
+            _pieces.Hide(EditorState.NotDrawn);
         }
 
         /// <summary>
@@ -932,11 +940,48 @@ namespace ValheimTomrer.Editor.Ui
             GiveAimBack();
             _dragStart = data.position;
             _boxSelecting = false;
+            _dragMoving = false;
+            _downPiece = EditorState.Mode == EditMode.Idle ? PieceAt(data.position) : -1;
+            HideSelectRect();
+        }
+
+        /// <summary>The piece under a screen point that can be picked (not locked), or -1.</summary>
+        private static int PieceAt(Vector2 screen)
+        {
+            if (_raycast == null || _pieces == null || !_raycast.ScreenToViewport(screen, out var at)
+                || !_raycast.Pick(at, out var hit))
+            {
+                return -1;
+            }
+
+            var id = _pieces.IdOf(hit.collider != null ? hit.collider.transform : null);
+            return id >= 0 && !EditorState.IsLocked(id) ? id : -1;
+        }
+
+        /// <summary>The drag left the piece it started on: it is picked up and follows the mouse until the button goes up.</summary>
+        private static void BeginDragMove()
+        {
+            if (!EditorState.IsSelected(_downPiece))
+            {
+                EditorState.Select(_downPiece);
+            }
+
+            _dragCopy = Key(KeyCode.LeftAlt) + Key(KeyCode.RightAlt) > 0f;
+            _dragMoving = _dragCopy ? EditorState.StartDuplicate() : EditorState.StartMove();
             HideSelectRect();
         }
 
         private static void OnPointerUp(PointerEventData data)
         {
+            if (data.button == PointerEventData.InputButton.Left && _dragMoving)
+            {
+                // Dropped where it is aimed. A drop the game would not allow puts the piece back.
+                _dragMoving = false;
+                EditorState.CommitPlacement(EditorState.Aimed);
+                EditorState.CancelMode();
+                return;
+            }
+
             if (data.button != PointerEventData.InputButton.Left || !_boxSelecting)
             {
                 return;
@@ -982,8 +1027,20 @@ namespace ValheimTomrer.Editor.Ui
             if (_pieces != null && _raycast.Pick(at, out var hit))
             {
                 var id = _pieces.IdOf(hit.collider != null ? hit.collider.transform : null);
-                if (id >= 0)
+                if (id >= 0 && !EditorState.IsLocked(id))
                 {
+                    // Two quick clicks on the same piece select every piece of its kind.
+                    var now = Time.unscaledTime;
+                    if (!additive && id == _lastClickId && now - _lastClickAt < DoubleClickSeconds)
+                    {
+                        _lastClickId = -1;
+                        EditorState.Select(id);
+                        EditorState.SelectSimilar();
+                        return;
+                    }
+
+                    _lastClickId = id;
+                    _lastClickAt = now;
                     EditorState.Select(id, additive ? SelectHow.Toggle : SelectHow.Set);
                     return;
                 }
@@ -1051,7 +1108,18 @@ namespace ValheimTomrer.Editor.Ui
                     return;
                 }
 
-                if (!_boxSelecting && Vector2.Distance(data.position, _dragStart) >= BoxSelectThreshold)
+                var moved = Vector2.Distance(data.position, _dragStart) >= BoxSelectThreshold;
+                if (!_dragMoving && !_boxSelecting && moved && _downPiece >= 0 && EditorState.Mode == EditMode.Idle)
+                {
+                    BeginDragMove();
+                }
+
+                if (_dragMoving)
+                {
+                    return;
+                }
+
+                if (!_boxSelecting && moved)
                 {
                     _boxSelecting = true;
                 }
@@ -1159,7 +1227,7 @@ namespace ValheimTomrer.Editor.Ui
             _placeLine.gameObject.SetActive(false);
             _stateLine.gameObject.SetActive(false);
 
-            _selectRect = UiBuild.Panel("SelectRect", _image.rectTransform, null, new Color(1f, 0.71f, 0.3f, 0.22f));
+            _selectRect = UiBuild.Panel("SelectRect", _image.rectTransform, null, new Color(0.24f, 0.55f, 1f, 0.18f));
             _selectRect.type = Image.Type.Simple;
             _selectRect.raycastTarget = false;
             _selectRect.rectTransform.anchorMin = _selectRect.rectTransform.anchorMax = new Vector2(0.5f, 0.5f);

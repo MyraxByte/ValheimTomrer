@@ -24,8 +24,9 @@ namespace ValheimTomrer.Editor.View
         private const float AllBar = 0.02f;
         private const float GroupPad = 0.08f;
 
-        private static readonly Color PieceColor = Hex(0xFFC24A);
-        private static readonly Color GroupColor = Hex(0xFFE9A8);
+        // The selection blue of design tools, the same in both themes.
+        private static readonly Color PieceColor = Hex(0x3D8BFF);
+        private static readonly Color GroupColor = Hex(0x9CC3FF);
         private static readonly Color AimColor = Hex(0xE8F1F8);
         private static readonly Color AllColor = Hex(0xBFCAD6);
 

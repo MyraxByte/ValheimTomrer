@@ -329,7 +329,9 @@ namespace ValheimTomrer.Editor.Ui
             var rect = UiBuild.Rect("Row", parent);
             TopLeft(rect);
 
-            var back = UiBuild.Panel("IconBack", rect, UiTheme.ItemBackground);
+            var back = UiTheme.InGame
+                ? UiBuild.Panel("IconBack", rect, UiTheme.ItemBackground)
+                : UiBuild.Panel("IconBack", rect, null, UiTheme.Surface);
             back.raycastTarget = false;
             TopLeft(back.rectTransform);
             Size(back.rectTransform, 0f, 0f, IconBack, IconBack);

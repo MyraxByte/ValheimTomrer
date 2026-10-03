@@ -100,7 +100,7 @@ namespace ValheimTomrer.Editor.Ui
 
             _boxes.color = EditorState.PieceBoxesOn ? UiTheme.Accent : UiTheme.Text;
             _dots.color = EditorState.SnapDotsOn ? UiTheme.Accent : UiTheme.Text;
-            _night.color = UiTheme.Night ? UiTheme.Accent : UiTheme.Text;
+            _night.text = UiTheme.Dark ? "Light" : "Dark";
             _layers.color = EditorWindow.LayersOpen ? UiTheme.Accent : UiTheme.Text;
             _inspector.color = EditorWindow.InspectorOpen ? UiTheme.Accent : UiTheme.Text;
             _add.color = QuickAdd.IsOpen ? UiTheme.Accent : UiTheme.Text;
@@ -127,7 +127,7 @@ namespace ValheimTomrer.Editor.Ui
                 : string.IsNullOrEmpty(document.SourcePath)
                     ? "not saved yet"
                     : Path.GetFileName(document.SourcePath);
-            var dot = document.Dirty ? " ●" : "";
+            var dot = document.Dirty ? " •" : "";
             return $"{name}{dot}   <color=#{ColorUtility.ToHtmlStringRGB(UiTheme.TextDim)}>{where}</color>";
         }
 
@@ -187,7 +187,7 @@ namespace ValheimTomrer.Editor.Ui
                 .GetComponentInChildren<TextMeshProUGUI>();
             _dots = Add(row, "Snap dots", EditorCommands.ToggleSnapDots)
                 .GetComponentInChildren<TextMeshProUGUI>();
-            _night = Add(row, "Night", EditorCommands.ToggleTheme)
+            _night = Add(row, UiTheme.Dark ? "Light" : "Dark", EditorCommands.ToggleTheme)
                 .GetComponentInChildren<TextMeshProUGUI>();
             Add(row, "?", EditorCommands.Help);
 

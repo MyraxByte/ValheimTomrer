@@ -154,7 +154,7 @@ namespace ValheimTomrer.Editor.Ui
 
         private static Toast New(ToastLevel level, string text)
         {
-            var panel = UiBuild.Panel("Toast", _root, UiTheme.PanelBkg, new Color(1f, 1f, 1f, 0.96f));
+            var panel = UiBuild.Card("Toast", _root);
             var rect = panel.rectTransform;
             rect.anchorMin = new Vector2(0f, 0f);
             rect.anchorMax = new Vector2(1f, 0f);

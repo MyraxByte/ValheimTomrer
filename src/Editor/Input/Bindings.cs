@@ -339,6 +339,33 @@ namespace ValheimTomrer.Editor.Input
                 case Act.ToggleNight:
                     EditorCommands.ToggleTheme();
                     return true;
+                case Act.HideSelection:
+                    EditorState.HideSelection();
+                    return true;
+                case Act.LockSelection:
+                    EditorState.LockSelection();
+                    return true;
+                case Act.ShowAll:
+                    EditorState.ShowAll();
+                    return true;
+                case Act.SelectSimilar:
+                    EditorState.SelectSimilar();
+                    return true;
+                case Act.AlignAxis:
+                    EditorState.CycleAlignAxis();
+                    return true;
+                case Act.AlignMin:
+                    EditorState.AlignSelection(-1);
+                    return true;
+                case Act.AlignMid:
+                    EditorState.AlignSelection(0);
+                    return true;
+                case Act.AlignMax:
+                    EditorState.AlignSelection(1);
+                    return true;
+                case Act.Spread:
+                    EditorState.SpreadSelection();
+                    return true;
                 default:
                     return false;
             }
@@ -643,9 +670,10 @@ namespace ValheimTomrer.Editor.Input
                 : new Vector3(0f, 0f, Mathf.Sign(direction.z));
         }
 
+        /// <summary>One nudge: 0.5 m, with Alt 0.1 m, with Shift four times as far (2 m), like Shift + arrow in Figma.</summary>
         private static float Step()
         {
-            return (Mods & KeyMods.Alt) != 0 ? NudgeFine : NudgeStep;
+            return (Mods & KeyMods.Alt) != 0 ? NudgeFine : (Mods & KeyMods.Shift) != 0 ? NudgeStep * 4f : NudgeStep;
         }
 
         /// <summary>1 while any key of the fly action is held, else 0.</summary>

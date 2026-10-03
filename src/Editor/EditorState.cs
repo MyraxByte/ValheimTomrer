@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using ValheimTomrer.Editor.Catalog;
 using ValheimTomrer.Editor.Doc;
@@ -59,6 +60,9 @@ namespace ValheimTomrer.Editor
 
         private static readonly HashSet<int> Selected = new HashSet<int>();
         private static readonly List<int> MovingIds = new List<int>();
+        private static readonly HashSet<int> Hidden = new HashSet<int>();
+        private static readonly HashSet<int> Locked = new HashSet<int>();
+        private static readonly List<int> NotDrawnIds = new List<int>();
 
         private static SceneIndex _index;
         private static int _indexRevision = -1;
@@ -168,6 +172,8 @@ namespace ValheimTomrer.Editor
 
             Document = document;
             Selected.Clear();
+            Hidden.Clear();
+            Locked.Clear();
             MovingIds.Clear();
             Mode = EditMode.Idle;
             Moving = null;
@@ -275,7 +281,7 @@ namespace ValheimTomrer.Editor
                     {
                         Selected.Remove(id);
                     }
-                    else
+                    else if (!Locked.Contains(id) && !Hidden.Contains(id))
                     {
                         Selected.Add(id);
                     }
@@ -302,11 +308,220 @@ namespace ValheimTomrer.Editor
             {
                 foreach (var piece in Document.Pieces)
                 {
-                    Selected.Add(piece.Id);
+                    if (!Locked.Contains(piece.Id) && !Hidden.Contains(piece.Id))
+                    {
+                        Selected.Add(piece.Id);
+                    }
                 }
             }
 
             Version++;
+        }
+
+        // ---------- hide, lock, select alike, align: the Figma-like commands ----------
+
+        /// <summary>
+        /// Hidden and locked pieces belong to this editing session only: they are not in the file, and a
+        /// reopened blueprint shows and unlocks everything. A hidden piece is not drawn and cannot be
+        /// picked; a locked one is drawn but cannot be selected.
+        /// </summary>
+        public static bool IsHidden(int id) => Hidden.Contains(id);
+
+        public static bool IsLocked(int id) => Locked.Contains(id);
+
+        public static int HiddenCount => Hidden.Count;
+
+        public static int LockedCount => Locked.Count;
+
+        /// <summary>The pieces the pane does not draw: the ones in hand and the hidden ones.</summary>
+        public static IReadOnlyList<int> NotDrawn
+        {
+            get
+            {
+                if (Hidden.Count == 0)
+                {
+                    return Carrying;
+                }
+
+                NotDrawnIds.Clear();
+                NotDrawnIds.AddRange(Carrying);
+                NotDrawnIds.AddRange(Hidden);
+                return NotDrawnIds;
+            }
+        }
+
+        /// <summary>The axis Align and Spread work along: 0 x, 1 y, 2 z.</summary>
+        public static int AlignAxis { get; private set; }
+
+        public static string AlignAxisName => AlignAxis == 0 ? "X" : AlignAxis == 1 ? "Y" : "Z";
+
+        public static void CycleAlignAxis()
+        {
+            AlignAxis = (AlignAxis + 1) % 3;
+            Say($"Align and spread along {AlignAxisName}.");
+            Version++;
+        }
+
+        public static void SetHidden(IEnumerable<int> ids, bool hidden)
+        {
+            foreach (var id in ids.ToList())
+            {
+                if (hidden)
+                {
+                    Hidden.Add(id);
+                    Selected.Remove(id);
+                }
+                else
+                {
+                    Hidden.Remove(id);
+                }
+            }
+
+            Version++;
+        }
+
+        public static void SetLocked(IEnumerable<int> ids, bool locked)
+        {
+            foreach (var id in ids.ToList())
+            {
+                if (locked)
+                {
+                    Locked.Add(id);
+                    Selected.Remove(id);
+                }
+                else
+                {
+                    Locked.Remove(id);
+                }
+            }
+
+            Version++;
+        }
+
+        /// <summary>Hides the selection. With nothing selected it shows everything again.</summary>
+        public static void HideSelection()
+        {
+            if (Selected.Count == 0)
+            {
+                ShowAll();
+                return;
+            }
+
+            var count = Selected.Count;
+            SetHidden(Selected, true);
+            Say($"Hid {Count(count)}. Hide again with nothing selected, or the Show all key, brings back everything.");
+        }
+
+        /// <summary>Locks the selection, so a click or a box can no longer pick it.</summary>
+        public static void LockSelection()
+        {
+            if (Selected.Count == 0)
+            {
+                return;
+            }
+
+            var count = Selected.Count;
+            SetLocked(Selected, true);
+            Say($"Locked {Count(count)}. Show all unlocks them.");
+        }
+
+        /// <summary>Shows every hidden piece and unlocks every locked one.</summary>
+        public static void ShowAll()
+        {
+            if (Hidden.Count == 0 && Locked.Count == 0)
+            {
+                return;
+            }
+
+            Say($"Showed {Hidden.Count} and unlocked {Locked.Count}.");
+            Hidden.Clear();
+            Locked.Clear();
+            Version++;
+        }
+
+        /// <summary>Selects every piece of the same kind as the selected ones.</summary>
+        public static void SelectSimilar()
+        {
+            var chosen = SelectedPieces();
+            if (chosen.Count == 0 || Document == null)
+            {
+                return;
+            }
+
+            var kinds = new HashSet<string>(chosen.Select(p => p.PrefabName));
+            var ids = Document.Pieces.Where(p => kinds.Contains(p.PrefabName)).Select(p => p.Id).ToList();
+            Select(ids);
+            Say($"Selected {Count(Selected.Count)} of the same kind.");
+        }
+
+        /// <summary>
+        /// Lines the selected pieces up along <see cref="AlignAxis"/> by their boxes: all on the lowest edge
+        /// (-1), the middle (0) or the highest edge (1) of the whole selection. One undo step.
+        /// </summary>
+        public static bool AlignSelection(int mode)
+        {
+            var pieces = SelectedPieces();
+            if (pieces.Count < 2)
+            {
+                Say("Select two or more pieces to line them up.");
+                return false;
+            }
+
+            var axis = AlignAxis;
+            var boxes = pieces.Select(p => BoxOf(p)).ToArray();
+            var low = boxes.Min(b => b.min[axis]);
+            var high = boxes.Max(b => b.max[axis]);
+            var target = mode < 0 ? low : mode > 0 ? high : (low + high) * 0.5f;
+
+            var moves = new List<PieceMove>(pieces.Count);
+            for (var i = 0; i < pieces.Count; i++)
+            {
+                var at = mode < 0 ? boxes[i].min[axis] : mode > 0 ? boxes[i].max[axis] : boxes[i].center[axis];
+                var position = pieces[i].Position;
+                position[axis] += target - at;
+                moves.Add(new PieceMove { Id = pieces[i].Id, Position = position, Rotation = pieces[i].Rotation });
+            }
+
+            Document.SetPieces(moves, "align");
+            Say($"Lined up {Count(pieces.Count)} along {AlignAxisName}.");
+            return true;
+        }
+
+        /// <summary>
+        /// Spreads three or more pieces along <see cref="AlignAxis"/> so the gaps between their boxes are
+        /// equal. The two outer pieces stay. One undo step.
+        /// </summary>
+        public static bool SpreadSelection()
+        {
+            var pieces = SelectedPieces();
+            if (pieces.Count < 3)
+            {
+                Say("Select three or more pieces to spread them out.");
+                return false;
+            }
+
+            var axis = AlignAxis;
+            var order = pieces.Select(p => new { Piece = p, Box = BoxOf(p) })
+                .OrderBy(x => x.Box.center[axis])
+                .ToList();
+            var first = order[0].Box.min[axis];
+            var last = order[order.Count - 1].Box.max[axis];
+            var filled = order.Sum(x => x.Box.size[axis]);
+            var gap = (last - first - filled) / (order.Count - 1);
+
+            var moves = new List<PieceMove>(order.Count);
+            var edge = first;
+            foreach (var x in order)
+            {
+                var position = x.Piece.Position;
+                position[axis] += edge - x.Box.min[axis];
+                moves.Add(new PieceMove { Id = x.Piece.Id, Position = position, Rotation = x.Piece.Rotation });
+                edge += x.Box.size[axis] + gap;
+            }
+
+            Document.SetPieces(moves, "spread");
+            Say($"Spread {Count(pieces.Count)} along {AlignAxisName}.");
+            return true;
         }
 
         public static void DeleteSelection()

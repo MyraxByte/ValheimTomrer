@@ -89,8 +89,13 @@ namespace ValheimTomrer.Editor.View
             }
 
             Destroy();
-            _label = UiBuild.OverPicture(
-                UiBuild.Label("ValheimTomrer_Capture", root, "", FontSize, TextAlignmentOptions.TopLeft, UiTheme.Accent));
+            // The status line sits in the game's HUD, over the world: the game's look, not the editor's.
+            using (UiTheme.GameLook())
+            {
+                _label = UiBuild.OverPicture(
+                    UiBuild.Label("ValheimTomrer_Capture", root, "", FontSize, TextAlignmentOptions.TopLeft, UiTheme.Accent));
+            }
+
             _label.textWrappingMode = TextWrappingModes.NoWrap;
             _label.overflowMode = TextOverflowModes.Overflow;
             var rect = _label.rectTransform;

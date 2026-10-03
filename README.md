@@ -195,7 +195,9 @@ layout and has no setting.
 | Key | What it does |
 |---|---|
 | Click | Select a piece, or place the one in your hand. Shift + click adds to the selection or takes out of it. |
-| Drag | Select everything in the box |
+| Double click | Select every piece of the same kind |
+| Drag on a piece | Move it (and the rest of the selection) and drop it where you let go. With Alt held it drops a copy. |
+| Drag on empty space | Select everything in the box |
 | Right drag | Look around |
 | Middle drag, Shift + right drag | Move the view sideways |
 | Wheel | Zoom toward the cursor. While placing, it turns the piece 22.5°. |
@@ -206,7 +208,7 @@ layout and has no setting.
 | G | Move the selection |
 | Ctrl + D | Copy the selection. It keeps making copies until you press Esc. |
 | R, Shift + R | Turn 22.5°, the piece in your hand or else the selection |
-| Arrow keys | Move the selection 0.5 m along the ground (with Alt, 0.1 m) |
+| Arrow keys | Move the selection 0.5 m along the ground (with Alt 0.1 m, with Shift 2 m) |
 | Page Up, Page Down | Move the selection up, down |
 | Shift, held | No snapping |
 | Q, E | Change which snap point of the piece goes where you aim |
@@ -216,6 +218,14 @@ layout and has no setting.
 | F | Look at the selection, or at everything |
 | Ctrl + S | Save |
 | H, ? | Help, with these tables |
+| Ctrl + Shift + H | Hide the selection to see inside. With nothing selected it shows everything again. |
+| Ctrl + Shift + L | Lock the selection, so clicks and boxes skip it |
+| Alt + Shift + H | Show and unlock everything |
+| Ctrl + Shift + A | Select every piece of the same kind as the selection |
+| Alt + X | Pick the axis for aligning: X, Y or Z |
+| Alt + A, Alt + C, Alt + D | Line the selection up on its low edge, middle or high edge along that axis |
+| Alt + E | Spread three or more pieces so the gaps are equal |
+| Ctrl + Shift + N | Switch between the dark and the light theme |
 | Tab | Quick add: the list of pieces over the view. Type to search, click a piece to place it, right click stars it. Tab or Esc closes it. |
 | Alt + 1, Alt + 2 | Fold the Layers card (left) or the Inspector card (right) in or out |
 | Ctrl + \ | Hide the whole interface and keep the view. The same keys, or Esc, bring it back. |
@@ -275,7 +285,10 @@ they open: the D-pad moves, × picks, ○ closes. In Save as the name box is sel
 so down and × saves with the name shown. Press × on the box to type a new one.
 
 The rows in the Layers list and the Checks list can't be picked with the pad. Use the pieces menu
-(×) to place pieces.
+(×) to place pieces. Hide, Lock, Same kind, the align buttons (Along X, Low, Mid, High, Spread)
+and the theme button are in the Selection card and the top bar, so the pad reaches them with L3.
+
+Hidden and locked pieces are only for this editing session. They are not saved in the file.
 
 </details>
 
@@ -296,7 +309,7 @@ you can change it in the game (F1).
 | Editor | `SnapDots` | `true` | Shows the snap points while you place a piece. Snapping works either way. |
 | Editor | `Boxes` | `false` | Draws pieces as plain boxes instead of models |
 | Keys | `Preset` and one setting per action | `Tomrer` | Which keys the editor starts from (`Tomrer`, `Figma`, `Blender`). A setting per action replaces its keys: empty uses the preset's, `none` removes the key, or a list such as `Ctrl+Z, Ctrl+Y`. The Keys window writes these. |
-| Editor | `Theme` | `Day` | `Day` or `Night`. Night dims the panels and gives the 3D view a dark sky, ground and grid. The Night button in the editor changes it. |
+| Editor | `Theme` | `Dark` | `Dark` or `Light`, the editor's look. The Light / Dark button in the editor changes it. |
 | Editor | `LayersOpen` | `false` | The Layers card on the left (the pieces of the blueprint). Alt + 1 or the Layers button. |
 | Editor | `InspectorOpen` | `true` | The Inspector card on the right (blueprint, selection, problems). Alt + 2 or the Inspector button. |
 | Editor | `RecentPieces`, `FavouritePieces` | empty | Kept by the editor: the pieces you used last and the ones you starred. Quick add shows them first. |

@@ -21,6 +21,7 @@ namespace ValheimTomrer.Editor.Ui
         private const float Pad = 10f;
         private const float RowHeight = 34f;
         private const float RowGap = 2f;
+        private const float ToggleWidth = 38f;
 
         private static RectTransform _host;
         private static RectTransform _root;
@@ -195,7 +196,7 @@ namespace ValheimTomrer.Editor.Ui
                 var index = first + i;
                 if (i >= need || index >= Rows.Count)
                 {
-                    Pool[i].Hide();
+                    Pool[i].Clear();
                     continue;
                 }
 
@@ -267,7 +268,8 @@ namespace ValheimTomrer.Editor.Ui
 
         private static Row NewRow(Transform parent)
         {
-            var background = UiBuild.Panel("Row", parent, UiTheme.ItemBackground);
+            var background = UiBuild.Panel("Row", parent, null, UiTheme.Slot);
+            background.type = Image.Type.Simple;
             background.rectTransform.anchorMin = new Vector2(0f, 1f);
             background.rectTransform.anchorMax = new Vector2(1f, 1f);
             background.rectTransform.pivot = new Vector2(0.5f, 1f);
@@ -306,8 +308,32 @@ namespace ValheimTomrer.Editor.Ui
                 Name = name,
                 Detail = detail,
             };
+            row.Hide = SmallToggle(background.transform, "Hide", ToggleWidth + 4f, () => row.Piece, true);
+            row.Lock = SmallToggle(background.transform, "Lock", 2f, () => row.Piece, false);
             background.gameObject.AddComponent<RowEvents>().Owner = row;
             return row;
+        }
+
+        /// <summary>
+        /// A small Hide or Lock switch at the end of a row. It is a plain image with a click handler, not a
+        /// button, so the panel walk and the game's UI never select it: rows are mouse-only (the Selection
+        /// card's Hide and Lock buttons do the same for the pad).
+        /// </summary>
+        private static TextMeshProUGUI SmallToggle(Transform row, string text, float fromRight, Func<DocPiece> piece, bool hide)
+        {
+            var chip = UiBuild.Panel(text, row, null, UiTheme.SurfaceHover);
+            chip.type = Image.Type.Simple;
+            var rect = chip.rectTransform;
+            rect.anchorMin = rect.anchorMax = new Vector2(1f, 0.5f);
+            rect.pivot = new Vector2(1f, 0.5f);
+            rect.anchoredPosition = new Vector2(-fromRight, 0f);
+            rect.sizeDelta = new Vector2(ToggleWidth, 24f);
+            var label = UiBuild.Label("Text", chip.transform, text, 11f, TextAlignmentOptions.Center);
+            UiBuild.Stretch(label.rectTransform);
+            var events = chip.gameObject.AddComponent<ToggleEvents>();
+            events.Piece = piece;
+            events.Hide = hide;
+            return label;
         }
 
         private static void Text(RectTransform rect, float bottom, float top)
@@ -315,7 +341,7 @@ namespace ValheimTomrer.Editor.Ui
             rect.anchorMin = new Vector2(0f, bottom);
             rect.anchorMax = new Vector2(1f, top);
             rect.offsetMin = new Vector2(64f, 0f);
-            rect.offsetMax = new Vector2(-4f, 0f);
+            rect.offsetMax = new Vector2(-(2f * ToggleWidth + 10f), 0f);
         }
 
         private sealed class Row
@@ -326,6 +352,8 @@ namespace ValheimTomrer.Editor.Ui
             public Image Icon;
             public TextMeshProUGUI Name;
             public TextMeshProUGUI Detail;
+            public TextMeshProUGUI Hide;
+            public TextMeshProUGUI Lock;
             public DocPiece Piece;
 
             public void Show(DocPiece piece, int index, float top)
@@ -356,12 +384,46 @@ namespace ValheimTomrer.Editor.Ui
                 }
 
                 Background.color = SelectedIds.Contains(Piece.Id) ? UiTheme.Accent : UiTheme.Slot;
+
+                var hidden = EditorState.IsHidden(Piece.Id);
+                var locked = EditorState.IsLocked(Piece.Id);
+                Hide.text = hidden ? "Show" : "Hide";
+                Hide.color = hidden ? UiTheme.Warn : UiTheme.TextDim;
+                Lock.text = locked ? "Locked" : "Lock";
+                Lock.color = locked ? UiTheme.Warn : UiTheme.TextDim;
+                Name.color = hidden ? UiTheme.TextDim : UiTheme.Text;
             }
 
-            public void Hide()
+            public void Clear()
             {
                 Piece = null;
                 Rect.gameObject.SetActive(false);
+            }
+        }
+
+        /// <summary>The Hide and Lock switches at the end of a row.</summary>
+        private sealed class ToggleEvents : MonoBehaviour, IPointerClickHandler
+        {
+            public Func<DocPiece> Piece;
+            public bool Hide;
+
+            public void OnPointerClick(PointerEventData eventData)
+            {
+                var piece = Piece();
+                if (piece == null)
+                {
+                    return;
+                }
+
+                var ids = new[] { piece.Id };
+                if (Hide)
+                {
+                    EditorState.SetHidden(ids, !EditorState.IsHidden(piece.Id));
+                }
+                else
+                {
+                    EditorState.SetLocked(ids, !EditorState.IsLocked(piece.Id));
+                }
             }
         }
 

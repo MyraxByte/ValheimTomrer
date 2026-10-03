@@ -172,7 +172,7 @@ namespace ValheimTomrer.Editor.Ui
 
         private static Row NewRow(int index)
         {
-            var background = UiBuild.Panel("Row", _scroll.content, UiTheme.ItemBackground);
+            var background = UiBuild.Panel("Row", _scroll.content, null, UiTheme.Slot);
             var layout = background.gameObject.AddComponent<VerticalLayoutGroup>();
             layout.padding = new RectOffset(6, 6, 4, 4);
             layout.childControlWidth = true;
