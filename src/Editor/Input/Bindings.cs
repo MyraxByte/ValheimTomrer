@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using ValheimTomrer.Editor.Placement;
 using ValheimTomrer.Editor.Ui;
@@ -46,22 +47,21 @@ namespace ValheimTomrer.Editor.Input
 
         public const float NudgeFine = 0.1f;
 
-        /// <summary>Keys the editor watches. Everything else goes to the game as usual.</summary>
-        private static readonly KeyCode[] Watched =
+        /// <summary>
+        /// Keys the editor watches whatever the keymap says: the ones the panel walk and the dialogs use.
+        /// The keymap adds its own (<see cref="Keymap.Keys"/>).
+        /// </summary>
+        private static readonly KeyCode[] Always =
         {
-            KeyCode.W, KeyCode.A, KeyCode.S, KeyCode.D, KeyCode.Space,
-            KeyCode.LeftControl, KeyCode.RightControl,
-            KeyCode.Z, KeyCode.Y, KeyCode.G, KeyCode.R, KeyCode.Q, KeyCode.E, KeyCode.C,
-            KeyCode.F, KeyCode.H, KeyCode.Slash, KeyCode.Question,
             KeyCode.UpArrow, KeyCode.DownArrow, KeyCode.LeftArrow, KeyCode.RightArrow,
-            KeyCode.PageUp, KeyCode.PageDown, KeyCode.Delete, KeyCode.Backspace,
             KeyCode.Tab, KeyCode.Return, KeyCode.KeypadEnter,
-            KeyCode.F6, KeyCode.Backslash, KeyCode.Alpha1, KeyCode.Alpha2,
         };
 
         private static readonly HashSet<KeyCode> Held = new HashSet<KeyCode>();
         private static readonly List<KeyCode> LetGo = new List<KeyCode>();
         private static KeyCode[] _readable;
+        private static int _readableVersion = -1;
+        private static KeyCode[] _capturable;
 
         /// <summary>What was held with the last key, or what the last <see cref="Tick"/> read.</summary>
         public static KeyMods Mods { get; private set; }
@@ -77,10 +77,9 @@ namespace ValheimTomrer.Editor.Input
             get
             {
                 var wish = Vector3.zero;
-                wish.z += Down(KeyCode.W) - Down(KeyCode.S);
-                wish.x += Down(KeyCode.D) - Down(KeyCode.A);
-                wish.y += Down(KeyCode.Space)
-                    - Mathf.Max(Down(KeyCode.LeftControl), Down(KeyCode.RightControl));
+                wish.z += Down(Act.FlyForward) - Down(Act.FlyBack);
+                wish.x += Down(Act.FlyRight) - Down(Act.FlyLeft);
+                wish.y += Down(Act.FlyUp) - Down(Act.FlyDown);
                 return wish;
             }
         }
@@ -97,6 +96,14 @@ namespace ValheimTomrer.Editor.Input
                 // frame the box let go too: it reads its keys first, so the Enter that submitted
                 // the box (and maybe opened "Replace the file?") must not press anything here.
                 Held.Clear();
+                return;
+            }
+
+            if (Keymap.Capturing != Act.None)
+            {
+                // The Keys window waits for a key: the next one pressed is the new binding.
+                Held.Clear();
+                CaptureKey();
                 return;
             }
 
@@ -167,11 +174,13 @@ namespace ValheimTomrer.Editor.Input
                 return true;
             }
 
-            // Quick add has the keyboard while it is up. Tab closes it, and any other key that did not
-            // reach the search box puts the keyboard back in it, so the next letters are typed.
+            var act = Keymap.Match(key, mods);
+
+            // Quick add has the keyboard while it is up. Its key closes it, and any other key that did
+            // not reach the search box puts the keyboard back in it, so the next letters are typed.
             if (QuickAdd.IsOpen)
             {
-                if (key == KeyCode.Tab)
+                if (act == Act.QuickAdd)
                 {
                     QuickAdd.Close();
                 }
@@ -183,27 +192,10 @@ namespace ValheimTomrer.Editor.Input
                 return true;
             }
 
-            // Tab opens Quick add, the list of pieces to add. From the walk it leaves the walk first.
-            if (key == KeyCode.Tab)
+            // The two keys that open and step the panel walk work from inside it too.
+            if (act == Act.QuickAdd || act == Act.Walk || act == Act.WalkBack)
             {
-                FocusNav.Leave();
-                QuickAdd.Open();
-                return true;
-            }
-
-            // F6 opens the panel walk and steps through it, Shift+F6 steps back.
-            if (key == KeyCode.F6)
-            {
-                if (FocusNav.Active)
-                {
-                    FocusNav.Move(Shift ? -1 : 1);
-                }
-                else
-                {
-                    FocusNav.Enter();
-                }
-
-                return true;
+                return Run(act);
             }
 
             // The walk owns the keyboard while it is on, the same way the piece menu does: the
@@ -214,25 +206,190 @@ namespace ValheimTomrer.Editor.Input
                 return true;
             }
 
-            // Ctrl also flies down, so a shortcut it can reach has to win before the fly keys.
-            if (Shortcut && Shortcuts(key))
+            if (act != Act.None && Run(act))
             {
                 return true;
             }
 
             // Cmd is never a fly modifier: Cmd + a fly key is a shortcut that missed.
-            if ((mods & KeyMods.Cmd) == 0 && IsFlyKey(key))
+            if ((mods & KeyMods.Cmd) == 0 && Keymap.IsFlyKey(key))
             {
                 Held.Add(key);
                 return true;
             }
 
-            if (Shortcut)
+            return false;
+        }
+
+        /// <summary>
+        /// Does what an action says. True when it was used; false for the few that only apply in one
+        /// mode (the snap keys outside placing), so the key falls through.
+        /// </summary>
+        public static bool Run(Act act)
+        {
+            var placing = EditorState.Mode == EditMode.Place;
+            switch (act)
             {
-                return false;
+                case Act.Undo:
+                    EditorState.Undo();
+                    return true;
+                case Act.Redo:
+                    EditorState.Redo();
+                    return true;
+                case Act.SelectAll:
+                    EditorState.SelectAll();
+                    return true;
+                case Act.Duplicate:
+                    EditorState.StartDuplicate();
+                    return true;
+                case Act.Save:
+                    EditorCommands.Save();
+                    return true;
+                case Act.Delete:
+                    if (!placing)
+                    {
+                        EditorState.DeleteSelection();
+                    }
+
+                    return true;
+                case Act.Move:
+                    if (!placing)
+                    {
+                        EditorState.StartMove();
+                    }
+
+                    return true;
+                case Act.RotateRight:
+                case Act.RotateLeft:
+                    var direction = act == Act.RotateLeft ? -1 : 1;
+                    if (placing)
+                    {
+                        EditorState.SetPlaceSteps(EditorState.Steps + direction);
+                    }
+                    else
+                    {
+                        EditorState.RotateSelection(direction);
+                    }
+
+                    return true;
+                case Act.NudgeForward:
+                case Act.NudgeBack:
+                case Act.NudgeLeft:
+                case Act.NudgeRight:
+                    if (!placing)
+                    {
+                        NudgeGround(act);
+                    }
+
+                    return true;
+                case Act.NudgeUp:
+                case Act.NudgeDown:
+                    if (!placing)
+                    {
+                        EditorState.Nudge(new Vector3(0f, act == Act.NudgeUp ? Step() : -Step(), 0f));
+                    }
+
+                    return true;
+                case Act.Frame:
+                    ViewportHost.Frame();
+                    return true;
+                case Act.MouseLook:
+                    // Hand the mouse to the pane, so it looks around instead of pointing. Esc
+                    // gives it back. A click never does this: it selects.
+                    ViewportHost.Capture();
+                    return true;
+                case Act.SnapPrev:
+                case Act.SnapNext:
+                    if (!placing)
+                    {
+                        return false;
+                    }
+
+                    EditorState.SetManualSnap(EditorState.Manual + (act == Act.SnapPrev ? -1 : 1));
+                    return true;
+                case Act.Help:
+                    Dialogs.Help();
+                    return true;
+                case Act.QuickAdd:
+                    // From the panel walk it leaves the walk first.
+                    FocusNav.Leave();
+                    QuickAdd.Toggle();
+                    return true;
+                case Act.Walk:
+                case Act.WalkBack:
+                    if (FocusNav.Active)
+                    {
+                        FocusNav.Move(act == Act.WalkBack ? -1 : 1);
+                    }
+                    else
+                    {
+                        FocusNav.Enter();
+                    }
+
+                    return true;
+                case Act.ToggleLayers:
+                    EditorWindow.SetLayers(!EditorWindow.LayersOpen);
+                    return true;
+                case Act.ToggleInspector:
+                    EditorWindow.SetInspector(!EditorWindow.InspectorOpen);
+                    return true;
+                case Act.HideUi:
+                    EditorWindow.SetUiHidden(!EditorWindow.UiHidden);
+                    return true;
+                case Act.ToggleNight:
+                    EditorCommands.ToggleTheme();
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
+        /// <summary>A key pressed while the Keys window waits: Esc is the ladder's, Backspace clears, the rest binds.</summary>
+        private static void CaptureKey()
+        {
+            _capturable = _capturable ?? Capturable();
+            foreach (var key in _capturable)
+            {
+                if (!ZInput.GetKeyDown(key, false))
+                {
+                    continue;
+                }
+
+                var act = Keymap.Capturing;
+                if (key == KeyCode.Backspace && (Mods & (KeyMods.Ctrl | KeyMods.Alt | KeyMods.Shift | KeyMods.Cmd)) == 0)
+                {
+                    Keymap.Clear(act);
+                    Dialogs.RefreshKeys();
+                    Toasts.Info($"{Keymap.Of(act).Label}: no key.");
+                    return;
+                }
+
+                var taken = Keymap.Capture(key, Mods);
+                Dialogs.RefreshKeys();
+                Toasts.Info(taken == null
+                    ? $"{Keymap.Of(act).Label}: {Keymap.Describe(act)}."
+                    : $"{Keymap.Of(act).Label}: {Keymap.Describe(act)}. Taken from {taken}.");
+                return;
+            }
+        }
+
+        private static KeyCode[] Capturable()
+        {
+            var works = new List<KeyCode>();
+            foreach (var key in Keymap.BindableKeys)
+            {
+                try
+                {
+                    ZInput.GetKeyDown(key, false);
+                    works.Add(key);
+                }
+                catch (Exception)
+                {
+                    // the game's input has no name for it: it cannot be bound
+                }
             }
 
-            return Plain(key);
+            return works.ToArray();
         }
 
         /// <summary>
@@ -241,13 +398,19 @@ namespace ValheimTomrer.Editor.Input
         /// </summary>
         private static KeyCode[] Readable()
         {
-            if (_readable != null)
+            if (_readable != null && _readableVersion == Keymap.Version)
             {
                 return _readable;
             }
 
-            var works = new List<KeyCode>(Watched.Length);
-            foreach (var key in Watched)
+            var wanted = new HashSet<KeyCode>(Always);
+            foreach (var key in Keymap.Keys())
+            {
+                wanted.Add(key);
+            }
+
+            var works = new List<KeyCode>(wanted.Count);
+            foreach (var key in wanted)
             {
                 try
                 {
@@ -261,6 +424,7 @@ namespace ValheimTomrer.Editor.Input
             }
 
             _readable = works.ToArray();
+            _readableVersion = Keymap.Version;
             return _readable;
         }
 
@@ -326,6 +490,12 @@ namespace ValheimTomrer.Editor.Input
         /// </summary>
         public static bool Cancel()
         {
+            if (Keymap.CancelCapture())
+            {
+                Dialogs.RefreshKeys();
+                return true;
+            }
+
             if (Dialogs.Dismiss())
             {
                 return true;
@@ -382,42 +552,6 @@ namespace ValheimTomrer.Editor.Input
         }
 
         // ---------- the map ----------
-
-        /// <summary>The keys that work with Ctrl or Cmd.</summary>
-        private static bool Shortcuts(KeyCode key)
-        {
-            switch (key)
-            {
-                case KeyCode.Z:
-                    if (Shift)
-                    {
-                        EditorState.Redo();
-                    }
-                    else
-                    {
-                        EditorState.Undo();
-                    }
-
-                    return true;
-                case KeyCode.Y:
-                    EditorState.Redo();
-                    return true;
-                case KeyCode.A:
-                    EditorState.SelectAll();
-                    return true;
-                case KeyCode.D:
-                    EditorState.StartDuplicate();
-                    return true;
-                case KeyCode.S:
-                    EditorCommands.Save();
-                    return true;
-                case KeyCode.Backslash:
-                    EditorWindow.SetUiHidden(!EditorWindow.UiHidden);
-                    return true;
-                default:
-                    return false;
-            }
-        }
 
         /// <summary>
         /// A dialog is up: Tab and the arrows walk what it holds and Enter presses it. Everything
@@ -483,111 +617,8 @@ namespace ValheimTomrer.Editor.Input
             }
         }
 
-        /// <summary>The keys that work on their own.</summary>
-        private static bool Plain(KeyCode key)
-        {
-            var placing = EditorState.Mode == EditMode.Place;
-            switch (key)
-            {
-                case KeyCode.Delete:
-                case KeyCode.Backspace:
-                    if (!placing)
-                    {
-                        EditorState.DeleteSelection();
-                    }
-
-                    return true;
-                case KeyCode.PageUp:
-                case KeyCode.PageDown:
-                    if (!placing)
-                    {
-                        EditorState.Nudge(new Vector3(0f, key == KeyCode.PageUp ? Step() : -Step(), 0f));
-                    }
-
-                    return true;
-                case KeyCode.UpArrow:
-                case KeyCode.DownArrow:
-                case KeyCode.LeftArrow:
-                case KeyCode.RightArrow:
-                    if (!placing)
-                    {
-                        NudgeArrow(key);
-                    }
-
-                    return true;
-                case KeyCode.G:
-                    if (!placing)
-                    {
-                        EditorState.StartMove();
-                    }
-
-                    return true;
-                case KeyCode.F:
-                    ViewportHost.Frame();
-                    return true;
-                case KeyCode.C:
-                    // Hand the mouse to the pane, so it looks around instead of pointing. Esc
-                    // gives it back. A click never does this: it selects.
-                    ViewportHost.Capture();
-                    return true;
-                case KeyCode.R:
-                    var direction = Shift ? -1 : 1;
-                    if (placing)
-                    {
-                        EditorState.SetPlaceSteps(EditorState.Steps + direction);
-                    }
-                    else
-                    {
-                        EditorState.RotateSelection(direction);
-                    }
-
-                    return true;
-                case KeyCode.Q:
-                case KeyCode.E:
-                    if (!placing)
-                    {
-                        return false;
-                    }
-
-                    EditorState.SetManualSnap(EditorState.Manual + (key == KeyCode.Q ? -1 : 1));
-                    return true;
-                case KeyCode.Alpha1:
-                case KeyCode.Alpha2:
-                    // Alt+1 folds the Layers card, Alt+2 the Inspector. The digits on their own are free.
-                    if ((Mods & KeyMods.Alt) == 0)
-                    {
-                        return false;
-                    }
-
-                    if (key == KeyCode.Alpha1)
-                    {
-                        EditorWindow.SetLayers(!EditorWindow.LayersOpen);
-                    }
-                    else
-                    {
-                        EditorWindow.SetInspector(!EditorWindow.InspectorOpen);
-                    }
-
-                    return true;
-                case KeyCode.H:
-                case KeyCode.Question:
-                    Dialogs.Help();
-                    return true;
-                case KeyCode.Slash:
-                    if (!Shift)
-                    {
-                        return false;
-                    }
-
-                    Dialogs.Help();
-                    return true;
-                default:
-                    return false;
-            }
-        }
-
-        /// <summary>An arrow key moves along the ground axis closest to where the camera looks.</summary>
-        private static void NudgeArrow(KeyCode key)
+        /// <summary>A nudge key moves along the ground axis closest to where the camera looks.</summary>
+        private static void NudgeGround(Act act)
         {
             var raycast = ViewportHost.Raycast;
             var forward = Vector3.forward;
@@ -597,9 +628,9 @@ namespace ValheimTomrer.Editor.Input
                 raycast.GroundAxes(out forward, out right);
             }
 
-            var axis = key == KeyCode.UpArrow ? Snap(forward)
-                : key == KeyCode.DownArrow ? -Snap(forward)
-                : key == KeyCode.RightArrow ? Snap(right)
+            var axis = act == Act.NudgeForward ? Snap(forward)
+                : act == Act.NudgeBack ? -Snap(forward)
+                : act == Act.NudgeRight ? Snap(right)
                 : -Snap(right);
             EditorState.Nudge(axis * Step());
         }
@@ -617,15 +648,18 @@ namespace ValheimTomrer.Editor.Input
             return (Mods & KeyMods.Alt) != 0 ? NudgeFine : NudgeStep;
         }
 
-        private static bool IsFlyKey(KeyCode key)
+        /// <summary>1 while any key of the fly action is held, else 0.</summary>
+        private static float Down(Act act)
         {
-            return key == KeyCode.W || key == KeyCode.A || key == KeyCode.S || key == KeyCode.D
-                || key == KeyCode.Space || key == KeyCode.LeftControl || key == KeyCode.RightControl;
-        }
+            foreach (var key in Keymap.FlyKeys(act))
+            {
+                if (Held.Contains(key))
+                {
+                    return 1f;
+                }
+            }
 
-        private static float Down(KeyCode key)
-        {
-            return Held.Contains(key) ? 1f : 0f;
+            return 0f;
         }
 
         private static KeyMods ReadMods()
@@ -656,46 +690,48 @@ namespace ValheimTomrer.Editor.Input
 
         // ---------- the help table ----------
 
-        /// <summary>The mouse and keyboard half of the help, in the same order as Tomrer's.</summary>
-        public static readonly HelpRow[] Keys =
+        /// <summary>
+        /// The mouse and keyboard half of the help. The mouse rows are fixed; the key rows are read
+        /// from the keymap, so the help always says what the keys do now.
+        /// </summary>
+        public static HelpRow[] Keys
         {
-            new HelpRow("Click", "Select a piece, or drop what is in hand. Shift+click adds or removes."),
-            new HelpRow("Right drag", "Look around. The cursor stays where it is."),
-            new HelpRow("Middle drag, or Shift + right drag", "Pan"),
-            new HelpRow("Wheel", "Zoom toward the cursor. While placing it turns the piece 22.5 degrees."),
-            new HelpRow("Drag on the view", "Select everything in the box. Only while the cursor is free."),
-            new HelpRow("W, A, S, D", "Fly forward (where the camera looks), back, left, right"),
-            new HelpRow("Space, Ctrl", "Fly up, down. Hold Shift to fly 3 times faster."),
-            new HelpRow("C", "Hold the mouse in the pane, so it looks around like flying in the game. "
-                + "Esc gives the cursor back."),
-            new HelpRow("Ctrl+A", "Select all"),
-            new HelpRow("Tab",
-                "Quick add: the list of pieces over the view. Type to search, click a piece to place it "
-                + "(it follows the mouse, click to place, Esc to stop), right click stars it. Tab or Esc closes it."),
-            new HelpRow("Alt+1, Alt+2", "Fold the Layers card (left) or the Inspector card (right) in or out"),
-            new HelpRow("Ctrl+\\", "Hide the whole interface and keep the view. The same keys or Esc bring it back"),
-            new HelpRow("G", "Move the selection: it follows the mouse, click to drop, Esc to cancel"),
-            new HelpRow("Ctrl+D", "Duplicate: the copy follows the mouse, and copies keep coming until Esc"),
-            new HelpRow("R, Shift+R", "Turn 22.5 degrees: the piece in hand, else the selection"),
-            new HelpRow("Arrow keys", "Nudge 0.5 m along the ground axis closest to the camera (with Alt 0.1 m)"),
-            new HelpRow("PageUp, PageDown", "Nudge up or down"),
-            new HelpRow("Shift (hold)", "No snapping while held, like in the game"),
-            new HelpRow("Q, E", "Pick the snap point that goes on the aimed spot, like in the game"),
-            new HelpRow("Delete, Backspace", "Delete the selection"),
-            new HelpRow("Ctrl+Z, Shift+Ctrl+Z, Ctrl+Y", "Undo, redo"),
-            new HelpRow("F", "Look at the selection, or at everything"),
-            new HelpRow("Ctrl+S", "Save"),
-            new HelpRow("H, ?", "This help"),
-            new HelpRow("F6, Shift+F6",
-                "Walk the top bar and the two cards, on and back. In a dialog Tab walks "
-                + "what the dialog holds."),
-            new HelpRow("Arrows, Enter (while walking)",
-                "Step to the widget above, below, left or right, and press it. A text box starts "
-                + "typing, Esc gives it back."),
-            new HelpRow("Esc",
-                "Close the dialog, else stop placing, else give the mouse back, else leave the "
-                + "walk, else clear the selection, else close the editor"),
-        };
+            get
+            {
+                var rows = new List<HelpRow>
+                {
+                    new HelpRow("Click", "Select a piece, or drop what is in hand. Shift+click adds or removes."),
+                    new HelpRow("Right drag", "Look around. The cursor stays where it is."),
+                    new HelpRow("Middle drag, or Shift + right drag", "Pan"),
+                    new HelpRow("Wheel", "Zoom toward the cursor. While placing it turns the piece 22.5 degrees."),
+                    new HelpRow("Drag on the view", "Select everything in the box. Only while the cursor is free."),
+                };
+
+                rows.Add(new HelpRow(
+                    string.Join(", ", new[] { Act.FlyForward, Act.FlyLeft, Act.FlyBack, Act.FlyRight }.Select(Keymap.Describe)),
+                    "Fly forward (where the camera looks), left, back, right"));
+                rows.Add(new HelpRow(
+                    Keymap.Describe(Act.FlyUp) + ", " + Keymap.Describe(Act.FlyDown),
+                    "Fly up, down. Hold Shift to fly 3 times faster."));
+                foreach (var def in Keymap.All)
+                {
+                    if (def.Id < Act.FlyForward)
+                    {
+                        rows.Add(new HelpRow(Keymap.Describe(def.Id), def.Help));
+                    }
+                }
+
+                rows.Add(new HelpRow("Shift (hold)", "No snapping while held, like in the game"));
+                rows.Add(new HelpRow("Arrow keys, Enter (while walking)",
+                    "Step to the widget above, below, left or right, and press it. A text box starts "
+                    + "typing, Esc gives it back."));
+                rows.Add(new HelpRow("Tab, Shift+Tab (in a dialog)", "Walk what the dialog holds"));
+                rows.Add(new HelpRow("Esc",
+                    "Close the dialog or Quick add, else stop placing, else give the mouse back, else leave the "
+                    + "walk, else clear the selection, else bring the interface back, else close the editor"));
+                return rows.ToArray();
+            }
+        }
 
         /// <summary>The controller half, in the wording of the pad in hand (<see cref="PadBindings"/>).</summary>
         public static HelpRow[] Pad => PadBindings.Help(EditorInput.Glyphs);

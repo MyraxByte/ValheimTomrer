@@ -1,4 +1,5 @@
 using UnityEngine;
+using ValheimTomrer.Editor.Input;
 
 namespace ValheimTomrer.Editor.Ui
 {
@@ -67,7 +68,7 @@ namespace ValheimTomrer.Editor.Ui
         /// </summary>
         public static void Tick()
         {
-            if (IsOpen && ModUi.Typing && ZInput.GetKeyDown(KeyCode.Tab, false))
+            if (IsOpen && ModUi.Typing && Keymap.TypedPressed(Act.QuickAdd))
             {
                 Close();
             }

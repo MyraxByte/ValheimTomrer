@@ -186,6 +186,12 @@ your forsaken power, zoom or jump, and L2 + △ doesn't open the inventory.
 <details>
 <summary>Editor, keyboard and mouse</summary>
 
+The keys below are the Tomrer preset. Press H, then Change keys, to pick the Figma or the Blender
+preset or to set any key yourself. A click on an action waits for the new key, a right click gives
+the preset's key back, Backspace takes the key away, and a key another action has moves to the new
+one. The same settings are in the config file, section `Keys`. The controller follows the game's own
+layout and has no setting.
+
 | Key | What it does |
 |---|---|
 | Click | Select a piece, or place the one in your hand. Shift + click adds to the selection or takes out of it. |
@@ -289,6 +295,7 @@ you can change it in the game (F1).
 | Editor | `ShowAllPieces` | `false` | Shows every piece in the editor, not only the ones you have unlocked |
 | Editor | `SnapDots` | `true` | Shows the snap points while you place a piece. Snapping works either way. |
 | Editor | `Boxes` | `false` | Draws pieces as plain boxes instead of models |
+| Keys | `Preset` and one setting per action | `Tomrer` | Which keys the editor starts from (`Tomrer`, `Figma`, `Blender`). A setting per action replaces its keys: empty uses the preset's, `none` removes the key, or a list such as `Ctrl+Z, Ctrl+Y`. The Keys window writes these. |
 | Editor | `Theme` | `Day` | `Day` or `Night`. Night dims the panels and gives the 3D view a dark sky, ground and grid. The Night button in the editor changes it. |
 | Editor | `LayersOpen` | `false` | The Layers card on the left (the pieces of the blueprint). Alt + 1 or the Layers button. |
 | Editor | `InspectorOpen` | `true` | The Inspector card on the right (blueprint, selection, problems). Alt + 2 or the Inspector button. |

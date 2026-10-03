@@ -175,7 +175,7 @@ namespace ValheimTomrer.Editor.Ui
         /// <summary>Enter answers the question that is up. Esc goes through Bindings.Cancel.</summary>
         public static void Tick()
         {
-            if (!IsOpen || ModUi.JustTyping)
+            if (!IsOpen || ModUi.JustTyping || Keymap.Capturing != Act.None)
             {
                 return;
             }
@@ -222,6 +222,9 @@ namespace ValheimTomrer.Editor.Ui
                 return false;
             }
 
+            Keymap.CancelCapture();
+            KeyCells.Clear();
+            PresetLabels.Clear();
             Kind = "";
             _confirmRun = null;
             _back = null;
@@ -359,8 +362,8 @@ namespace ValheimTomrer.Editor.Ui
                 "The pad reaches the panels too. L3 with an empty hand leaves the view and opens the walk, "
                 + "and circle is the way back to the view. The D-pad or the left stick moves to the "
                 + "button above, below, left or right, and on into the next panel at an edge. R1 goes on "
-                + "through left, top, right and wraps, L1 goes back the same way, cross presses. Tab does "
-                + "the same from the keyboard. The piece grid, the piece list and the problem list stay "
+                + "through left, top, right and wraps, L1 goes back the same way, cross presses. F6 does "
+                + "the same from the keyboard. The piece list and the problem list stay "
                 + "mouse-only: pick pieces with the cross menu instead.");
 
             Dim(scroll.content,
@@ -376,8 +379,135 @@ namespace ValheimTomrer.Editor.Ui
                 + "closest snap point within 0.5 m. When that finds nothing the editor also slides it to the "
                 + "closest spot that touches the point under the cursor. The red arrow marks the front: it "
                 + "faces the player when the mod builds the blueprint.");
-            Foot("Close", () => Close(), null, null);
+            Foot("Close", () => Close(), "Change keys", () => Controls());
             Start(_submit);
+        }
+
+        private static readonly Dictionary<Act, TextMeshProUGUI> KeyCells = new Dictionary<Act, TextMeshProUGUI>();
+        private static readonly List<TextMeshProUGUI> PresetLabels = new List<TextMeshProUGUI>();
+
+        /// <summary>
+        /// The Keys window: a preset to start from, and every action with its key. A click on a row waits
+        /// for the next key (<see cref="Keymap.StartCapture"/>), a right click goes back to the preset's key.
+        /// The pad can open it and pick a preset; binding a key needs the keyboard.
+        /// </summary>
+        public static void Controls()
+        {
+            if (!Begin("keys", "Keys", 860f, 780f))
+            {
+                return;
+            }
+
+            KeyCells.Clear();
+            PresetLabels.Clear();
+            var intro = UiBuild.Label("Intro", _body,
+                "Pick a preset, or click a key to change it and press the new one. Right click goes back to the "
+                + "preset's key. Esc cancels, Backspace takes the key away. A key that another action has moves to "
+                + "this one. The controller keeps the game's own layout.",
+                14f, TextAlignmentOptions.TopLeft, UiTheme.TextDim);
+            intro.enableWordWrapping = true;
+            Line(intro.rectTransform, 0f, 58f);
+
+            var presets = UiBuild.Row("Presets", _body, 6f);
+            Line(presets, 62f, 34f);
+            var walk = new List<Selectable>();
+            foreach (var preset in Keymap.Presets)
+            {
+                var name = preset;
+                var button = UiBuild.Button("Preset " + name, presets, name, () =>
+                {
+                    Keymap.SetPreset(name);
+                    RefreshKeys();
+                }, 34f);
+                Width(button, 130f);
+                PresetLabels.Add(button.GetComponentInChildren<TextMeshProUGUI>());
+                walk.Add(button);
+            }
+
+            UiBuild.LinkRow(walk);
+
+            var scroll = UiBuild.Scroll("Keys", _body, 2f);
+            UiBuild.Stretch((RectTransform)scroll.transform, 0f, 0f, 0f, 104f);
+            var group = "";
+            foreach (var def in Keymap.All)
+            {
+                if (def.Group != group)
+                {
+                    group = def.Group;
+                    Heading(scroll.content, group);
+                }
+
+                KeyBinderRow(scroll.content, def);
+            }
+
+            Foot("Reset all", () =>
+            {
+                Keymap.ResetAll();
+                RefreshKeys();
+                Toasts.Info("Keys: back to the " + Keymap.Preset + " preset.");
+            }, "Close", () => Close());
+            Start(_submit);
+            RefreshKeys();
+        }
+
+        /// <summary>Shows the keys as they are now, after a binding or a preset changed. Does nothing unless the Keys window is up.</summary>
+        public static void RefreshKeys()
+        {
+            if (Kind != "keys")
+            {
+                return;
+            }
+
+            foreach (var pair in KeyCells)
+            {
+                var waiting = Keymap.Capturing == pair.Key;
+                pair.Value.text = waiting ? "press a key…" : Keymap.Describe(pair.Key);
+                pair.Value.color = waiting ? UiTheme.Warn : Keymap.IsChanged(pair.Key) ? UiTheme.Accent : UiTheme.Text;
+            }
+
+            for (var i = 0; i < PresetLabels.Count; i++)
+            {
+                PresetLabels[i].color = Keymap.Presets[i] == Keymap.Preset ? UiTheme.Accent : UiTheme.Text;
+            }
+        }
+
+        /// <summary>One action of the Keys window: its name on the left, its keys on the right.</summary>
+        private static void KeyBinderRow(Transform parent, ActionDef def)
+        {
+            var background = UiBuild.Panel("Row " + def.Name, parent, UiTheme.ItemBackground, UiTheme.Slot);
+            background.gameObject.AddComponent<LayoutElement>().preferredHeight = RowHeight;
+            var button = background.gameObject.AddComponent<Button>();
+            button.targetGraphic = background;
+            button.transition = Selectable.Transition.None;
+            var act = def.Id;
+            button.onClick.AddListener(() =>
+            {
+                Keymap.StartCapture(act);
+                RefreshKeys();
+            });
+            background.gameObject.AddComponent<KeyRowEvents>().Act = act;
+
+            Cell(background.transform, "Name", def.Label, 15f, TextAlignmentOptions.MidlineLeft, UiTheme.Text, 0f, 0.55f, 10f, 6f);
+            KeyCells[act] = Cell(background.transform, "Keys", Keymap.Describe(act), 15f,
+                TextAlignmentOptions.MidlineRight, UiTheme.Text, 0.55f, 1f, 6f, 10f);
+        }
+
+        /// <summary>A right click on a row of the Keys window gives the action its preset key back.</summary>
+        private sealed class KeyRowEvents : MonoBehaviour, UnityEngine.EventSystems.IPointerClickHandler
+        {
+            public Act Act;
+
+            public void OnPointerClick(UnityEngine.EventSystems.PointerEventData eventData)
+            {
+                if (eventData.button != UnityEngine.EventSystems.PointerEventData.InputButton.Right)
+                {
+                    return;
+                }
+
+                Keymap.CancelCapture();
+                Keymap.Reset(Act);
+                RefreshKeys();
+            }
         }
 
         /// <summary>

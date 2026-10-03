@@ -119,6 +119,8 @@ namespace ValheimTomrer.Editor
                 true,
                 "Show the Inspector card (blueprint, selection, problems) on the right. Alt+2 or the Inspector button.");
 
+            Input.Keymap.Bind(config);
+
             // Settings the mod no longer has. The mouse and the right stick follow the game's own
             // sensitivity settings, and the camera has one mode.
             Drop(config, "Editor", "LookSensitivity");
