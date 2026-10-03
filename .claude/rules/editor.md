@@ -36,8 +36,13 @@ F7 opens a window with a 3D view, the piece list and the game's snapping.
   (`EditorSession.Tick`, read through `ModUi.JustTyping`, so an Esc the box took first this frame
   cannot also close the dialog), then the dialog, the piece menu, what is
   in hand, release the pane, leave the walk, clear the selection, close the window.
-- **A row chip that carries text** (`item_background`) is tinted `UiTheme.Slot`, and a `Button` on
-  it uses `Selectable.Transition.None`. Icon-only tiles keep the sprite as it is.
+- **The look is flat and modern, not the game's.** The editor uses no game sprite: cards are
+  `UiBuild.Card` (flat colour, one-pixel border), buttons `UiBuild.Button` (colour tint), rows and
+  tiles `UiTheme.Surface`, the selected one `UiTheme.Accent`. Colours come from `UiTheme` (Dark or
+  Light), never typed in a panel. A widget inside the game's own HUD (the hammer card's materials
+  list, the capture's status line) builds and refreshes inside `using (UiTheme.GameLook())`.
+- **No glyph a plain font may lack.** The sans font may have no star or arrow symbols: mark with a
+  shape (the Starred dot) or words.
 - **Cancelling a dialog goes through `Dialogs.Dismiss`** (Esc, circle, the X, the backdrop, Cancel),
   so a question asked from the Blueprints list goes back to it. `Close()` alone skips that.
 - **An empty blueprint is a real file.** `BlueprintFormat` and `DocumentStore` read and write one,
@@ -56,3 +61,15 @@ F7 opens a window with a 3D view, the piece list and the game's snapping.
   other way round. `Evaluate` takes the ground callback from the map, so always pass it a real map.
 - **The materials list** in the editor: `MaterialSources.Around` at most once a second while the
   window is open, never while it is closed.
+- **The view comes first.** The 3D view fills the screen; the top bar, the snap bar, the Layers and
+  Inspector cards float over it. A folded card is slid off screen (`EditorWindow.ApplyCards`), never
+  switched off: the panels measure text while they build and tick, and TextMeshPro measures nothing
+  in an inactive object. The panel walk skips a folded card (`FocusNav.RegionRect`).
+- **Quick add** (`QuickAdd`, Tab) is the palette in a popup. It is built open and folded right after
+  the palette is built (`EditorSession.Begin`), and `Palette.Tick` runs only while it is open.
+- **Keys come from the keymap** (`Input/Keymap.cs`). A new action is an `Act`, a `Def` row with the
+  three presets' keys, and a case in `Bindings.Run`. Esc, Enter and the arrows inside a dialog or the
+  walk are not in the table. Tab is Quick add, F6 the walk.
+- **Hidden and locked pieces** are this session's only (`EditorState.Hidden`, `Locked`), never in the
+  file. `Select` and `SelectAll` skip them; the pane does not draw a hidden one (`NotDrawn`).
+

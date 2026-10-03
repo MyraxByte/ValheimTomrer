@@ -9710,7 +9710,7 @@ namespace ValheimTomrer.Dev
                 + $"{ps.Of(PadButton.Square)} {ps.Of(PadButton.Triangle)}");
 
             var rows = Bindings.Pad;
-            Check(rows.Length == 22, $"the help table has the whole controller half: {rows.Length} rows");
+            Check(rows.Length == 23, $"the help table has the whole controller half: {rows.Length} rows (L2 + L3 included)");
             Check(Array.Exists(rows, r => r.Keys == "×") && Array.Exists(rows, r => r.Keys == "L2 + R2")
                 && Array.Exists(rows, r => r.Keys == $"{ps.Of(WorldPad.ModifierButton)} + □" && r.What.StartsWith("Close the editor")),
                 "and the rows are written in those names, the close row too");
@@ -10330,9 +10330,9 @@ namespace ValheimTomrer.Dev
                 + $"widget '{WidgetName(FocusNav.Focused)}'");
 
             var live = Interactable(EditorWindow.TopBar);
-            Check(FocusNav.Count == live && FocusNav.Count == 10,
-                $"the top bar's walk holds every button that can be pressed and no more: "
-                + $"{FocusNav.Count} of {live} interactable (the probe measured 10, Redo is off)");
+            Check(FocusNav.Count == live && FocusNav.Count >= 15,
+                $"the top bar's walk holds every button that can be pressed and no more, the snap bar's too: "
+                + $"{FocusNav.Count} of {live} interactable");
 
             // The L3 press itself woke the pad, so start from the mouse having the aim again.
             ViewportHost.GiveAimBack();

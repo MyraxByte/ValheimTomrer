@@ -15,17 +15,28 @@ Asked by the owner on 2026-10-03. Decisions made with the owner are marked **Dec
 - All phases, in order. Each phase is pushed on its own, the owner tries it, then the next starts.
 - Key bindings: presets (Figma, Valheim, Blender) plus own bindings, with a Controls window.
 - Moving pieces stays as it is now: G, the piece follows the mouse, click drops. No axis handles.
+  Dragging a piece moves it too (Figma), G is unchanged.
+- The look does not follow the game: a modern flat tool look, Dark by default, Light as an option
+  (changed by the owner during phase 4).
+- "Привязки" covers both: key bindings (phase 3) and snapping (phase 6).
 - Every feature works on a controller too (CLAUDE.md), with its autotest check and README line.
 
 ## Phases
 
 | # | Phase | Contents | State |
 |---|---|---|---|
-| 1 | Theme and wheel | Own wheel scroll for every list (eased, one notch is two rows in the palette). Night theme: dark panels, dark sky, ground and grid. Top bar button, config `Editor/Theme` | pushed, to be tried |
-| 2 | Viewport first | The 3D view fills the screen. Panels become small floating cards that collapse to an icon: Layers (left), Inspector (right), Checks. The top bar shrinks to one thin row. `Ctrl+\` hides all interface. Tab opens Quick add: a popup with search, categories, Recent and Favourites, over the view (it reuses the pad's piece menu). The panel walk moves from Tab to F6 (L3 on the pad stays) | next |
-| 3 | Key bindings | One table of actions. Presets. `Controls` window: search, press a key to bind, conflicts shown, reset one or all. File `config/ValheimTomrer/keymap.cfg`. Pad bindings the same way | |
-| 4 | Figma-style work | Selection: marquee (add with Shift), Ctrl+click in a group, Shift+click toggles. Alt+drag copies. Ctrl+G group, Ctrl+Shift+G ungroup. Layers with eye and lock. Align and distribute. Space+drag pans, Ctrl+wheel zooms. Rename, reorder | |
-| 5 | Extras | Ruler and sizes in metres, mirror, array (copies by a step), command search `Ctrl+K`, recent files, material warnings on tiles | |
+| 1 | Theme and wheel | Own wheel scroll for every list. Dark and Light themes | done, not run in the game |
+| 2 | Viewport first | The view fills the screen, Layers and Inspector cards fold (Alt+1, Alt+2), `Ctrl+\` / L2 + L3 hide everything, Tab opens Quick add (search, Recent, Starred), the walk moves to F6 | done, not run in the game |
+| 3 | Key bindings | One table of actions, presets Tomrer, Figma, Blender, the Keys window (H, Change keys), config section `Keys`. The pad keeps the game's layout (decided: no pad rebinding) | done, not run in the game |
+| 4 | Figma-style work | Drag to move, Alt+drag copies, double click selects the same kind, hide and lock (keys, Selection card, Layers rows), align and spread, Shift + arrow. Modern flat look. Groups are left out: the file format has none | done, not run in the game |
+| 5 | Extras | Command search Ctrl+K, mirror X and Z, copy in a row, sizes in metres | done, not run in the game |
+| 6 | Snapping | Grid 0.25 to 4 m, turn step 5 to 90 degrees, snap points on and off, the snap bar | done, not run in the game |
+
+## Left for the first run in the game
+
+- `npm run build`, then `npm run autotest -- editor_redesign`, then `editor_all`.
+- The older scenarios check the old layout in places (the left panel's tabs in `editor_focus`, exact
+  widget counts, the Tab walk). Expect FAIL lines there; they get fixed from the run's output.
 
 ## Rules for every phase
 
