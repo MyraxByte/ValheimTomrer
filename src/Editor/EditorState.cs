@@ -350,6 +350,14 @@ namespace ValheimTomrer.Editor
             }
         }
 
+        /// <summary>Degrees per turn step now: the setting, or the game's 22.5.</summary>
+        public static float AngleStep => EditorConfig.AngleStep != null && EditorConfig.AngleStep.Value > 0f
+            ? EditorConfig.AngleStep.Value
+            : Placer.RotateStep;
+
+        /// <summary>The placing grid in metres now, 0 for none.</summary>
+        public static float GridStep => EditorConfig.GridStep != null ? Mathf.Max(0f, EditorConfig.GridStep.Value) : 0f;
+
         /// <summary>The axis Align and Spread work along: 0 x, 1 y, 2 z.</summary>
         public static int AlignAxis { get; private set; }
 
@@ -762,6 +770,9 @@ namespace ValheimTomrer.Editor
                 Snapping = Snapping,
                 SearchAll = Moving.Count > SearchAllFrom,
                 Assist = true,
+                AngleStep = AngleStep,
+                Grid = GridStep,
+                NoSnapPoints = EditorConfig.SnapPoints != null && !EditorConfig.SnapPoints.Value,
             };
 
             var hit = Placer.Place(Index, Moving, origin, dir.normalized, options, out result);
@@ -923,7 +934,7 @@ namespace ValheimTomrer.Editor
                 }
             }
 
-            var turn = Quaternion.Euler(0f, Placer.RotateStep * Mathf.Sign(direction), 0f);
+            var turn = Quaternion.Euler(0f, AngleStep * Mathf.Sign(direction), 0f);
             var centre = pieces.Count == 1 ? pieces[0].Position : BottomCentre(pieces);
             var moves = new List<PieceMove>(pieces.Count);
             foreach (var piece in pieces)

@@ -38,6 +38,9 @@ namespace ValheimTomrer.Editor.Ui
         private static TextMeshProUGUI _layers;
         private static TextMeshProUGUI _inspector;
         private static TextMeshProUGUI _add;
+        private static TextMeshProUGUI _grid;
+        private static TextMeshProUGUI _angle;
+        private static TextMeshProUGUI _points;
 
         /// <summary>Every button in the bar, in the order the pad walks them.</summary>
         private static readonly List<Selectable> Walk = new List<Selectable>();
@@ -104,6 +107,13 @@ namespace ValheimTomrer.Editor.Ui
             _layers.color = EditorWindow.LayersOpen ? UiTheme.Accent : UiTheme.Text;
             _inspector.color = EditorWindow.InspectorOpen ? UiTheme.Accent : UiTheme.Text;
             _add.color = QuickAdd.IsOpen ? UiTheme.Accent : UiTheme.Text;
+            var grid = EditorState.GridStep;
+            _grid.text = grid > 0f ? $"Grid {grid:0.##} m" : "Grid off";
+            _grid.color = grid > 0f ? UiTheme.Accent : UiTheme.Text;
+            _angle.text = $"Turn {EditorState.AngleStep:0.##}°";
+            var points = EditorConfig.SnapPoints == null || EditorConfig.SnapPoints.Value;
+            _points.text = points ? "Snap points" : "Snap points off";
+            _points.color = points ? UiTheme.Accent : UiTheme.TextDim;
 
             var busy = EditorCommands.Busy;
             _busy.gameObject.SetActive(busy != null);
@@ -183,14 +193,27 @@ namespace ValheimTomrer.Editor.Ui
                 .GetComponentInChildren<TextMeshProUGUI>();
 
             Gap(row);
-            _boxes = Add(row, "Boxes", EditorCommands.ToggleBoxes)
-                .GetComponentInChildren<TextMeshProUGUI>();
-            _dots = Add(row, "Snap dots", EditorCommands.ToggleSnapDots)
-                .GetComponentInChildren<TextMeshProUGUI>();
             _night = Add(row, UiTheme.Dark ? "Light" : "Dark", EditorCommands.ToggleTheme)
                 .GetComponentInChildren<TextMeshProUGUI>();
             Add(row, "Commands", Dialogs.Commands);
             Add(row, "?", EditorCommands.Help);
+
+            // The snap bar: a small card under the middle of the top bar, like a design tool's toolbar.
+            // It hangs under the bar, so the panel walk reaches it with the bar (TopBar region).
+            var pill = UiBuild.Card("SnapBar", _root);
+            var pillRect = pill.rectTransform;
+            pillRect.anchorMin = pillRect.anchorMax = new Vector2(0.5f, 0f);
+            pillRect.pivot = new Vector2(0.5f, 1f);
+            pillRect.anchoredPosition = new Vector2(0f, -6f);
+            pillRect.sizeDelta = new Vector2(560f, Height + 8f);
+            var snaps = UiBuild.Row("Snaps", pillRect, 4f, 4);
+            UiBuild.Stretch(snaps);
+            snaps.GetComponent<HorizontalLayoutGroup>().childAlignment = TextAnchor.MiddleCenter;
+            _grid = Add(snaps, "Grid 0.25 m", EditorCommands.CycleGrid).GetComponentInChildren<TextMeshProUGUI>();
+            _angle = Add(snaps, "Turn 22.5°", EditorCommands.CycleAngle).GetComponentInChildren<TextMeshProUGUI>();
+            _points = Add(snaps, "Snap points off", EditorCommands.ToggleSnapPoints).GetComponentInChildren<TextMeshProUGUI>();
+            _dots = Add(snaps, "Dots", EditorCommands.ToggleSnapDots).GetComponentInChildren<TextMeshProUGUI>();
+            _boxes = Add(snaps, "Boxes", EditorCommands.ToggleBoxes).GetComponentInChildren<TextMeshProUGUI>();
 
             // The pad walks the bar left and right, around the ends.
             UiBuild.LinkRow(Walk, true);

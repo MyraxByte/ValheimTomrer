@@ -445,6 +445,9 @@ namespace ValheimTomrer.Dev
             Default(EditorConfig.FavouritePieces);
             Default(EditorConfig.LayersOpen);
             Default(EditorConfig.InspectorOpen);
+            Default(EditorConfig.GridStep);
+            Default(EditorConfig.AngleStep);
+            Default(EditorConfig.SnapPoints);
             PieceMemory.Reset();
             Keymap.ResetAll();
             Keymap.SetPreset(Keymap.Presets[0]);

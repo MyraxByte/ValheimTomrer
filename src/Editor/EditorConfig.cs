@@ -51,6 +51,15 @@ namespace ValheimTomrer.Editor
         /// <summary>The Inspector card (blueprint, selection, problems).</summary>
         public static ConfigEntry<bool> InspectorOpen;
 
+        /// <summary>The placing grid in metres, 0 for none. The snap bar's Grid button writes this.</summary>
+        public static ConfigEntry<float> GridStep;
+
+        /// <summary>Degrees per turn step: R, the wheel, the pad. The snap bar's Angle button writes this.</summary>
+        public static ConfigEntry<float> AngleStep;
+
+        /// <summary>Use the pieces' snap points. The snap bar's Points button writes this.</summary>
+        public static ConfigEntry<bool> SnapPoints;
+
         /// <summary>Dark or Light. The top bar's theme button writes this.</summary>
         public static ConfigEntry<EditorTheme> Theme;
 
@@ -118,6 +127,31 @@ namespace ValheimTomrer.Editor
                 "InspectorOpen",
                 true,
                 "Show the Inspector card (blueprint, selection, problems) on the right. Alt+2 or the Inspector button.");
+
+            GridStep = config.Bind(
+                "Editor",
+                "GridStep",
+                0f,
+                new ConfigDescription(
+                    "A placing grid in metres, 0 for none. A piece that snaps to no snap point lands on the grid, "
+                    + "and the arrow keys move this far. Alt+G or the snap bar's Grid button change it.",
+                    new AcceptableValueList<float>(0f, 0.25f, 0.5f, 1f, 2f, 4f)));
+
+            AngleStep = config.Bind(
+                "Editor",
+                "AngleStep",
+                22.5f,
+                new ConfigDescription(
+                    "Degrees per turn: R, the wheel and the pad. 22.5 is the game's. Alt+R or the snap bar's "
+                    + "Angle button change it.",
+                    new AcceptableValueList<float>(5f, 15f, 22.5f, 45f, 90f)));
+
+            SnapPoints = config.Bind(
+                "Editor",
+                "SnapPoints",
+                true,
+                "Snap to the pieces' snap points, like the game. Off: only the grid (if any). Shift held turns all "
+                + "snapping off for a moment. Alt+S or the snap bar's Points button change it.");
 
             Input.Keymap.Bind(config);
 

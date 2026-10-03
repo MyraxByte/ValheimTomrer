@@ -40,6 +40,7 @@ namespace ValheimTomrer.Dev
             yield return RedesignWindows();
             RedesignHideLock(document);
             RedesignShapes(document);
+            RedesignSnapping(document);
             EditorSession.Close();
         }
 
@@ -271,6 +272,50 @@ namespace ValheimTomrer.Dev
             var kind = document.Pieces[0].PrefabName;
             var same = document.Pieces.Count(p => p.PrefabName == kind);
             Check(EditorState.SelectionCount == same, $"Same kind selects all {same} pieces of the first one's kind");
+            EditorState.Select(new int[0]);
+        }
+
+        /// <summary>The grid rounds a free spot, the arrows move a grid step, the turn step changes R, snap points switch off.</summary>
+        private static void RedesignSnapping(BlueprintDocument document)
+        {
+            EditorCommands.CycleGrid();
+            Check(Mathf.Approximately(EditorState.GridStep, 0.25f), $"Alt+G's first step is a 0.25 m grid: {EditorState.GridStep}");
+            EditorCommands.CycleGrid();
+            Check(Mathf.Approximately(EditorState.GridStep, 0.5f), "and the next 0.5 m");
+
+            var wall = PieceCatalog.Find("woodwall");
+            if (wall != null && EditorSession.Document != null)
+            {
+                EditorSession.StartAdd(wall);
+                var aimed = EditorState.Aim(new Vector3(103.13f, 20f, 97.41f), Vector3.down, out var result);
+                Check(aimed && result.GridSnapped
+                    && Mathf.Abs(result.Pos.x / 0.5f - Mathf.Round(result.Pos.x / 0.5f)) < 1e-3f
+                    && Mathf.Abs(result.Pos.z / 0.5f - Mathf.Round(result.Pos.z / 0.5f)) < 1e-3f,
+                    $"a wall aimed at bare ground lands on the 0.5 m grid: {(result != null ? result.Pos.ToString("F3") : "no hit")}");
+                EditorState.CancelMode();
+            }
+
+            var id = document.Pieces[0].Id;
+            EditorState.Select(id);
+            var at = document.Find(id).Position;
+            Bindings.Press(KeyCode.UpArrow, KeyMods.None);
+            var moved = document.Find(id).Position - at;
+            Check(Mathf.Abs(new Vector2(moved.x, moved.z).magnitude - 0.5f) < 1e-3f, $"with a grid the arrows move one grid step: {moved.magnitude:0.###} m");
+            EditorState.Undo();
+
+            EditorCommands.CycleAngle();
+            Check(Mathf.Approximately(EditorState.AngleStep, 45f), $"Alt+R's next turn step is 45 degrees: {EditorState.AngleStep}");
+            var yaw = SelectionPanel.YawOf(document.Find(id).Rotation);
+            Bindings.Press(KeyCode.R, KeyMods.None);
+            var turned = SelectionPanel.YawOf(document.Find(id).Rotation);
+            Check(Mathf.Abs(Mathf.DeltaAngle(yaw + 45f, turned)) < 0.01f, $"and R turns 45 degrees: {yaw:0.#} -> {turned:0.#}");
+            EditorState.Undo();
+
+            EditorCommands.ToggleSnapPoints();
+            Check(!EditorConfig.SnapPoints.Value, "Alt+S switches the snap points off");
+            EditorCommands.ToggleSnapPoints();
+            EditorConfig.GridStep.Value = 0f;
+            EditorConfig.AngleStep.Value = 22.5f;
             EditorState.Select(new int[0]);
         }
 

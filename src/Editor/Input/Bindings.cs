@@ -378,6 +378,15 @@ namespace ValheimTomrer.Editor.Input
                 case Act.Commands:
                     Dialogs.Commands();
                     return true;
+                case Act.CycleGrid:
+                    EditorCommands.CycleGrid();
+                    return true;
+                case Act.CycleAngle:
+                    EditorCommands.CycleAngle();
+                    return true;
+                case Act.ToggleSnapPoints:
+                    EditorCommands.ToggleSnapPoints();
+                    return true;
                 default:
                     return false;
             }
@@ -694,7 +703,8 @@ namespace ValheimTomrer.Editor.Input
         /// <summary>One nudge: 0.5 m, with Alt 0.1 m, with Shift four times as far (2 m), like Shift + arrow in Figma.</summary>
         private static float Step()
         {
-            return (Mods & KeyMods.Alt) != 0 ? NudgeFine : (Mods & KeyMods.Shift) != 0 ? NudgeStep * 4f : NudgeStep;
+            var step = EditorState.GridStep > 0f ? EditorState.GridStep : NudgeStep;
+            return (Mods & KeyMods.Alt) != 0 ? NudgeFine : (Mods & KeyMods.Shift) != 0 ? step * 4f : step;
         }
 
         /// <summary>1 while any key of the fly action is held, else 0.</summary>

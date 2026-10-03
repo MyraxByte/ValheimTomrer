@@ -22,6 +22,18 @@ namespace ValheimTomrer.Editor.Placement
         /// <summary>Tomrer's own step 6.</summary>
         public bool Assist;
 
+        /// <summary>Degrees per turn step. 0 means the game's 22.5.</summary>
+        public float AngleStep;
+
+        /// <summary>
+        /// The editor's grid in metres, 0 for none. When no snap point snapped, the spot is rounded to
+        /// it along x and z, so free pieces line up. The height stays the touch rule's.
+        /// </summary>
+        public float Grid;
+
+        /// <summary>True: the snap points are not used (steps 4 to 6), only the grid. Off by default.</summary>
+        public bool NoSnapPoints;
+
         /// <summary>Snapping on, automatic snap point, assist on: what the editor normally wants.</summary>
         public static PlaceOptions Default => new PlaceOptions { Manual = -1, Snapping = true, Assist = true };
     }
@@ -58,6 +70,9 @@ namespace ValheimTomrer.Editor.Placement
 
         /// <summary>It lands on a piece of the same kind: draw it red, a click does nothing.</summary>
         public bool Duplicate;
+
+        /// <summary>The spot was rounded to the editor's grid.</summary>
+        public bool GridSnapped;
 
         /// <summary>The moving set's snap points where they end up.</summary>
         public Vector3[] MovingSnaps;
@@ -155,7 +170,8 @@ namespace ValheimTomrer.Editor.Placement
             // 1. where the ray landed. The game flattens the normal on terrain.
             var point = hit.Point;
             var normal = hit.Terrain ? Vector3.up : hit.Normal;
-            var rot = Quaternion.Euler(0f, RotateStep * (moving.CanRotate ? opts.Steps : 0), 0f);
+            var step = opts.AngleStep > 0f ? opts.AngleStep : RotateStep;
+            var rot = Quaternion.Euler(0f, step * (moving.CanRotate ? opts.Steps : 0), 0f);
             var manual = WrapManual(opts.Manual, moving.Snaps.Count);
             var manualOffset = manual >= 0 ? rot * -moving.Snaps[manual].Local : Vector3.zero;
             var single = moving.Single;
@@ -213,7 +229,7 @@ namespace ValheimTomrer.Editor.Placement
                 ManualName = manual >= 0 ? moving.Snaps[manual].Name : null,
             };
 
-            if (opts.Snapping)
+            if (opts.Snapping && !opts.NoSnapPoints)
             {
                 var bestD = float.PositiveInfinity;
                 var count = moving.Snaps.Count;
@@ -277,6 +293,14 @@ namespace ValheimTomrer.Editor.Placement
                     result.SnapPiece = spot.Piece;
                     pos = spot.Pos;
                 }
+            }
+
+            // The editor's grid: a spot no snap point took is rounded along the ground axes.
+            if (opts.Snapping && opts.Grid > 0f && !result.Snapped)
+            {
+                pos.x = Mathf.Round(pos.x / opts.Grid) * opts.Grid;
+                pos.z = Mathf.Round(pos.z / opts.Grid) * opts.Grid;
+                result.GridSnapped = true;
             }
 
             result.Pos = pos;

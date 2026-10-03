@@ -1,3 +1,4 @@
+using System;
 using System.IO;
 using System.Linq;
 using UnityEngine;
@@ -299,6 +300,35 @@ namespace ValheimTomrer.Editor
             EditorConfig.Theme.Value = dark ? EditorTheme.Dark : EditorTheme.Light;
             EditorSession.Retheme();
             Toasts.Info(dark ? "Dark theme." : "Light theme.");
+        }
+
+        private static readonly float[] Grids = { 0f, 0.25f, 0.5f, 1f, 2f, 4f };
+        private static readonly float[] Angles = { 22.5f, 45f, 90f, 5f, 15f };
+
+        /// <summary>The next placing grid: off, 0.25, 0.5, 1, 2, 4 m, off.</summary>
+        public static void CycleGrid()
+        {
+            var now = EditorState.GridStep;
+            var next = Grids[(Array.FindIndex(Grids, g => Mathf.Approximately(g, now)) + 1) % Grids.Length];
+            EditorConfig.GridStep.Value = next;
+            Toasts.Info(next > 0f ? $"Grid {next:0.##} m: free pieces land on it, arrows move this far." : "Grid off.");
+        }
+
+        /// <summary>The next turn step: 22.5 (the game's), 45, 90, 5, 15 degrees.</summary>
+        public static void CycleAngle()
+        {
+            var now = EditorState.AngleStep;
+            var next = Angles[(Array.FindIndex(Angles, a => Mathf.Approximately(a, now)) + 1) % Angles.Length];
+            EditorConfig.AngleStep.Value = next;
+            Toasts.Info($"Turn {next:0.##} degrees a step.");
+        }
+
+        /// <summary>Snap points on or off. The grid, when on, still works.</summary>
+        public static void ToggleSnapPoints()
+        {
+            var on = !EditorConfig.SnapPoints.Value;
+            EditorConfig.SnapPoints.Value = on;
+            Toasts.Info(on ? "Snap points on." : "Snap points off: pieces go where you aim" + (EditorState.GridStep > 0f ? ", on the grid." : "."));
         }
 
         /// <summary>A view switch is kept, so the editor opens the way it was left.</summary>

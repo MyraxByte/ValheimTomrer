@@ -229,6 +229,9 @@ layout and has no setting.
 | Shift + H, Shift + V | Mirror the selection along X or Z |
 | Ctrl + Shift + D | Copy the selection right next to it. Press again for the next one in the row. |
 | Ctrl + K | Search every command by name and run it. The Commands button does the same. |
+| Alt + G | Placing grid: off, 0.25, 0.5, 1, 2, 4 m. A piece that snaps to nothing lands on the grid, and the arrow keys move one grid step. |
+| Alt + R | Turn step: 22.5° (the game's), 45°, 90°, 5°, 15° |
+| Alt + S | Snap points on or off. The grid still works. Shift held turns all snapping off for a moment. |
 | Tab | Quick add: the list of pieces over the view. Type to search, click a piece to place it, right click stars it. Tab or Esc closes it. |
 | Alt + 1, Alt + 2 | Fold the Layers card (left) or the Inspector card (right) in or out |
 | Ctrl + \ | Hide the whole interface and keep the view. The same keys, or Esc, bring it back. |
@@ -312,6 +315,9 @@ you can change it in the game (F1).
 | Editor | `SnapDots` | `true` | Shows the snap points while you place a piece. Snapping works either way. |
 | Editor | `Boxes` | `false` | Draws pieces as plain boxes instead of models |
 | Keys | `Preset` and one setting per action | `Tomrer` | Which keys the editor starts from (`Tomrer`, `Figma`, `Blender`). A setting per action replaces its keys: empty uses the preset's, `none` removes the key, or a list such as `Ctrl+Z, Ctrl+Y`. The Keys window writes these. |
+| Editor | `GridStep` | `0` | Placing grid in metres (0, 0.25, 0.5, 1, 2, 4). 0 is no grid. |
+| Editor | `AngleStep` | `22.5` | Degrees per turn step (5, 15, 22.5, 45, 90) |
+| Editor | `SnapPoints` | `true` | Snap to the pieces' snap points, like the game |
 | Editor | `Theme` | `Dark` | `Dark` or `Light`, the editor's look. The Light / Dark button in the editor changes it. |
 | Editor | `LayersOpen` | `false` | The Layers card on the left (the pieces of the blueprint). Alt + 1 or the Layers button. |
 | Editor | `InspectorOpen` | `true` | The Inspector card on the right (blueprint, selection, problems). Alt + 2 or the Inspector button. |
@@ -319,7 +325,7 @@ you can change it in the game (F1).
 | Build | `UseChests` | `true` | Takes materials from nearby chests too, not only from your inventory |
 | Build | `ChestRange` | `20` | How close a chest must be, in metres (0 to 100) |
 
-The Boxes and Snap dots buttons in the editor change these settings too. The controller buttons
+The snap bar under the editor's top bar (Grid, Turn, Snap points, Dots, Boxes) changes these settings too. The controller buttons
 follow the game's controller layout.
 
 ## Blueprint files

@@ -41,7 +41,7 @@ namespace ValheimTomrer.Editor.Ui
         private const float Away = 6000f;   // how far a folded card slides
 
         /// <summary>How far down from the top of the screen the free view starts. Text drawn over the view keeps below it.</summary>
-        public const float TopInset = TopBarHeight + 6f;
+        public const float TopInset = TopBarHeight + 52f;
 
         /// <summary>Clearance for the hint row along the bottom of the view.</summary>
         public const float BottomInset = 44f;
