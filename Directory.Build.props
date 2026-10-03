@@ -1,16 +1,25 @@
 <Project>
 
   <!--
-    Resolves the local Valheim install. Override by exporting VALHEIM_INSTALL,
-    or by passing -p:ValheimInstall=... to dotnet build.
-    macOS note: game assemblies live in valheim.app/Contents/Resources/Data/Managed,
-    NOT valheim_Data/Managed as on Windows/Linux.
+    Finds the local Valheim install. In order:
+      1. -p:ValheimInstall=... on the command line
+      2. the VALHEIM_INSTALL environment variable
+      3. Directory.Build.props.user next to this file (git ignores it), for example:
+           <Project><PropertyGroup><ValheimInstall>D:\SteamLibrary\steamapps\common\Valheim</ValheimInstall></PropertyGroup></Project>
+      4. the default Steam folder of the OS.
+    The game's assemblies are in valheim_Data/Managed on Windows and Linux, but in
+    valheim.app/Contents/Resources/Data/Managed on macOS.
   -->
+  <Import Project="Directory.Build.props.user" Condition="Exists('$(MSBuildThisFileDirectory)Directory.Build.props.user')" />
+
   <PropertyGroup>
     <ValheimInstall Condition="'$(ValheimInstall)' == '' and '$(VALHEIM_INSTALL)' != ''">$(VALHEIM_INSTALL)</ValheimInstall>
-    <ValheimInstall Condition="'$(ValheimInstall)' == ''">$(HOME)/Library/Application Support/Steam/steamapps/common/Valheim</ValheimInstall>
+    <ValheimInstall Condition="'$(ValheimInstall)' == '' and $([MSBuild]::IsOSPlatform('Windows'))">$(MSBuildProgramFiles32)\Steam\steamapps\common\Valheim</ValheimInstall>
+    <ValheimInstall Condition="'$(ValheimInstall)' == '' and $([MSBuild]::IsOSPlatform('OSX'))">$(HOME)/Library/Application Support/Steam/steamapps/common/Valheim</ValheimInstall>
+    <ValheimInstall Condition="'$(ValheimInstall)' == ''">$(HOME)/.local/share/Steam/steamapps/common/Valheim</ValheimInstall>
 
-    <ValheimManaged>$(ValheimInstall)/valheim.app/Contents/Resources/Data/Managed</ValheimManaged>
+    <ValheimManaged Condition="$([MSBuild]::IsOSPlatform('OSX'))">$(ValheimInstall)/valheim.app/Contents/Resources/Data/Managed</ValheimManaged>
+    <ValheimManaged Condition="'$(ValheimManaged)' == ''">$(ValheimInstall)/valheim_Data/Managed</ValheimManaged>
     <BepInExDir>$(ValheimInstall)/BepInEx</BepInExDir>
   </PropertyGroup>
 
