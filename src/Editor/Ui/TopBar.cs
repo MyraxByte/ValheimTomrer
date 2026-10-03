@@ -15,8 +15,8 @@ namespace ValheimTomrer.Editor.Ui
     internal static class TopBar
     {
         private const float Height = 30f;
-        private const float BrandWidth = 190f;
-        private const float FileWidth = 260f;
+        private const float BrandWidth = 150f;
+        private const float FileWidth = 200f;
         private const float Edge = 8f;
 
         private static RectTransform _host;
@@ -35,6 +35,9 @@ namespace ValheimTomrer.Editor.Ui
         private static TextMeshProUGUI _boxes;
         private static TextMeshProUGUI _dots;
         private static TextMeshProUGUI _night;
+        private static TextMeshProUGUI _layers;
+        private static TextMeshProUGUI _inspector;
+        private static TextMeshProUGUI _add;
 
         /// <summary>Every button in the bar, in the order the pad walks them.</summary>
         private static readonly List<Selectable> Walk = new List<Selectable>();
@@ -98,6 +101,9 @@ namespace ValheimTomrer.Editor.Ui
             _boxes.color = EditorState.PieceBoxesOn ? UiTheme.Accent : UiTheme.Text;
             _dots.color = EditorState.SnapDotsOn ? UiTheme.Accent : UiTheme.Text;
             _night.color = UiTheme.Night ? UiTheme.Accent : UiTheme.Text;
+            _layers.color = EditorWindow.LayersOpen ? UiTheme.Accent : UiTheme.Text;
+            _inspector.color = EditorWindow.InspectorOpen ? UiTheme.Accent : UiTheme.Text;
+            _add.color = QuickAdd.IsOpen ? UiTheme.Accent : UiTheme.Text;
 
             var busy = EditorCommands.Busy;
             _busy.gameObject.SetActive(busy != null);
@@ -133,7 +139,7 @@ namespace ValheimTomrer.Editor.Ui
             _root = UiBuild.Rect("TopBarContent", host);
             UiBuild.Stretch(_root, Edge, 0f, Edge, 0f);
 
-            var brand = UiBuild.Label("Brand", _root, "Valheim Tømrer", 22f,
+            var brand = UiBuild.Label("Brand", _root, "Valheim Tømrer", 18f,
                 TextAlignmentOptions.Left, UiTheme.Accent);
             Pin(brand.rectTransform, 0f, BrandWidth);
 
@@ -168,6 +174,13 @@ namespace ValheimTomrer.Editor.Ui
             _undo = Add(row, "Undo", () => EditorState.Undo());
             _redo = Add(row, "Redo", () => EditorState.Redo());
             _center = Add(row, "Center origin", EditorCommands.CenterOrigin);
+
+            Gap(row);
+            _add = Add(row, "Add (Tab)", QuickAdd.Toggle).GetComponentInChildren<TextMeshProUGUI>();
+            _layers = Add(row, "Layers", () => EditorWindow.SetLayers(!EditorWindow.LayersOpen))
+                .GetComponentInChildren<TextMeshProUGUI>();
+            _inspector = Add(row, "Inspector", () => EditorWindow.SetInspector(!EditorWindow.InspectorOpen))
+                .GetComponentInChildren<TextMeshProUGUI>();
 
             Gap(row);
             _boxes = Add(row, "Boxes", EditorCommands.ToggleBoxes)

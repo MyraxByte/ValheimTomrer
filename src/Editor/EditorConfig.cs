@@ -39,6 +39,18 @@ namespace ValheimTomrer.Editor
         /// <summary>Pieces as wire boxes instead of models. The top bar's Boxes button writes this.</summary>
         public static ConfigEntry<bool> Boxes;
 
+        /// <summary>Pieces used last, prefab names, newest first. Written by <see cref="PieceMemory"/>.</summary>
+        public static ConfigEntry<string> RecentPieces;
+
+        /// <summary>Starred pieces, prefab names. Written by <see cref="PieceMemory"/>.</summary>
+        public static ConfigEntry<string> FavouritePieces;
+
+        /// <summary>The Layers card (the pieces of the blueprint). Closed by default: the view comes first.</summary>
+        public static ConfigEntry<bool> LayersOpen;
+
+        /// <summary>The Inspector card (blueprint, selection, problems).</summary>
+        public static ConfigEntry<bool> InspectorOpen;
+
         /// <summary>Day or Night. The top bar's Night button writes this.</summary>
         public static ConfigEntry<EditorTheme> Theme;
 
@@ -82,6 +94,30 @@ namespace ValheimTomrer.Editor
                 EditorTheme.Day,
                 "Day is the game's own wood and a light pane. Night dims the panels, and the 3D pane gets a dark "
                 + "sky, ground and grid, easier on the eyes in a dark room.");
+
+            RecentPieces = config.Bind(
+                "Editor",
+                "RecentPieces",
+                "",
+                "Pieces you used last, as prefab names. Kept by the editor, shown first in Quick add (Tab).");
+
+            FavouritePieces = config.Bind(
+                "Editor",
+                "FavouritePieces",
+                "",
+                "Pieces you starred (right click a tile in Quick add), as prefab names.");
+
+            LayersOpen = config.Bind(
+                "Editor",
+                "LayersOpen",
+                false,
+                "Show the Layers card (the pieces of the open blueprint) on the left. Alt+1 or the Layers button.");
+
+            InspectorOpen = config.Bind(
+                "Editor",
+                "InspectorOpen",
+                true,
+                "Show the Inspector card (blueprint, selection, problems) on the right. Alt+2 or the Inspector button.");
 
             // Settings the mod no longer has. The mouse and the right stick follow the game's own
             // sensitivity settings, and the camera has one mode.

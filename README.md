@@ -210,7 +210,10 @@ your forsaken power, zoom or jump, and L2 + △ doesn't open the inventory.
 | F | Look at the selection, or at everything |
 | Ctrl + S | Save |
 | H, ? | Help, with these tables |
-| Tab, Shift + Tab | Move between the buttons and panels without the mouse. Arrow keys step, Enter presses. |
+| Tab | Quick add: the list of pieces over the view. Type to search, click a piece to place it, right click stars it. Tab or Esc closes it. |
+| Alt + 1, Alt + 2 | Fold the Layers card (left) or the Inspector card (right) in or out |
+| Ctrl + \ | Hide the whole interface and keep the view. The same keys, or Esc, bring it back. |
+| F6, Shift + F6 | Move between the buttons and cards without the mouse. Arrow keys step, Enter presses. |
 | Esc | Go back one step, for example stop typing, close a window or put away the piece in your hand. When there is nothing left, it closes the editor. |
 
 On a Mac, Cmd works everywhere Ctrl does.
@@ -235,7 +238,8 @@ The controller works from the crosshair in the middle of the 3D view.
 | L1 (LB), held | No snapping |
 | L3, R3 while placing | Change the snap point |
 | R3 | Look at the selection |
-| × (A) | Pieces menu: D-pad picks, L1 and R1 change the tab, × places, ○ closes |
+| × (A) | Pieces menu (the pad's Quick add): D-pad picks, L1 and R1 change the tab, × places, ○ closes |
+| L2 (LT) + L3 | Hide the interface and keep the view, or bring it back |
 | □ (X) | Move the piece under the crosshair. R2 drops it. |
 | △ (Y) | Copy it. It keeps making copies until you press ○. |
 | R1 (RB) | Delete it |
@@ -253,7 +257,7 @@ Buttons and panels:
 |---|---|
 | L3 (LS), nothing in hand | Go to the buttons and panels. An orange ring shows where you are. |
 | D-pad, left stick | Move the ring |
-| L1 (LB), R1 (RB) | Next panel: top bar, left, right |
+| L1 (LB), R1 (RB) | Next card: top bar, Layers, Inspector. A folded card is skipped. |
 | × (A) | Press what the ring is on. On a text box, start typing. |
 | Right stick up, down | Scroll the panel, for example a long materials list |
 | ○ (B) | Back to the 3D view. In a text box, stop typing first. |
@@ -264,8 +268,8 @@ Windows like Blueprints and Save as, and every question, put the ring on themsel
 they open: the D-pad moves, × picks, ○ closes. In Save as the name box is selected but not typing,
 so down and × saves with the name shown. Press × on the box to type a new one.
 
-The rows in the piece grid, the In blueprint list and the Checks list can't be picked with the
-pad. Use the pieces menu (×) to place pieces.
+The rows in the Layers list and the Checks list can't be picked with the pad. Use the pieces menu
+(×) to place pieces.
 
 </details>
 
@@ -285,6 +289,10 @@ you can change it in the game (F1).
 | Editor | `ShowAllPieces` | `false` | Shows every piece in the editor, not only the ones you have unlocked |
 | Editor | `SnapDots` | `true` | Shows the snap points while you place a piece. Snapping works either way. |
 | Editor | `Boxes` | `false` | Draws pieces as plain boxes instead of models |
+| Editor | `Theme` | `Day` | `Day` or `Night`. Night dims the panels and gives the 3D view a dark sky, ground and grid. The Night button in the editor changes it. |
+| Editor | `LayersOpen` | `false` | The Layers card on the left (the pieces of the blueprint). Alt + 1 or the Layers button. |
+| Editor | `InspectorOpen` | `true` | The Inspector card on the right (blueprint, selection, problems). Alt + 2 or the Inspector button. |
+| Editor | `RecentPieces`, `FavouritePieces` | empty | Kept by the editor: the pieces you used last and the ones you starred. Quick add shows them first. |
 | Build | `UseChests` | `true` | Takes materials from nearby chests too, not only from your inventory |
 | Build | `ChestRange` | `20` | How close a chest must be, in metres (0 to 100) |
 

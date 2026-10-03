@@ -92,7 +92,12 @@ namespace ValheimTomrer.Editor
             }
 
             ViewportHost.Tick();
-            Palette.Tick();
+            if (QuickAdd.IsOpen)
+            {
+                Palette.Tick();
+            }
+
+            QuickAdd.Tick();
             PiecePicker.Tick();
             PieceListPanel.Tick();
             BlueprintPanel.Tick();
@@ -286,9 +291,17 @@ namespace ValheimTomrer.Editor
                 ViewportHost.Wake();
             }
 
+            // The palette measures its text while it builds, and a switched-off popup measures
+            // nothing: it is on for this and folded away right after.
+            EditorWindow.PopupHost.SetActive(true);
             Palette.Ensure(EditorWindow.PalettePane);
             Palette.Show();
-            Palette.PieceChosen = StartAdd;
+            Palette.PieceChosen = piece =>
+            {
+                StartAdd(piece);
+                QuickAdd.Close();
+            };
+            QuickAdd.Close();
             PiecePicker.Ensure(EditorWindow.Root);
             PiecePicker.PieceChosen = StartAdd;
             PieceListPanel.Ensure(EditorWindow.PieceListPane);
@@ -332,6 +345,7 @@ namespace ValheimTomrer.Editor
 
             // A box that has the keyboard lets go of it. The walk itself stays where it is.
             FocusNav.StopTyping();
+            QuickAdd.Close();
             ViewportHost.Sleep();
             PiecePicker.PieceChosen = null;
             Palette.PieceChosen = null;
@@ -375,6 +389,7 @@ namespace ValheimTomrer.Editor
         {
             if (EditorState.StartAdd(entry))
             {
+                PieceMemory.Use(entry.PrefabName);
                 Palette.Selected = entry;
             }
         }

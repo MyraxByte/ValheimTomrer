@@ -46,6 +46,9 @@ namespace ValheimTomrer.Editor.Ui
 
         /// <summary>The panel interiors: the game's wood at 70 per cent, so light text still reads.</summary>
         public static Color PanelInterior => Night ? new Color(0.36f, 0.36f, 0.38f, 1f) : new Color(0.70f, 0.70f, 0.70f, 1f);
+        /// <summary>The floating cards: the panel tint, a little see-through so the view shows at the edges.</summary>
+        public static Color PanelFloat => Night ? new Color(0.36f, 0.36f, 0.38f, 0.94f) : new Color(0.70f, 0.70f, 0.70f, 0.94f);
+
         public static Color Viewport => Night ? new Color(0.03f, 0.04f, 0.05f, 0.98f) : new Color(0.06f, 0.07f, 0.09f, 0.96f);
 
         /// <summary>True when the player picked the Night theme. Read live, so a switch shows at the next build of the window.</summary>

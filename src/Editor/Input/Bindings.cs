@@ -56,6 +56,7 @@ namespace ValheimTomrer.Editor.Input
             KeyCode.UpArrow, KeyCode.DownArrow, KeyCode.LeftArrow, KeyCode.RightArrow,
             KeyCode.PageUp, KeyCode.PageDown, KeyCode.Delete, KeyCode.Backspace,
             KeyCode.Tab, KeyCode.Return, KeyCode.KeypadEnter,
+            KeyCode.F6, KeyCode.Backslash, KeyCode.Alpha1, KeyCode.Alpha2,
         };
 
         private static readonly HashSet<KeyCode> Held = new HashSet<KeyCode>();
@@ -99,7 +100,7 @@ namespace ValheimTomrer.Editor.Input
                 return;
             }
 
-            if (Dialogs.IsOpen || PiecePicker.IsOpen || FocusNav.Active)
+            if (Dialogs.IsOpen || PiecePicker.IsOpen || FocusNav.Active || QuickAdd.IsOpen)
             {
                 // A dialog, the piece menu and the walk still read keys, but nothing flies behind
                 // them. A dialog only ever gets Tab, the arrows and Enter, through the walk.
@@ -166,8 +167,32 @@ namespace ValheimTomrer.Editor.Input
                 return true;
             }
 
-            // Tab opens the panel walk and steps through it, Shift+Tab steps back.
+            // Quick add has the keyboard while it is up. Tab closes it, and any other key that did not
+            // reach the search box puts the keyboard back in it, so the next letters are typed.
+            if (QuickAdd.IsOpen)
+            {
+                if (key == KeyCode.Tab)
+                {
+                    QuickAdd.Close();
+                }
+                else
+                {
+                    Palette.FocusSearch();
+                }
+
+                return true;
+            }
+
+            // Tab opens Quick add, the list of pieces to add. From the walk it leaves the walk first.
             if (key == KeyCode.Tab)
+            {
+                FocusNav.Leave();
+                QuickAdd.Open();
+                return true;
+            }
+
+            // F6 opens the panel walk and steps through it, Shift+F6 steps back.
+            if (key == KeyCode.F6)
             {
                 if (FocusNav.Active)
                 {
@@ -306,6 +331,11 @@ namespace ValheimTomrer.Editor.Input
                 return true;
             }
 
+            if (QuickAdd.Close())
+            {
+                return true;
+            }
+
             if (PiecePicker.Close())
             {
                 return true;
@@ -331,6 +361,13 @@ namespace ValheimTomrer.Editor.Input
             if (EditorState.SelectionCount > 0)
             {
                 EditorState.Select(Array.Empty<int>());
+                return true;
+            }
+
+            // The interface was hidden: Esc brings it back before it closes the editor.
+            if (EditorWindow.UiHidden)
+            {
+                EditorWindow.SetUiHidden(false);
                 return true;
             }
 
@@ -373,6 +410,9 @@ namespace ValheimTomrer.Editor.Input
                     return true;
                 case KeyCode.S:
                     EditorCommands.Save();
+                    return true;
+                case KeyCode.Backslash:
+                    EditorWindow.SetUiHidden(!EditorWindow.UiHidden);
                     return true;
                 default:
                     return false;
@@ -511,6 +551,24 @@ namespace ValheimTomrer.Editor.Input
 
                     EditorState.SetManualSnap(EditorState.Manual + (key == KeyCode.Q ? -1 : 1));
                     return true;
+                case KeyCode.Alpha1:
+                case KeyCode.Alpha2:
+                    // Alt+1 folds the Layers card, Alt+2 the Inspector. The digits on their own are free.
+                    if ((Mods & KeyMods.Alt) == 0)
+                    {
+                        return false;
+                    }
+
+                    if (key == KeyCode.Alpha1)
+                    {
+                        EditorWindow.SetLayers(!EditorWindow.LayersOpen);
+                    }
+                    else
+                    {
+                        EditorWindow.SetInspector(!EditorWindow.InspectorOpen);
+                    }
+
+                    return true;
                 case KeyCode.H:
                 case KeyCode.Question:
                     Dialogs.Help();
@@ -611,7 +669,11 @@ namespace ValheimTomrer.Editor.Input
             new HelpRow("C", "Hold the mouse in the pane, so it looks around like flying in the game. "
                 + "Esc gives the cursor back."),
             new HelpRow("Ctrl+A", "Select all"),
-            new HelpRow("Pieces tab, click a piece", "Place it: it follows the mouse, click to place, Esc to stop"),
+            new HelpRow("Tab",
+                "Quick add: the list of pieces over the view. Type to search, click a piece to place it "
+                + "(it follows the mouse, click to place, Esc to stop), right click stars it. Tab or Esc closes it."),
+            new HelpRow("Alt+1, Alt+2", "Fold the Layers card (left) or the Inspector card (right) in or out"),
+            new HelpRow("Ctrl+\\", "Hide the whole interface and keep the view. The same keys or Esc bring it back"),
             new HelpRow("G", "Move the selection: it follows the mouse, click to drop, Esc to cancel"),
             new HelpRow("Ctrl+D", "Duplicate: the copy follows the mouse, and copies keep coming until Esc"),
             new HelpRow("R, Shift+R", "Turn 22.5 degrees: the piece in hand, else the selection"),
@@ -624,8 +686,8 @@ namespace ValheimTomrer.Editor.Input
             new HelpRow("F", "Look at the selection, or at everything"),
             new HelpRow("Ctrl+S", "Save"),
             new HelpRow("H, ?", "This help"),
-            new HelpRow("Tab, Shift+Tab",
-                "Walk the top bar and the two side panels, on and back. In a dialog it walks "
+            new HelpRow("F6, Shift+F6",
+                "Walk the top bar and the two cards, on and back. In a dialog Tab walks "
                 + "what the dialog holds."),
             new HelpRow("Arrows, Enter (while walking)",
                 "Step to the widget above, below, left or right, and press it. A text box starts "

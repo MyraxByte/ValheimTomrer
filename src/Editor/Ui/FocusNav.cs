@@ -133,6 +133,11 @@ namespace ValheimTomrer.Editor.Ui
                 return;
             }
 
+            if (QuickAdd.IsOpen)
+            {
+                return;
+            }
+
             // The window opens with a vanilla build-menu button selected. It has to let go, or the
             // game's own input module presses it on the first cross or Enter.
             Deselect();
@@ -851,10 +856,10 @@ namespace ValheimTomrer.Editor.Ui
         {
             switch (region)
             {
-                case FocusRegion.TopBar: return EditorWindow.TopBar;
-                case FocusRegion.Left: return EditorWindow.LeftPanel;
+                case FocusRegion.TopBar: return EditorWindow.UiHidden ? null : EditorWindow.TopBar;
+                case FocusRegion.Left: return EditorWindow.LeftShown ? EditorWindow.LeftPanel : null;
                 case FocusRegion.Dialog: return Dialogs.Modal;
-                default: return EditorWindow.RightPanel;
+                default: return EditorWindow.RightShown ? EditorWindow.RightPanel : null;
             }
         }
 

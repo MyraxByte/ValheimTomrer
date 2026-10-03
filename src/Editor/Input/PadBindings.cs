@@ -210,7 +210,12 @@ namespace ValheimTomrer.Editor.Input
             // 13. L3 and R3: the snap point while placing, else R3 frames the selection.
             var back = pad.Pressed(PadButton.L3);
             var next = pad.Pressed(PadButton.R3);
-            if (back || next)
+            if (back && l2 && !placing)
+            {
+                // L2 + L3: hide the interface and keep the view, or bring it back. Ctrl+\ on the keyboard.
+                EditorWindow.SetUiHidden(!EditorWindow.UiHidden);
+            }
+            else if (back || next)
             {
                 if (placing)
                 {
@@ -472,10 +477,11 @@ namespace ValheimTomrer.Editor.Input
                 new HelpRow($"{l3} (in the panels)",
                     $"{g.Dpad} or {g.Ls} moves up, down, left, right, {r1} goes left, top, right and {l1} back, "
                     + $"{cross} presses, {g.Rs} scrolls the panel, {circle} goes back to the view"),
+                new HelpRow($"{l2} + {l3}", "Hide the interface and keep the view, or bring it back. Like Ctrl+\\"),
                 new HelpRow($"{l3}, {r3} (while placing)", "Pick the snap point, like Q and E"),
                 new HelpRow($"{r3} (in the view)", "Look at the selection, or at everything"),
                 new HelpRow(cross,
-                    $"Pieces menu: {g.Dpad} to choose, {l1} {r1} for the tab, {cross} to place, {circle} to close"),
+                    $"Pieces menu, the pad's Quick add: {g.Dpad} to choose, {l1} {r1} for the tab, {cross} to place, {circle} to close"),
                 new HelpRow(circle,
                     "Stop placing, else leave the panels for the view, else clear the selection, "
                     + "else close the editor"),

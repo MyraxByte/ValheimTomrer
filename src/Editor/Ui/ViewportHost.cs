@@ -719,12 +719,14 @@ namespace ValheimTomrer.Editor.Ui
 
                 default:
                     _hints.Show(key,
+                        new Hint("add piece", HintIcon.Key("Tab")),
                         new Hint("select", HintIcon.Key("LMB")),
                         new Hint("look", HintIcon.Key("RMB")),
                         new Hint("pan", HintIcon.Key("MMB")),
                         new Hint("zoom", HintIcon.Key("Wheel")),
                         new Hint("fly", HintIcon.Key("W"), HintIcon.Key("A"), HintIcon.Key("S"), HintIcon.Key("D")),
                         new Hint("mouse look", HintIcon.Key("C")),
+                        new Hint("hide panels", HintIcon.Key("Ctrl"), HintIcon.Key("\\")),
                         new Hint("help", HintIcon.Key("H")));
                     return;
             }
@@ -1149,11 +1151,11 @@ namespace ValheimTomrer.Editor.Ui
 
             _placeLine = UiBuild.OverPicture(
                 UiBuild.Label("Placing", _image.rectTransform, "", 17f, TextAlignmentOptions.TopLeft, UiTheme.Accent));
-            Strip(_placeLine.rectTransform, true, 10f, 24f);
+            Strip(_placeLine.rectTransform, true, EditorWindow.TopInset + 4f, 24f);
 
             _stateLine = UiBuild.OverPicture(
                 UiBuild.Label("PlaceState", _image.rectTransform, "", 14f, TextAlignmentOptions.TopLeft, UiTheme.TextDim));
-            Strip(_stateLine.rectTransform, true, 36f, 20f);
+            Strip(_stateLine.rectTransform, true, EditorWindow.TopInset + 30f, 20f);
             _placeLine.gameObject.SetActive(false);
             _stateLine.gameObject.SetActive(false);
 

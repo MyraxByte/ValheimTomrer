@@ -19,7 +19,15 @@ namespace ValheimTomrer.Editor.Ui
     {
         private const float Pad = 10f;
         private const float Gap = 6f;
-        private const int Columns = 4;
+        private const float TileTarget = 74f;
+
+        /// <summary>The two tag chips that are not game tags: what was used last, and the starred.</summary>
+        public const string RecentKey = "@recent";
+
+        public const string FavouriteKey = "@favourite";
+
+        /// <summary>Tiles per row. Four in a narrow host, more in a wide one such as the Quick add popup.</summary>
+        private static int Columns = 4;
         private const float TileGap = 4f;
         private const float ChipHeight = 34f;
         private const float ChipGap = 4f;
@@ -154,6 +162,26 @@ namespace ValheimTomrer.Editor.Ui
             }
         }
 
+        /// <summary>Quick add was just shown: lay the grid out for the size it has now, and notice a new catalog.</summary>
+        public static void Reveal()
+        {
+            _lastWidth = -1f;
+            _lastHeight = -1f;
+            Tick();
+        }
+
+        /// <summary>Puts the keyboard in the search box, so typing finds a piece at once.</summary>
+        public static void FocusSearch()
+        {
+            if (_search == null || EventSystem.current == null)
+            {
+                return;
+            }
+
+            EventSystem.current.SetSelectedGameObject(_search.gameObject);
+            _search.ActivateInputField();
+        }
+
         public static void Close()
         {
             // The entries belong to the catalog of the world that is closing.
@@ -207,7 +235,7 @@ namespace ValheimTomrer.Editor.Ui
         /// <summary>The whole tab: chips, filter, layout, tiles.</summary>
         private static void Refresh()
         {
-            if (TagChips.Count != PieceCatalog.Tags.Count + 1)
+            if (TagChips.Count != PieceCatalog.Tags.Count + 3)
             {
                 BuildTagChips();
             }
@@ -228,6 +256,11 @@ namespace ValheimTomrer.Editor.Ui
                 }
             }
 
+            if (_tag == RecentKey)
+            {
+                Shown.Sort((a, b) => PieceMemory.RecentIndex(a.PrefabName).CompareTo(PieceMemory.RecentIndex(b.PrefabName)));
+            }
+
             if (_footer != null)
             {
                 _footer.text = $"{Shown.Count} of {PieceCatalog.Visible.Count} pieces.";
@@ -246,7 +279,21 @@ namespace ValheimTomrer.Editor.Ui
 
         private static bool Matches(PieceEntry entry)
         {
-            if (_tag != null && !HasTag(entry, _tag))
+            if (_tag == RecentKey)
+            {
+                if (PieceMemory.RecentIndex(entry.PrefabName) < 0)
+                {
+                    return false;
+                }
+            }
+            else if (_tag == FavouriteKey)
+            {
+                if (!PieceMemory.IsFavourite(entry.PrefabName))
+                {
+                    return false;
+                }
+            }
+            else if (_tag != null && !HasTag(entry, _tag))
             {
                 return false;
             }
@@ -352,6 +399,7 @@ namespace ValheimTomrer.Editor.Ui
             grid.offsetMin = new Vector2(0f, FooterHeight + Gap);
             grid.offsetMax = new Vector2(0f, -y);
 
+            Columns = Mathf.Clamp(Mathf.FloorToInt((width + TileGap) / (TileTarget + TileGap)), 4, 12);
             _tileSize = Mathf.Max(24f, (width - (Columns - 1) * TileGap) / Columns);
             _scroll.GetComponent<WheelScroll>().Step = 2f * (_tileSize + TileGap);
             var rows = Mathf.CeilToInt(Shown.Count / (float)Columns);
@@ -525,6 +573,8 @@ namespace ValheimTomrer.Editor.Ui
 
             TagChips.Clear();
             TagChips.Add(MakeChip(_tagRow, null, "All", () => SetTag(null), out _, out _));
+            TagChips.Add(MakeChip(_tagRow, RecentKey, "Recent", () => SetTag(_tag == RecentKey ? null : RecentKey), out _, out _));
+            TagChips.Add(MakeChip(_tagRow, FavouriteKey, "★ Starred", () => SetTag(_tag == FavouriteKey ? null : FavouriteKey), out _, out _));
             foreach (var tag in PieceCatalog.Tags)
             {
                 var key = tag;
@@ -699,6 +749,15 @@ namespace ValheimTomrer.Editor.Ui
             badge.rectTransform.sizeDelta = new Vector2(12f, 14f);
             badge.gameObject.SetActive(false);
 
+            var star = UiBuild.Label("Star", background.transform, "★", 13f, TextAlignmentOptions.Center, UiTheme.Accent);
+            star.rectTransform.anchorMin = new Vector2(0f, 1f);
+            star.rectTransform.anchorMax = new Vector2(0f, 1f);
+            star.rectTransform.pivot = new Vector2(0f, 1f);
+            star.rectTransform.anchoredPosition = new Vector2(2f, -1f);
+            star.rectTransform.sizeDelta = new Vector2(14f, 16f);
+            star.raycastTarget = false;
+            star.gameObject.SetActive(false);
+
             var tile = new Tile
             {
                 Rect = background.rectTransform,
@@ -706,6 +765,7 @@ namespace ValheimTomrer.Editor.Ui
                 Icon = icon,
                 Name = name,
                 Badge = badge,
+                Star = star,
             };
             background.gameObject.AddComponent<TileEvents>().Owner = tile;
             return tile;
@@ -746,17 +806,39 @@ namespace ValheimTomrer.Editor.Ui
             PieceChosen?.Invoke(tile.Entry);
         }
 
+        /// <summary>Right click on a tile: star it or take the star off. The test calls it without a mouse.</summary>
+        public static void ToggleStar(PieceEntry entry)
+        {
+            if (entry == null)
+            {
+                return;
+            }
+
+            var on = PieceMemory.ToggleFavourite(entry.PrefabName);
+            foreach (var tile in Pool)
+            {
+                tile.Refresh();
+            }
+
+            if (_tag == FavouriteKey)
+            {
+                Filter();
+            }
+
+            Toasts.Info(on ? $"Starred {entry.DisplayName}." : $"Unstarred {entry.DisplayName}.");
+        }
+
         /// <summary>Opens the card for a piece. The test calls it without a mouse.</summary>
         public static void ShowCard(PieceEntry entry, RectTransform near = null)
         {
-            if (entry == null || EditorWindow.LeftPanel == null)
+            if (entry == null || EditorWindow.Root == null)
             {
                 return;
             }
 
             if (_card == null || _card.Root == null)
             {
-                _card = Card.Build((RectTransform)EditorWindow.LeftPanel.parent);
+                _card = Card.Build(EditorWindow.Root);
             }
 
             _hovered = entry;
@@ -765,10 +847,13 @@ namespace ValheimTomrer.Editor.Ui
             _card.Root.SetAsLastSibling();
 
             var frame = (RectTransform)_card.Root.parent;
-            var x = EditorWindow.LeftPanel.offsetMax.x + 8f;
+            EditorWindow.PopupEdges(out var left, out var right, out var ceiling);
+            var x = right + 8f;
+            if (x + CardWidth > frame.rect.width - 8f)
+            {
+                x = Mathf.Max(8f, left - 8f - CardWidth);   // no room on the right: beside it on the left
+            }
 
-            // The left panel's own top edge: the card never rides over the title bar.
-            var ceiling = EditorWindow.LeftPanel.offsetMax.y;
             var top = ceiling;
             if (near != null)
             {
@@ -823,6 +908,7 @@ namespace ValheimTomrer.Editor.Ui
             public Image Icon;
             public TextMeshProUGUI Name;
             public TextMeshProUGUI Badge;
+            public TextMeshProUGUI Star;
             public PieceEntry Entry;
             public int Index = -1;
             public float Size;
@@ -857,6 +943,7 @@ namespace ValheimTomrer.Editor.Ui
                 }
 
                 Background.color = Entry == Selected ? UiTheme.Accent : Color.white;
+                Star.gameObject.SetActive(PieceMemory.IsFavourite(Entry.PrefabName));
             }
 
             public void Hide()
@@ -877,7 +964,16 @@ namespace ValheimTomrer.Editor.Ui
 
             public void OnPointerExit(PointerEventData eventData) => OnTileExit(Owner);
 
-            public void OnPointerClick(PointerEventData eventData) => OnTileClick(Owner);
+            public void OnPointerClick(PointerEventData eventData)
+            {
+                if (eventData.button == PointerEventData.InputButton.Right)
+                {
+                    ToggleStar(Owner.Entry);
+                    return;
+                }
+
+                OnTileClick(Owner);
+            }
         }
 
         /// <summary>The floating details card. Built once, filled again on every hover.</summary>
