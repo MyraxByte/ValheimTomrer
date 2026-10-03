@@ -366,6 +366,18 @@ namespace ValheimTomrer.Editor.Input
                 case Act.Spread:
                     EditorState.SpreadSelection();
                     return true;
+                case Act.MirrorX:
+                    EditorState.MirrorSelection(0);
+                    return true;
+                case Act.MirrorZ:
+                    EditorState.MirrorSelection(2);
+                    return true;
+                case Act.CopyInRow:
+                    EditorState.CopyInRow(CameraRight());
+                    return true;
+                case Act.Commands:
+                    Dialogs.Commands();
+                    return true;
                 default:
                     return false;
             }
@@ -660,6 +672,15 @@ namespace ValheimTomrer.Editor.Input
                 : act == Act.NudgeRight ? Snap(right)
                 : -Snap(right);
             EditorState.Nudge(axis * Step());
+        }
+
+        /// <summary>The camera's right along the ground, for Copy in a row.</summary>
+        public static Vector3 CameraRight()
+        {
+            var forward = Vector3.forward;
+            var right = Vector3.right;
+            ViewportHost.Raycast?.GroundAxes(out forward, out right);
+            return right;
         }
 
         /// <summary>The whole ground axis a direction is closest to.</summary>

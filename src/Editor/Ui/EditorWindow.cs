@@ -32,7 +32,7 @@ namespace ValheimTomrer.Editor.Ui
         private const float LeftWidth = 300f;
         private const float RightWidth = 300f;
         private const float BlueprintHeight = 368f;
-        private const float SelectionHeight = 300f;
+        private const float SelectionHeight = 336f;
         private const float PaneEdge = 6f;  // right card frame to its three regions
         private const float PopupWidth = 760f;
         private const float PopupHeight = 600f;

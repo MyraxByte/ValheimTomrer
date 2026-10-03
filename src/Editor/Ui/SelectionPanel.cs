@@ -48,6 +48,7 @@ namespace ValheimTomrer.Editor.Ui
         private static RectTransform _buttons;
         private static RectTransform _moreButtons;
         private static RectTransform _alignRow;
+        private static RectTransform _shapeRow;
         private static TextMeshProUGUI _axisLabel;
 
         private static readonly NumberField[] Numbers = new NumberField[4];
@@ -142,6 +143,7 @@ namespace ValheimTomrer.Editor.Ui
             _many.gameObject.SetActive(Mode == 2);
             _buttons.gameObject.SetActive(Mode != 0);
             _moreButtons.gameObject.SetActive(Mode != 0);
+            _shapeRow.gameObject.SetActive(Mode != 0);
             _alignRow.gameObject.SetActive(Mode == 2);
             _axisLabel.text = "Along " + EditorState.AlignAxisName;
 
@@ -161,7 +163,7 @@ namespace ValheimTomrer.Editor.Ui
             _icon.sprite = entry != null ? entry.Icon : null;
             _icon.enabled = _icon.sprite != null;
             _name.text = entry != null ? entry.DisplayName : "Unknown piece";
-            _prefab.text = piece.PrefabName;
+            _prefab.text = piece.PrefabName + "   " + SizeText(new List<DocPiece> { piece });
 
             Numbers[0].Set(piece.Position.x, piece.Id);
             Numbers[1].Set(piece.Position.y, piece.Id);
@@ -204,7 +206,7 @@ namespace ValheimTomrer.Editor.Ui
 
         private static void FillMany(List<DocPiece> pieces)
         {
-            _count.text = pieces.Count + " pieces selected.";
+            _count.text = pieces.Count + " pieces selected, " + SizeText(pieces) + ".";
 
             var order = new List<string>();
             var counts = new Dictionary<string, int>();
@@ -227,6 +229,19 @@ namespace ValheimTomrer.Editor.Ui
             }
 
             _kinds.text = string.Join(", ", parts.ToArray());
+        }
+
+        /// <summary>The selection's size in metres, width by depth by height: "4 x 2 x 3 m".</summary>
+        private static string SizeText(List<DocPiece> pieces)
+        {
+            var box = EditorState.BoxOf(pieces);
+            if (box == null)
+            {
+                return "";
+            }
+
+            var size = box.Value.size;
+            return $"{size.x:0.##} x {size.z:0.##} x {size.y:0.##} m";
         }
 
         /// <summary>Yaw in 0..360, the way Tomrer shows it.</summary>
@@ -302,6 +317,13 @@ namespace ValheimTomrer.Editor.Ui
             ActionButton(_moreButtons, "Lock", EditorState.LockSelection);
             ActionButton(_moreButtons, "Same kind", EditorState.SelectSimilar);
 
+            // Mirror and copy in a row: shapes made out of the selection.
+            _shapeRow = Row("Shape", _root, 4f);
+            _shapeRow.gameObject.AddComponent<LayoutElement>().minHeight = ButtonHeight;
+            ActionButton(_shapeRow, "Mirror X", () => EditorState.MirrorSelection(0));
+            ActionButton(_shapeRow, "Mirror Z", () => EditorState.MirrorSelection(2));
+            ActionButton(_shapeRow, "Copy in a row", () => EditorState.CopyInRow(Input.Bindings.CameraRight()));
+
             // Several pieces: line them up, or spread them out, along one axis.
             _alignRow = Row("Align", _root, 4f);
             _alignRow.gameObject.AddComponent<LayoutElement>().minHeight = ButtonHeight;
@@ -317,6 +339,7 @@ namespace ValheimTomrer.Editor.Ui
             _many.gameObject.SetActive(false);
             _buttons.gameObject.SetActive(false);
             _moreButtons.gameObject.SetActive(false);
+            _shapeRow.gameObject.SetActive(false);
             _alignRow.gameObject.SetActive(false);
             _tilt.gameObject.SetActive(false);
             _kept.gameObject.SetActive(false);

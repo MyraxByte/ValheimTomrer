@@ -225,6 +225,8 @@ namespace ValheimTomrer.Editor.Ui
             Keymap.CancelCapture();
             KeyCells.Clear();
             PresetLabels.Clear();
+            CommandsShown.Clear();
+            _commandRows = null;
             Kind = "";
             _confirmRun = null;
             _back = null;
@@ -448,6 +450,138 @@ namespace ValheimTomrer.Editor.Ui
             }, "Close", () => Close());
             Start(_submit);
             RefreshKeys();
+        }
+
+        private sealed class Command
+        {
+            public string Label;
+            public string Keys;
+            public Action Run;
+        }
+
+        private static readonly List<Command> CommandsShown = new List<Command>();
+        private static RectTransform _commandRows;
+
+        /// <summary>The command search: every action and top bar verb by name, with its keys. Enter runs the first.</summary>
+        public static void Commands()
+        {
+            if (!Begin("commands", "Commands", 640f, 620f))
+            {
+                return;
+            }
+
+            var search = UiBuild.InputField("Search", _body, "Type to find a command", 34f);
+            Line((RectTransform)search.transform, 0f, 34f);
+            var scroll = UiBuild.Scroll("Commands", _body, 2f);
+            UiBuild.Stretch((RectTransform)scroll.transform, 0f, 0f, 0f, 42f);
+            _commandRows = scroll.content;
+            search.onValueChanged.AddListener(FilterCommands);
+            search.onSubmit.AddListener(_ => RunFirstCommand());
+            FilterCommands("");
+
+            Foot("Close", () => Close(), "Run", RunFirstCommand);
+            Start(_submit);
+
+            // The keyboard types straight away; the pad walks the list instead.
+            if (!EditorInput.PadInUse)
+            {
+                search.ActivateInputField();
+            }
+        }
+
+        /// <summary>Every command the search knows, in the order it lists them.</summary>
+        private static List<Command> AllCommands()
+        {
+            var list = new List<Command>
+            {
+                new Command { Label = "New blueprint", Keys = "", Run = EditorCommands.NewBlueprint },
+                new Command { Label = "Open a blueprint", Keys = "", Run = EditorCommands.OpenDialog },
+                new Command
+                {
+                    Label = "Save as", Keys = "",
+                    Run = () => SaveAs(EditorState.Document != null ? EditorState.Document.Name : "New blueprint"),
+                },
+                new Command { Label = "Build this in the world", Keys = "", Run = () => EditorCommands.BuildThis() },
+                new Command { Label = "Center origin", Keys = "", Run = EditorCommands.CenterOrigin },
+                new Command { Label = "Pieces as boxes", Keys = "", Run = EditorCommands.ToggleBoxes },
+                new Command { Label = "Snap dots", Keys = "", Run = EditorCommands.ToggleSnapDots },
+                new Command { Label = "Keys window", Keys = "", Run = Controls },
+            };
+
+            foreach (var def in Keymap.All)
+            {
+                if (def.Id >= Act.FlyForward || def.Id == Act.Commands || def.Id == Act.Walk || def.Id == Act.WalkBack)
+                {
+                    continue;
+                }
+
+                var act = def.Id;
+                list.Add(new Command { Label = def.Label, Keys = Keymap.Describe(act), Run = () => Bindings.Run(act) });
+            }
+
+            return list;
+        }
+
+        private static void FilterCommands(string text)
+        {
+            if (_commandRows == null)
+            {
+                return;
+            }
+
+            for (var i = _commandRows.childCount - 1; i >= 0; i--)
+            {
+                UnityEngine.Object.DestroyImmediate(_commandRows.GetChild(i).gameObject);
+            }
+
+            CommandsShown.Clear();
+            var words = (text ?? "").ToLowerInvariant().Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+            foreach (var command in AllCommands())
+            {
+                var label = command.Label.ToLowerInvariant();
+                var all = true;
+                foreach (var word in words)
+                {
+                    if (label.IndexOf(word, StringComparison.Ordinal) < 0)
+                    {
+                        all = false;
+                        break;
+                    }
+                }
+
+                if (!all)
+                {
+                    continue;
+                }
+
+                CommandsShown.Add(command);
+                var chosen = command;
+                var background = UiBuild.Panel("Command", _commandRows, null, UiTheme.Slot);
+                background.gameObject.AddComponent<LayoutElement>().preferredHeight = RowHeight;
+                var button = background.gameObject.AddComponent<Button>();
+                button.targetGraphic = background;
+                button.transition = Selectable.Transition.None;
+                button.onClick.AddListener(() => RunCommand(chosen));
+                Cell(background.transform, "Name", command.Label, 15f, TextAlignmentOptions.MidlineLeft,
+                    CommandsShown.Count == 1 ? UiTheme.Accent : UiTheme.Text, 0f, 0.62f, 10f, 6f);
+                Cell(background.transform, "Keys", command.Keys, 14f, TextAlignmentOptions.MidlineRight,
+                    UiTheme.TextDim, 0.62f, 1f, 6f, 10f);
+            }
+        }
+
+        private static void RunFirstCommand()
+        {
+            if (CommandsShown.Count > 0)
+            {
+                RunCommand(CommandsShown[0]);
+            }
+        }
+
+        /// <summary>Closes the search first: many commands open a window of their own.</summary>
+        private static void RunCommand(Command command)
+        {
+            Close();
+            command.Run?.Invoke();
         }
 
         /// <summary>Shows the keys as they are now, after a binding or a preset changed. Does nothing unless the Keys window is up.</summary>

@@ -189,6 +189,7 @@ namespace ValheimTomrer.Editor.Ui
                 .GetComponentInChildren<TextMeshProUGUI>();
             _night = Add(row, UiTheme.Dark ? "Light" : "Dark", EditorCommands.ToggleTheme)
                 .GetComponentInChildren<TextMeshProUGUI>();
+            Add(row, "Commands", Dialogs.Commands);
             Add(row, "?", EditorCommands.Help);
 
             // The pad walks the bar left and right, around the ends.

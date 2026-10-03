@@ -488,6 +488,65 @@ namespace ValheimTomrer.Editor
         }
 
         /// <summary>
+        /// Mirrors the selection across the middle of its box: along x (axis 0) or z (axis 2). Each piece
+        /// moves to its mirrored spot and turns the mirrored way. The pieces themselves are not flipped
+        /// (the game has no mirrored pieces), so a symmetric piece looks exactly mirrored. One undo step.
+        /// </summary>
+        public static bool MirrorSelection(int axis)
+        {
+            var pieces = SelectedPieces();
+            if (pieces.Count == 0)
+            {
+                Say("Select something to mirror.");
+                return false;
+            }
+
+            var middle = (BoxOf(pieces) ?? new Bounds()).center[axis];
+            var moves = new List<PieceMove>(pieces.Count);
+            foreach (var piece in pieces)
+            {
+                var position = piece.Position;
+                position[axis] = (2f * middle) - position[axis];
+                var q = piece.Rotation;
+                var turned = axis == 0 ? new Quaternion(q.x, -q.y, -q.z, q.w) : new Quaternion(-q.x, -q.y, q.z, q.w);
+                moves.Add(new PieceMove { Id = piece.Id, Position = position, Rotation = Clean(turned) });
+            }
+
+            Document.SetPieces(moves, "mirror");
+            Say($"Mirrored {Count(pieces.Count)} along {(axis == 0 ? "X" : "Z")}.");
+            return true;
+        }
+
+        /// <summary>
+        /// A copy of the selection right next to it, one box width along the ground axis given (the
+        /// camera's right, from the key). The copy is selected, so pressing again lays a row. One undo step.
+        /// </summary>
+        public static bool CopyInRow(Vector3 direction)
+        {
+            var pieces = SelectedPieces();
+            if (pieces.Count == 0 || Document == null)
+            {
+                Say("Select something to copy in a row.");
+                return false;
+            }
+
+            var box = BoxOf(pieces) ?? new Bounds();
+            var alongX = Mathf.Abs(direction.x) >= Mathf.Abs(direction.z);
+            var offset = alongX
+                ? new Vector3(Mathf.Sign(direction.x) * box.size.x, 0f, 0f)
+                : new Vector3(0f, 0f, Mathf.Sign(direction.z) * box.size.z);
+            var copies = pieces.Select(p => new NewPiece
+            {
+                PrefabName = p.PrefabName,
+                Position = p.Position + offset,
+                Rotation = p.Rotation,
+            }).ToList();
+            Select(Document.AddPieces(copies));
+            Say($"Copied {Count(pieces.Count)} {offset.magnitude:0.##} m over. Again lays the next one.");
+            return true;
+        }
+
+        /// <summary>
         /// Spreads three or more pieces along <see cref="AlignAxis"/> so the gaps between their boxes are
         /// equal. The two outer pieces stay. One undo step.
         /// </summary>

@@ -226,6 +226,9 @@ layout and has no setting.
 | Alt + A, Alt + C, Alt + D | Line the selection up on its low edge, middle or high edge along that axis |
 | Alt + E | Spread three or more pieces so the gaps are equal |
 | Ctrl + Shift + N | Switch between the dark and the light theme |
+| Shift + H, Shift + V | Mirror the selection along X or Z |
+| Ctrl + Shift + D | Copy the selection right next to it. Press again for the next one in the row. |
+| Ctrl + K | Search every command by name and run it. The Commands button does the same. |
 | Tab | Quick add: the list of pieces over the view. Type to search, click a piece to place it, right click stars it. Tab or Esc closes it. |
 | Alt + 1, Alt + 2 | Fold the Layers card (left) or the Inspector card (right) in or out |
 | Ctrl + \ | Hide the whole interface and keep the view. The same keys, or Esc, bring it back. |
