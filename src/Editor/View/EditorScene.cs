@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using ValheimTomrer.Editor.Ui;
 using UnityEngine.Rendering;
 
 namespace ValheimTomrer.Editor.View
@@ -23,11 +24,12 @@ namespace ValheimTomrer.Editor.View
         private const float GridY = 0.003f;
         private const float RingY = 0.006f;
 
-        // Colours from the Tomrer editor, so both editors look the same.
-        private static readonly Color GroundColor = Hex(0x8F9B7C);
-        private static readonly Color GridColor = new Color(0.435f, 0.478f, 0.373f, 0.55f);
-        private static readonly Color RingColor = Hex(0x20252B);
+        // Day colours are Tomrer's, so both editors look the same. Night ones: UiTheme.Scene*.
         private static readonly Color FrontColor = Hex(0xD9412B);
+
+        private Material _groundMaterial;
+        private Material _gridMaterial;
+        private Material _ringMaterial;
 
         private readonly int _layer;
         private readonly GameObject _root;
@@ -45,15 +47,18 @@ namespace ValheimTomrer.Editor.View
             var lit = Shading.Lit();
             var unlit = Shading.Unlit();
 
-            var ground = Add("Ground", Quad(GroundSize), Paint(lit, GroundColor), 0f);
+            _groundMaterial = Paint(lit, UiTheme.SceneGround);
+            _gridMaterial = Paint(unlit, UiTheme.SceneGrid);
+            _ringMaterial = Paint(unlit, UiTheme.SceneRing);
+            var ground = Add("Ground", Quad(GroundSize), _groundMaterial, 0f);
             GroundCollider = ground.gameObject.AddComponent<BoxCollider>();
             GroundCollider.size = new Vector3(GroundSize, 0.02f, GroundSize);
             var groundRenderer = ground.GetComponent<MeshRenderer>();
             groundRenderer.receiveShadows = true;
             groundRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
 
-            Add("Grid", Grid(GridCells), Paint(unlit, GridColor), GridY);
-            Add("Origin", Ring(0.12f, 0.2f, 32), Paint(unlit, RingColor), RingY);
+            Add("Grid", Grid(GridCells), _gridMaterial, GridY);
+            Add("Origin", Ring(0.12f, 0.2f, 32), _ringMaterial, RingY);
 
             _front = new GameObject("Front") { layer = layer };
             _front.transform.SetParent(_root.transform, false);
@@ -67,6 +72,25 @@ namespace ValheimTomrer.Editor.View
         }
 
         public Transform Root => _root != null ? _root.transform : null;
+
+        /// <summary>Paints the ground, the grid and the origin ring in the current theme.</summary>
+        public void ApplyTheme()
+        {
+            if (_groundMaterial != null)
+            {
+                _groundMaterial.color = UiTheme.SceneGround;
+            }
+
+            if (_gridMaterial != null)
+            {
+                _gridMaterial.color = UiTheme.SceneGrid;
+            }
+
+            if (_ringMaterial != null)
+            {
+                _ringMaterial.color = UiTheme.SceneRing;
+            }
+        }
 
         public BoxCollider GroundCollider { get; }
 

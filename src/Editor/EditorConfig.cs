@@ -9,6 +9,13 @@ namespace ValheimTomrer.Editor
     /// Config for the in-game blueprint editor. Bound from the plugin so every editor
     /// setting sits in one place instead of growing the plugin file.
     /// </summary>
+    /// <summary>The editor's look: the game's wood in daylight, or the same wood dimmed for night work.</summary>
+    internal enum EditorTheme
+    {
+        Day,
+        Night,
+    }
+
     internal static class EditorConfig
     {
         /// <summary>
@@ -31,6 +38,9 @@ namespace ValheimTomrer.Editor
 
         /// <summary>Pieces as wire boxes instead of models. The top bar's Boxes button writes this.</summary>
         public static ConfigEntry<bool> Boxes;
+
+        /// <summary>Day or Night. The top bar's Night button writes this.</summary>
+        public static ConfigEntry<EditorTheme> Theme;
 
         public static void Bind(ConfigFile config)
         {
@@ -65,6 +75,13 @@ namespace ValheimTomrer.Editor
                 "Boxes",
                 false,
                 "Draw pieces as plain boxes instead of models. Easier to see through a full blueprint.");
+
+            Theme = config.Bind(
+                "Editor",
+                "Theme",
+                EditorTheme.Day,
+                "Day is the game's own wood and a light pane. Night dims the panels, and the 3D pane gets a dark "
+                + "sky, ground and grid, easier on the eyes in a dark room.");
 
             // Settings the mod no longer has. The mouse and the right stick follow the game's own
             // sensitivity settings, and the camera has one mode.

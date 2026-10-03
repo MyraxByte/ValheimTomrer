@@ -1,4 +1,5 @@
 using UnityEngine;
+using ValheimTomrer.Editor.Ui;
 using UnityEngine.Rendering;
 
 namespace ValheimTomrer.Editor.View
@@ -14,9 +15,9 @@ namespace ValheimTomrer.Editor.View
     /// </summary>
     internal sealed class PreviewCamera
     {
-        /// <summary>The Tomrer editor's background, so the pane looks the same in both.</summary>
-        private static readonly Color Background = new Color32(0xB9, 0xC7, 0xD2, 0xFF);
-        private static readonly Color Ambient = new Color(0.42f, 0.45f, 0.5f, 1f);
+        /// <summary>The Tomrer editor's background in the Day theme, so the pane looks the same in both.</summary>
+        private static Color Background => UiTheme.SceneBackground;
+        private static Color Ambient => UiTheme.SceneAmbient;
 
         /// <summary>The 800 m ground fades into the background between these two, like Tomrer's haze.</summary>
         private const float FogFrom = 80f;
@@ -110,6 +111,7 @@ namespace ValheimTomrer.Editor.View
                 return;
             }
 
+            _camera.backgroundColor = Background;
             var fog = RenderSettings.fog;
             var fogMode = RenderSettings.fogMode;
             var fogColor = RenderSettings.fogColor;

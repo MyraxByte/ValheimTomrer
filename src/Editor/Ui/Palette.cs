@@ -353,6 +353,7 @@ namespace ValheimTomrer.Editor.Ui
             grid.offsetMax = new Vector2(0f, -y);
 
             _tileSize = Mathf.Max(24f, (width - (Columns - 1) * TileGap) / Columns);
+            _scroll.GetComponent<WheelScroll>().Step = 2f * (_tileSize + TileGap);
             var rows = Mathf.CeilToInt(Shown.Count / (float)Columns);
             _content.sizeDelta = new Vector2(0f, rows * (_tileSize + TileGap));
             _firstRow = -1;
@@ -489,6 +490,7 @@ namespace ValheimTomrer.Editor.Ui
             _materialScroll.gameObject.SetActive(false);
 
             _scroll = UiBuild.Scroll("Grid", _root);
+            _scroll.GetComponent<WheelScroll>().Step = 2f * (_tileSize + TileGap);
             _content = _scroll.content;
             UnityEngine.Object.Destroy(_content.GetComponent<VerticalLayoutGroup>());
             UnityEngine.Object.Destroy(_content.GetComponent<ContentSizeFitter>());

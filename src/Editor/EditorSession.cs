@@ -134,6 +134,24 @@ namespace ValheimTomrer.Editor
             }
         }
 
+        /// <summary>
+        /// The theme changed: the pane is painted again and every panel is built again. With the
+        /// window up it closes and opens at once, which keeps everything (the document, its undo,
+        /// the selection, the hand, the camera), exactly as a world load's rebuild does.
+        /// </summary>
+        public static void Retheme()
+        {
+            ViewportHost.ApplyTheme();
+            UiTheme.Rebuild();
+            if (!ModUi.Open)
+            {
+                return;
+            }
+
+            Close();
+            Begin(null, null);
+        }
+
         /// <summary>True while a blueprint is kept from the last time, so the next open comes back to it.</summary>
         public static bool Kept => !ModUi.Open && EditorState.Document != null;
 

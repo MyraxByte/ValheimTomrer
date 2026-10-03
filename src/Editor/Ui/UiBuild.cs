@@ -166,7 +166,11 @@ namespace ValheimTomrer.Editor.Ui
             scroll.content = content;
             scroll.horizontal = false;
             scroll.movementType = ScrollRect.MovementType.Clamped;
-            scroll.scrollSensitivity = 30f;
+
+            // The wheel is read by WheelScroll, not by the ScrollRect: its own step was half a row.
+            scroll.scrollSensitivity = 0f;
+            scroll.inertia = false;
+            root.gameObject.AddComponent<WheelScroll>().Init(scroll);
             return scroll;
         }
 
@@ -265,6 +269,83 @@ namespace ValheimTomrer.Editor.Ui
 
         public override void OnMove(AxisEventData eventData)
         {
+        }
+    }
+
+    /// <summary>
+    /// The mouse wheel over a list. One notch moves a set distance and eases there, whatever the
+    /// platform's wheel units are: Windows reports a notch as 1 or as 120, a trackpad sends many
+    /// small steps. The distance is <see cref="Step"/> in canvas units. Anything else that moves
+    /// the list (a drag, the pad's stick, a search) is taken as the new place to ease from.
+    /// </summary>
+    internal sealed class WheelScroll : MonoBehaviour, IScrollHandler
+    {
+        /// <summary>Canvas units per notch. A list that knows its row height sets a multiple of it.</summary>
+        public float Step = 90f;
+
+        private const float Ease = 18f;
+
+        private ScrollRect _scroll;
+        private float _target;
+        private float _last;
+        private bool _moving;
+
+        public void Init(ScrollRect scroll)
+        {
+            _scroll = scroll;
+        }
+
+        /// <summary>Wheel units to notches: 120 or more is a raw Windows notch, below that it is already notches.</summary>
+        private static float Notches(float y)
+        {
+            return Mathf.Abs(y) >= 20f ? y / 120f : y;
+        }
+
+        public void OnScroll(PointerEventData eventData)
+        {
+            if (_scroll == null || _scroll.content == null || _scroll.viewport == null)
+            {
+                return;
+            }
+
+            var room = Mathf.Max(0f, _scroll.content.rect.height - _scroll.viewport.rect.height);
+            if (room <= 0.5f)
+            {
+                return;
+            }
+
+            var from = _moving ? _target : _scroll.content.anchoredPosition.y;
+            _target = Mathf.Clamp(from - Notches(eventData.scrollDelta.y) * Step, 0f, room);
+            _last = _scroll.content.anchoredPosition.y;
+            _moving = true;
+            eventData.Use();
+        }
+
+        private void Update()
+        {
+            if (!_moving || _scroll == null || _scroll.content == null)
+            {
+                return;
+            }
+
+            var at = _scroll.content.anchoredPosition;
+            if (Mathf.Abs(at.y - _last) > 0.01f)
+            {
+                // Something else moved the list: stop easing, keep its place.
+                _moving = false;
+                return;
+            }
+
+            var next = Mathf.Lerp(at.y, _target, 1f - Mathf.Exp(-Ease * Time.unscaledDeltaTime));
+            if (Mathf.Abs(next - _target) < 0.5f)
+            {
+                next = _target;
+                _moving = false;
+            }
+
+            at.y = next;
+            _scroll.content.anchoredPosition = at;
+            _last = next;
         }
     }
 }

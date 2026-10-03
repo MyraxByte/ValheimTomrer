@@ -82,6 +82,13 @@ namespace ValheimTomrer.Editor.Ui
 
         public static EditorScene Scene => _scene;
 
+        /// <summary>Paints the ground and grid in the current theme, in the live scene and the one kept while closed.</summary>
+        public static void ApplyTheme()
+        {
+            _scene?.ApplyTheme();
+            _closedScene?.ApplyTheme();
+        }
+
         public static PreviewCamera Preview => _preview;
 
         public static BlueprintPreview Model => _model;

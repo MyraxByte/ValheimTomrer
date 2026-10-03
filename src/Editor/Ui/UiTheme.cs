@@ -27,26 +27,50 @@ namespace ValheimTomrer.Editor.Ui
         public static readonly Color Warn = new Color32(0xE8, 0x6A, 0x4A, 0xFF);
         public static readonly Color Good = new Color32(0x8C, 0xD0, 0x7A, 0xFF);
         public static readonly Color Backdrop = new Color(0f, 0f, 0f, 0.65f);
-        public static readonly Color Inset = new Color(1f, 1f, 1f, 0.85f);
+        public static Color Inset => Night ? new Color(0.45f, 0.45f, 0.48f, 0.92f) : new Color(1f, 1f, 1f, 0.85f);
 
         /// <summary>
         /// The hint text drawn straight over the 3D picture: dark and plain, for the pane's light
         /// sky and floor.
         /// </summary>
-        public static readonly Color TextOnPicture = new Color32(0x1A, 0x14, 0x0E, 0xFF);
+        public static Color TextOnPicture => Night ? new Color32(0xE9, 0xE4, 0xD8, 0xFF) : new Color32(0x1A, 0x14, 0x0E, 0xFF);
 
         /// <summary>
         /// A row or a tile that carries text. <c>item_background</c> is a pale sprite, so white
         /// text on it at full tint is white on white: it is tinted dark instead.
         /// </summary>
-        public static readonly Color Slot = new Color(0.17f, 0.14f, 0.11f, 0.94f);
+        public static Color Slot => Night ? new Color(0.07f, 0.06f, 0.05f, 0.96f) : new Color(0.17f, 0.14f, 0.11f, 0.94f);
 
         /// <summary>The same, weaker, for a row that cannot be clicked.</summary>
-        public static readonly Color SlotDim = new Color(0.17f, 0.14f, 0.11f, 0.72f);
+        public static Color SlotDim => Night ? new Color(0.07f, 0.06f, 0.05f, 0.72f) : new Color(0.17f, 0.14f, 0.11f, 0.72f);
 
         /// <summary>The panel interiors: the game's wood at 70 per cent, so light text still reads.</summary>
-        public static readonly Color PanelInterior = new Color(0.70f, 0.70f, 0.70f, 1f);
-        public static readonly Color Viewport = new Color(0.06f, 0.07f, 0.09f, 0.96f);
+        public static Color PanelInterior => Night ? new Color(0.36f, 0.36f, 0.38f, 1f) : new Color(0.70f, 0.70f, 0.70f, 1f);
+        public static Color Viewport => Night ? new Color(0.03f, 0.04f, 0.05f, 0.98f) : new Color(0.06f, 0.07f, 0.09f, 0.96f);
+
+        /// <summary>True when the player picked the Night theme. Read live, so a switch shows at the next build of the window.</summary>
+        public static bool Night => EditorConfig.Theme != null && EditorConfig.Theme.Value == EditorTheme.Night;
+
+        // The 3D pane's own colours. Day is Tomrer's, Night is the same scene with the lights down.
+        public static Color SceneBackground => Night ? Hex(0x12161B) : Hex(0xB9C7D2);
+        public static Color SceneAmbient => Night ? new Color(0.20f, 0.22f, 0.27f, 1f) : new Color(0.42f, 0.45f, 0.5f, 1f);
+        public static Color SceneGround => Night ? Hex(0x2B3239) : Hex(0x8F9B7C);
+        public static Color SceneGrid => Night ? new Color(0.55f, 0.62f, 0.70f, 0.28f) : new Color(0.435f, 0.478f, 0.373f, 0.55f);
+        public static Color SceneRing => Night ? Hex(0xD7DEE6) : Hex(0x20252B);
+
+        private static Color Hex(int rgb)
+        {
+            return new Color32((byte)(rgb >> 16), (byte)(rgb >> 8), (byte)rgb, 0xFF);
+        }
+
+        /// <summary>
+        /// Makes every panel build again at its next Ensure. The sprites and fonts are kept: only
+        /// the colours changed. See <see cref="EditorSession.Retheme"/>.
+        /// </summary>
+        public static void Rebuild()
+        {
+            Generation++;
+        }
 
         public static TMP_FontAsset Font { get; private set; }
         public static Material FontMaterial { get; private set; }

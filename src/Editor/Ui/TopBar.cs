@@ -34,6 +34,7 @@ namespace ValheimTomrer.Editor.Ui
         private static Button _center;
         private static TextMeshProUGUI _boxes;
         private static TextMeshProUGUI _dots;
+        private static TextMeshProUGUI _night;
 
         /// <summary>Every button in the bar, in the order the pad walks them.</summary>
         private static readonly List<Selectable> Walk = new List<Selectable>();
@@ -96,6 +97,7 @@ namespace ValheimTomrer.Editor.Ui
 
             _boxes.color = EditorState.PieceBoxesOn ? UiTheme.Accent : UiTheme.Text;
             _dots.color = EditorState.SnapDotsOn ? UiTheme.Accent : UiTheme.Text;
+            _night.color = UiTheme.Night ? UiTheme.Accent : UiTheme.Text;
 
             var busy = EditorCommands.Busy;
             _busy.gameObject.SetActive(busy != null);
@@ -171,6 +173,8 @@ namespace ValheimTomrer.Editor.Ui
             _boxes = Add(row, "Boxes", EditorCommands.ToggleBoxes)
                 .GetComponentInChildren<TextMeshProUGUI>();
             _dots = Add(row, "Snap dots", EditorCommands.ToggleSnapDots)
+                .GetComponentInChildren<TextMeshProUGUI>();
+            _night = Add(row, "Night", EditorCommands.ToggleTheme)
                 .GetComponentInChildren<TextMeshProUGUI>();
             Add(row, "?", EditorCommands.Help);
 
