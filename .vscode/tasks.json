@@ -3,7 +3,7 @@
   "tasks": [
     {
       "label": "build",
-      "detail": "Compile and auto-deploy into BepInEx/plugins",
+      "detail": "Compile and deploy into BepInEx/plugins",
       "type": "process",
       "command": "dotnet",
       "args": ["build", "${workspaceFolder}/ValheimTomrer.csproj", "-v", "minimal"],
@@ -11,10 +11,26 @@
       "group": { "kind": "build", "isDefault": true }
     },
     {
+      "label": "hot reload: watch",
+      "detail": "Rebuild on every save into BepInEx/scripts. ScriptEngine reloads the mod in the running game",
+      "type": "shell",
+      "command": "npm run hot",
+      "problemMatcher": "$msCompile",
+      "isBackground": false
+    },
+    {
+      "label": "run: game (hot reload)",
+      "detail": "Build into BepInEx/scripts, launch Valheim, tail our log. Then start the watch task",
+      "type": "shell",
+      "command": "npm run dev:hot",
+      "problemMatcher": [],
+      "isBackground": true
+    },
+    {
       "label": "run: game (debug)",
       "detail": "Build, launch Valheim with the Mono debugger on :10000, tail our log",
       "type": "shell",
-      "command": "${workspaceFolder}/scripts/dev.sh --debug",
+      "command": "npm run dev -- --debug",
       "problemMatcher": [],
       "isBackground": true
     }

@@ -2,20 +2,27 @@
 # Build ValheimTomrer, deploy it, launch Valheim, and stream our log lines.
 #   ./scripts/dev.sh           normal run
 #   ./scripts/dev.sh --debug   also open the Mono soft debugger on 127.0.0.1:10000
+#   ./scripts/dev.sh --hot     deploy into BepInEx/scripts so ScriptEngine reloads it (docs/development.md)
 set -euo pipefail
 
 VALHEIM="${VALHEIM_INSTALL:-$HOME/Library/Application Support/Steam/steamapps/common/Valheim}"
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 EXTRA=()
-if [[ "${1:-}" == "--debug" ]]; then
-  # NOTE: this doorstop flag takes a value; passing it bare aborts run_bepinex.sh
-  EXTRA+=(--doorstop-mono-debug-enabled true)
-  echo "==> Mono debugger will listen on 127.0.0.1:10000"
-fi
+HOT=false
+for arg in "$@"; do
+  case "$arg" in
+    --debug)
+      # NOTE: this doorstop flag takes a value; passing it bare aborts run_bepinex.sh
+      EXTRA+=(--doorstop-mono-debug-enabled true)
+      echo "==> Mono debugger will listen on 127.0.0.1:10000" ;;
+    --hot) HOT=true ;;
+    *) echo "unknown option: $arg"; exit 2 ;;
+  esac
+done
 
 echo "==> building"
-dotnet build "$REPO/ValheimTomrer.csproj" -v minimal
+dotnet build "$REPO/ValheimTomrer.csproj" -v minimal -nologo -p:HotReload=$HOT
 
 echo "==> launching Valheim"
 cd "$VALHEIM"

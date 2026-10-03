@@ -9,11 +9,24 @@ Directory.Build.props.user
 # Build output staged for Thunderstore
 thunderstore/build/
 
-# .claude/ is local working state (plans, handoffs, research), except the design
-# rationale CLAUDE.md points at. `.claude/*` rather than `.claude/` so git still
-# looks inside far enough to see the exception.
-.claude/*
-!.claude/design-decisions.md
+# .claude/ is shared (rules, skills, agents, settings.json, design notes, project map), except the
+# local working state: plans, handoff logs, research and personal settings.
+.claude/plans/
+.claude/handoff/
+.claude/research/
+.claude/worktrees/
+.claude/settings.local.json
+CLAUDE.local.md
+
+# Other agents' files are not part of this project: Claude Code is the only agent here.
+AGENTS.md
+.codex/
+.cursor/
+.cursorrules
+.windsurfrules
+.aider*
+.gemini/
+GEMINI.md
 
 # Automatic test output (scripts/autotest.sh)
 .devtest/

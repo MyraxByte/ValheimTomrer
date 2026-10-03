@@ -26,6 +26,8 @@
   <ItemGroup>
     <AssemblyMetadata Include="AI_Assisted_Creation" Value="This assembly was partially or fully created with the assistance of Generative AI (Claude Opus 5)." />
     <AssemblyMetadata Include="AI_Model_Vendor" Value="Anthropic" />
+    <!-- The plugin logs this on load, so a hot reload can be told from the old code at a glance. -->
+    <AssemblyMetadata Include="BuildStamp" Value="$([System.DateTime]::Now.ToString('yyyy-MM-dd HH:mm:ss'))" />
   </ItemGroup>
 
   <!-- Expose private/internal game members so patches can reach them. -->
@@ -131,17 +133,27 @@
   </ItemGroup>
 
   <!-- Build straight into the game so the loop is: dotnet build -> launch.
-       -p:DeployToGame=false skips it (scripts/zip.sh). -->
+       -p:DeployToGame=false skips it (scripts/zip.*).
+       -p:HotReload=true builds into BepInEx/scripts instead of BepInEx/plugins, where
+       ScriptEngine reloads the DLL while the game runs (npm run hot, docs/development.md).
+       The DLL is only ever in one of the two folders: the other copy is deleted, or the
+       mod would load twice. -->
+  <PropertyGroup>
+    <HotReload Condition="'$(HotReload)' == ''">false</HotReload>
+    <PluginDeployDir Condition="'$(HotReload)' == 'true'">$(BepInExDir)/scripts</PluginDeployDir>
+    <PluginDeployDir Condition="'$(HotReload)' != 'true'">$(BepInExDir)/plugins/$(AssemblyName)</PluginDeployDir>
+    <PluginOtherDir Condition="'$(HotReload)' == 'true'">$(BepInExDir)/plugins/$(AssemblyName)</PluginOtherDir>
+    <PluginOtherDir Condition="'$(HotReload)' != 'true'">$(BepInExDir)/scripts</PluginOtherDir>
+  </PropertyGroup>
+
   <Target Name="DeployToBepInEx" AfterTargets="Build" Condition="Exists('$(BepInExDir)') and '$(DeployToGame)' != 'false'">
-    <PropertyGroup>
-      <PluginDeployDir>$(BepInExDir)/plugins/$(AssemblyName)</PluginDeployDir>
-    </PropertyGroup>
     <MakeDir Directories="$(PluginDeployDir)" />
     <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(PluginDeployDir)" />
     <Copy SourceFiles="$(TargetDir)$(AssemblyName).pdb"
           DestinationFolder="$(PluginDeployDir)"
           Condition="Exists('$(TargetDir)$(AssemblyName).pdb')" />
-    <Message Importance="high" Text="  -> deployed $(AssemblyName).dll to $(PluginDeployDir)" />
+    <Delete Files="$(PluginOtherDir)/$(AssemblyName).dll;$(PluginOtherDir)/$(AssemblyName).pdb" ContinueOnError="true" />
+    <Message Importance="high" Text="  -> deployed $(AssemblyName).dll to $(PluginDeployDir) (hot reload: $(HotReload))" />
   </Target>
 
 </Project>

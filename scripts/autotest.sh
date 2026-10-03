@@ -62,7 +62,7 @@ if pgrep -f "$GAME_PROCESS" >/dev/null; then
 fi
 
 echo "==> building"
-dotnet build "$REPO/ValheimTomrer.csproj" -c Debug -v minimal -nologo
+dotnet build "$REPO/ValheimTomrer.csproj" -c Debug -v minimal -nologo -p:HotReload=false
 
 # Keep the test saves: generating the test world is slow the first time.
 mkdir -p "$OUT"

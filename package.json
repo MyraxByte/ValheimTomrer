@@ -2,9 +2,16 @@
   "name": "valheim-tomrer",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "build": "dotnet build -c Debug",
     "build:release": "dotnet build -c Release",
-    "zip": "bash scripts/zip.sh"
+    "build:hot": "dotnet build -c Debug -p:HotReload=true",
+    "hot": "dotnet watch --project ValheimTomrer.csproj build -c Debug -p:HotReload=true -v minimal --nologo",
+    "dev": "node scripts/run.mjs dev",
+    "dev:hot": "node scripts/run.mjs dev --hot",
+    "autotest": "node scripts/run.mjs autotest",
+    "check": "node scripts/check-rules.mjs",
+    "zip": "node scripts/run.mjs zip"
   }
 }

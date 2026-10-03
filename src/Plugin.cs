@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Reflection;
 using ValheimTomrer.Blueprints;
 using ValheimTomrer.Blueprints.Sites;
@@ -53,7 +54,9 @@ namespace ValheimTomrer
             _harmony = new Harmony(PluginGuid);
             _harmony.PatchAll(Assembly.GetExecutingAssembly());
 
-            Log.LogInfo($"{PluginName} {PluginVersion} loaded.");
+            var stamp = Assembly.GetExecutingAssembly().GetCustomAttributes<AssemblyMetadataAttribute>()
+                .FirstOrDefault(a => a.Key == "BuildStamp")?.Value;
+            Log.LogInfo($"{PluginName} {PluginVersion} loaded (build {stamp}).");
         }
 
         /// <summary>
@@ -68,8 +71,9 @@ namespace ValheimTomrer
         }
 
         /// <summary>
-        /// Harmony patches outlive the plugin object, so an unpatch here keeps
-        /// ScriptEngine hot-reloads from stacking duplicates.
+        /// Harmony patches, loose GameObjects and statics outlive the plugin object, so everything the
+        /// mod made is taken down here. ScriptEngine's hot reload (BepInEx/scripts, F6 or a changed
+        /// DLL) destroys the plugin and loads a fresh copy: whatever is left here stacks up.
         /// </summary>
         private void OnDestroy()
         {
