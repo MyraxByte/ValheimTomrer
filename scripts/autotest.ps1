@@ -8,7 +8,8 @@ param([string]$Scenario = "blueprints")
 $ErrorActionPreference = "Stop"
 
 $Repo = Split-Path -Parent $PSScriptRoot
-$Valheim = if ($env:VALHEIM_INSTALL) { $env:VALHEIM_INSTALL } else { Join-Path ${env:ProgramFiles(x86)} "Steam\steamapps\common\Valheim" }
+# One source of truth for the game folder: MSBuild (-p, VALHEIM_INSTALL, Directory.Build.props.user, the default)
+$Valheim = (dotnet msbuild "$Repo\ValheimTomrer.csproj" -getProperty:ValheimInstall -nologo).Trim()
 $Timeout = if ($env:AUTOTEST_TIMEOUT) { [int]$env:AUTOTEST_TIMEOUT } elseif ($Scenario -eq "editor_all") { 1800 } else { 600 }
 $Out = Join-Path $Repo ".devtest"
 $Log = Join-Path $Valheim "BepInEx\LogOutput.log"

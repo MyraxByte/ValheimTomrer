@@ -6,7 +6,8 @@
     <AssemblyName>ValheimTomrer</AssemblyName>
     <RootNamespace>ValheimTomrer</RootNamespace>
     <Version>0.1.0</Version>
-    <LangVersion>latest</LangVersion>
+    <!-- Pinned: a newer SDK's "latest" adds keywords (C# 14 field) that break old code. -->
+    <LangVersion>13.0</LangVersion>
     <Nullable>disable</Nullable>
 
     <!-- portable PDBs so the Mono soft debugger can map breakpoints -->

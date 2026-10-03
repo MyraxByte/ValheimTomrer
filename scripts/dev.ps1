@@ -6,10 +6,11 @@ param([switch]$Debug, [switch]$Hot)
 $ErrorActionPreference = "Stop"
 
 $Repo = Split-Path -Parent $PSScriptRoot
-$Valheim = if ($env:VALHEIM_INSTALL) { $env:VALHEIM_INSTALL } else { Join-Path ${env:ProgramFiles(x86)} "Steam\steamapps\common\Valheim" }
+# One source of truth for the game folder: MSBuild (-p, VALHEIM_INSTALL, Directory.Build.props.user, the default)
+$Valheim = (dotnet msbuild "$Repo\ValheimTomrer.csproj" -getProperty:ValheimInstall -nologo).Trim()
 $Exe = Join-Path $Valheim "valheim.exe"
 $Log = Join-Path $Valheim "BepInEx\LogOutput.log"
-if (-not (Test-Path $Exe)) { throw "valheim.exe not found in $Valheim. Set VALHEIM_INSTALL." }
+if (-not (Test-Path $Exe)) { throw "valheim.exe not found in $Valheim. Set VALHEIM_INSTALL or Directory.Build.props.user." }
 
 $GameArgs = @()
 if ($Debug) {

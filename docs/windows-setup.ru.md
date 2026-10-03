@@ -7,7 +7,7 @@
 | Что | Где взять | Проверка |
 |---|---|---|
 | Steam и Valheim 1.0 | Steam | игра запускается |
-| .NET SDK 9 | https://dotnet.microsoft.com/download | `dotnet --version` показывает 9.x |
+| .NET SDK 9 или новее | https://dotnet.microsoft.com/download | `dotnet --version` |
 | Node.js LTS | https://nodejs.org | `node --version` |
 | Git for Windows | https://git-scm.com | `git --version` |
 | VS Code | https://code.visualstudio.com | расширения: C# Dev Kit, Visual Studio Tools for Unity |
@@ -38,7 +38,11 @@
 
 ## 4. Проект
 
+**Не клонируй проект в папку игры** (`Valheim\BepInEx\plugins\...`). BepInEx загружает все DLL из `plugins`,
+и мод загрузится несколько раз (из `bin` и `obj`). Клонируй в обычную папку, например `D:\dev`.
+
 ```powershell
+mkdir D:\dev -Force; cd D:\dev
 git clone https://github.com/MyraxByte/ValheimTomrer.git
 cd ValheimTomrer
 ```

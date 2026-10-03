@@ -8,7 +8,7 @@ for the project owner, in Russian, is `docs/windows-setup.ru.md`.
 | Tool | Why |
 |---|---|
 | Valheim 1.0 (Steam) with BepInExPack_Valheim 5.4.2350 | the game and the mod loader |
-| .NET SDK 9 | builds the plugin (`netstandard2.1`) |
+| .NET SDK 9 or newer | builds the plugin (`netstandard2.1`) |
 | Node.js 20+ | the npm scripts, the rules check, the Claude Code hook |
 | BepInEx ScriptEngine (BepInEx.Debug) | hot reload, one DLL in `BepInEx/plugins` |
 | VS Code (C# Dev Kit, Visual Studio Tools for Unity) or Rider | editing and the debugger |
