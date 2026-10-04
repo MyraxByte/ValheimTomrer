@@ -49,6 +49,7 @@ namespace ValheimTomrer.Editor.Ui
         private static Button _iso;
         private static Button _floorDown;
         private static Button _floorUp;
+        private static Button _floorAll;
         private static TextMeshProUGUI _floor;
         private static int _levelShown = -2;
         private static int _countShown = -1;
@@ -61,6 +62,9 @@ namespace ValheimTomrer.Editor.Ui
 
         /// <summary>The floor line under the gizmo. For the tests.</summary>
         public static string FloorText => _floor != null ? _floor.text : "";
+
+        /// <summary>The All floors button, for the tests.</summary>
+        public static Button AllFloorsButton => _floorAll;
 
         public static int DiscCount => Discs.Length;
 
@@ -135,6 +139,7 @@ namespace ValheimTomrer.Editor.Ui
                 _levelShown = EditorState.Level;
                 _countShown = EditorState.LevelCount;
                 _floor.text = _levelShown < 0 ? "All floors" : $"Floor {_levelShown + 1} of {Mathf.Max(_countShown, _levelShown + 1)}";
+                _floorAll.interactable = _levelShown >= 0;
             }
         }
 
@@ -161,7 +166,7 @@ namespace ValheimTomrer.Editor.Ui
             _root = UiBuild.Rect("ViewGizmo", host);
             _root.anchorMin = _root.anchorMax = new Vector2(1f, 1f);
             _root.pivot = new Vector2(1f, 1f);
-            _root.sizeDelta = new Vector2(Area + 24f, Area + 112f);
+            _root.sizeDelta = new Vector2(Area + 24f, Area + 140f);
 
             // Sits under the islands: right after the toolbar in the draw order.
             if (EditorWindow.Toolbar != null && _root.parent == EditorWindow.Toolbar.parent)
@@ -247,6 +252,10 @@ namespace ValheimTomrer.Editor.Ui
             floor.pivot = new Vector2(0.5f, 1f);
             floor.anchoredPosition = new Vector2(0f, -(Area + 84f));
             floor.sizeDelta = new Vector2(Area - 40f, 18f);
+
+            // One click back to every floor: the same as Ctrl+0.
+            _floorAll = Kit.Solid(_root, "All floors", EditorState.ShowAllFloors, 24f, Kit.CaptionSize);
+            Place(_floorAll, new Vector2(0f, -(Area + 110f)), new Vector2(Area + 12f, 24f));
             _levelShown = -2;
         }
 

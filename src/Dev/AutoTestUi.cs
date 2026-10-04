@@ -555,9 +555,13 @@ namespace ValheimTomrer.Dev
             EditorState.FloorUp();
             Check(Mathf.Approximately(EditorState.PlaneY, EditorState.FloorHeight) && Mathf.Approximately(EditorState.Index.GroundY, EditorState.PlaneY),
                 $"on floor 2 new pieces are aimed at {EditorState.PlaneY:0.##} m");
+            ViewGizmo.AllFloorsButton.onClick.Invoke();
+            yield return Frames(2);
+            Check(EditorState.Level < 0 && EditorState.NotDrawn.Count == 0, "the All floors button shows every floor again");
+            EditorState.FloorDown();
             Bindings.Press(KeyCode.Alpha0, KeyMods.Ctrl);
             yield return Frames(2);
-            Check(EditorState.Level < 0 && EditorState.NotDrawn.Count == 0, "Ctrl+0 shows all floors");
+            Check(EditorState.Level < 0 && EditorState.NotDrawn.Count == 0, "and so does Ctrl+0");
 
             // The pad: L2 + triangle leaves isometric.
             _pad = new PadState();

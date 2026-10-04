@@ -226,7 +226,7 @@ layout and has no setting.
 | 5 | Perspective or orthographic (flat) view, where parallel lines stay parallel |
 | 6 | Isometric view: flat, at a fixed angle, for building without free 3D. WASD slide the view, the wheel zooms, a right drag pans. |
 | [ and ] | Turn the view a quarter to the left or the right round what it looks at (in isometric, corner to corner) |
-| Ctrl + Up, Ctrl + Down, Ctrl + 0 | Floor up, floor down (from all floors: the top one), all floors. What is above the floor in view is hidden, new pieces are aimed at its level, and a piece placed higher takes the view up to it. The floor height is the `FloorHeight` setting (2 m). |
+| Ctrl + Up, Ctrl + Down, Ctrl + 0 | Floor up, floor down (from all floors: the top one), all floors (also the All floors button under the axis marker). What is above the floor in view is hidden, new pieces are aimed at its level, and a piece placed higher takes the view up to it. The floor height is the `FloorHeight` setting (2 m). |
 | Alt + K | Support colours: every piece coloured by how well it is held up (the ground's colour, then green to red, like the hammer's) |
 | Ctrl + Alt + S | Keep the selected pieces as a small blueprint of their own (a window, a porch) |
 | Ctrl + I | Insert a blueprint from the list: its pieces go in hand, in this blueprint |
@@ -296,7 +296,7 @@ The controller works from the crosshair in the middle of the 3D view.
 | L2 (LT) + D-pad up | Perspective or orthographic view |
 | L2 (LT) + D-pad down | Show only the selection, again to bring back what it hid |
 | L2 (LT) + △ (Y) | Isometric view on and off |
-| In isometric: right stick | Left or right turns the view a quarter, up or down zooms. The left stick slides the view, D-pad up and down change the floor. |
+| In isometric: right stick | Left or right turns the view a quarter, up or down zooms. The left stick slides the view, D-pad up and down change the floor, L1 (LB) + D-pad up shows all floors. |
 | L2 (LT) + × (A) | Ruler on and off. R2 puts a point at the crosshair, ○ stops. |
 | L2 (LT) + R3 | Fly to the next saved view |
 | △ (Y) in Quick add | Star or unstar the lit piece |

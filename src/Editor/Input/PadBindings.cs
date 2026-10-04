@@ -279,7 +279,12 @@ namespace ValheimTomrer.Editor.Input
             if (camera != null && camera.Iso && !l2)
             {
                 // Isometric: up and down are the floors (Ctrl + Up and Down), not flying.
-                if (pad.Pressed(PadButton.Up))
+                if (pad.Pressed(PadButton.Up) && pad.Held(PadButton.L1))
+                {
+                    // L1 + up: every floor again (Ctrl+0).
+                    EditorState.ShowAllFloors();
+                }
+                else if (pad.Pressed(PadButton.Up))
                 {
                     EditorState.FloorUp();
                 }
@@ -587,6 +592,9 @@ namespace ValheimTomrer.Editor.Input
                     + "on its own when the crosshair is on nothing"),
                 new HelpRow($"{l2} + {r2}", "Place another piece of the kind in the middle of the view, like the game's copy"),
                 new HelpRow(g.Dpad + " left, right", "Undo, redo"),
+                new HelpRow($"{l2} + {g.Of(PadButton.Triangle)}", "Isometric view on and off: a flat view that turns in quarters"),
+                new HelpRow($"In isometric: {g.Rs} left, right",
+                    $"Turn the view a quarter. {g.Rs} up, down zooms, {g.Ls} slides the view, {g.Dpad} up, down changes the floor, {l1} + {g.Dpad} up shows all floors"),
                 new HelpRow($"{l2} + {cross}", $"Ruler on and off. {r2} puts a point at the crosshair, {circle} stops."),
                 new HelpRow($"{l2} + {r3}", "Fly to the next saved view (save one from the command search)"),
                 new HelpRow($"{l2} + {g.Dpad} left, right", "View from the next side: front, right, back, left, top, corner"),
