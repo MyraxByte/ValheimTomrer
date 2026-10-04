@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using UnityEngine;
 using ValheimTomrer.Blueprints;
@@ -204,7 +203,7 @@ namespace ValheimTomrer.Editor.View
         /// points at: ground colour, then green to red. Null puts the pieces back. The caller says again after the
         /// pieces were rebuilt.
         /// </summary>
-        public void ShowSupport(Func<int, Color> colorOf)
+        public void ShowSupport(System.Func<int, Color> colorOf)
         {
             foreach (var pair in _supportOf)
             {
