@@ -354,9 +354,13 @@ namespace ValheimTomrer.Editor.Ui
             Kit.Size(_icon, 40f, 40f);
             var texts = Kit.Column(top, 2f);
             Kit.Size(texts, -1f, -1f, 1f);
-            _title = Kit.Heading(texts, "Nothing selected", out _size);
-            _sub = Kit.Text(texts, "", Kit.CaptionSize, UiTheme.TextDim);
-            Kit.Size(_sub, -1f, 16f);
+            _title = Kit.Note(texts, "Nothing selected", Kit.BodySize, UiTheme.Text);
+            _title.fontStyle = FontStyles.Bold;
+            var line = Kit.Row(texts, 8f, 0f, "SubLine");
+            _sub = Kit.Note(line, "", Kit.CaptionSize, UiTheme.TextDim);
+            Kit.Size(_sub, -1f, -1f, 1f);
+            _size = Kit.Note(line, "", Kit.CaptionSize, UiTheme.TextDim);
+            _size.alignment = TextAlignmentOptions.TopRight;
             _facts = Kit.Note(head, "", Kit.CaptionSize, UiTheme.TextDim);
             _facts.gameObject.SetActive(false);
             _nothing = Kit.Note(_root, "Click a piece, drag a box round several, or press Tab to add one.");
@@ -472,9 +476,8 @@ namespace ValheimTomrer.Editor.Ui
 
         private static TextMeshProUGUI Caption(Transform parent, string text)
         {
-            var label = Kit.Text(parent, text, Kit.CaptionSize, UiTheme.TextDim);
-            Kit.Size(label, -1f, 16f);
-            return label;
+            // A small dim line, made like the notes (which show) and sized by its own text.
+            return Kit.Note(parent, text, Kit.CaptionSize, UiTheme.TextDim);
         }
 
         /// <summary>A row of buttons sharing the width.</summary>

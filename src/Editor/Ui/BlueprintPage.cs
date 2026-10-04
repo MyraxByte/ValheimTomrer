@@ -403,8 +403,7 @@ namespace ValheimTomrer.Editor.Ui
 
         private static void Caption(Transform parent, string text)
         {
-            var label = Kit.Text(parent, text, Kit.CaptionSize, UiTheme.TextDim);
-            Kit.Size(label, -1f, 16f);
+            Kit.Note(parent, text, Kit.CaptionSize, UiTheme.TextDim);
         }
 
         private static Choice NewChoice(string prefab, string text, Sprite icon)

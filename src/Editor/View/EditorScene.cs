@@ -20,14 +20,14 @@ namespace ValheimTomrer.Editor.View
         public const float Depth = -8000f;
 
         private const float GroundSize = 800f;
-        private const int GridCells = 100;       // 1 m cells, 100 x 100
+        private const int GridCells = 60;        // 1 m cells, 60 x 60: a bigger grid is a moire at a distance
         private const float GridY = 0.003f;
         private const float RingY = 0.006f;
 
         // The scene's colours: UiTheme.Scene*.
         private static readonly Color FrontColor = Hex(0xD9412B);
-        private static readonly Color AxisXColor = new Color(0.90f, 0.30f, 0.30f, 0.85f);
-        private static readonly Color AxisZColor = new Color(0.30f, 0.55f, 1f, 0.85f);
+        private static readonly Color AxisXColor = new Color(0.90f, 0.30f, 0.30f, 0.35f);
+        private static readonly Color AxisZColor = new Color(0.30f, 0.55f, 1f, 0.35f);
 
         private Material _groundMaterial;
         private Material _gridMaterial;

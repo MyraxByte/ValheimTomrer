@@ -119,9 +119,8 @@ namespace ValheimTomrer.Editor.Ui
             layout.childForceExpandHeight = false;
             if (!string.IsNullOrEmpty(title))
             {
-                var label = Text(back.transform, title, CaptionSize, UiTheme.TextDim);
+                var label = Note(back.transform, title, CaptionSize, UiTheme.TextDim);
                 label.fontStyle = FontStyles.Bold;
-                Size(label, -1f, 16f);
             }
 
             return back.rectTransform;

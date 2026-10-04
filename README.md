@@ -256,7 +256,7 @@ layout and has no setting.
 | Alt + S | Snap points on or off. The grid still works. Shift held turns all snapping off for a moment. |
 | Tab | Quick add: the pieces over the view, with the categories (All, Recent, Starred, Wall, Roof...) in a list on the left, each with how many pieces it holds. Type to search, click a piece to place it, right click stars it. Tab or Esc closes it. |
 | Alt + 1, Alt + 2 | Put the Layers card (left) or the Inspector card (right) away, or bring it back. A small tab on the edge brings it back with a click. |
-| Layers search box | A name, or a word with a colon: `:weak` (badly held up), `:hidden`, `:locked`, `:selected`, `:grouped`, `:floor2` (the second floor) |
+| Layers search box | A name, or a word with a colon: `:weak` (badly held up), `:hidden`, `:locked`, `:selected`, `:grouped` |
 | Ctrl + \ | Hide the whole interface and keep the view. The same keys, or Esc, bring it back. |
 | F6, Shift + F6 | Move between the buttons and cards without the mouse. Arrow keys step, Enter presses. |
 | Esc | Go back one step, for example stop typing, close a window or put away the piece in your hand. When there is nothing left, it closes the editor. |

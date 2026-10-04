@@ -52,7 +52,7 @@ namespace ValheimTomrer.Editor.View
                 Elevation = 22f, Azimuth = -75f, KeyColor = C(1.00f, 0.80f, 0.62f), KeyIntensity = 0.95f,
                 FillColor = C(0.55f, 0.66f, 0.90f), FillIntensity = 0.28f, Ambient = C(0.27f, 0.28f, 0.34f),
                 Sky = C(0.34f, 0.37f, 0.46f), Ground = C(0.17f, 0.18f, 0.19f),
-                Grid = C(1f, 0.95f, 0.9f, 0.08f), GridMajor = C(1f, 0.95f, 0.9f, 0.17f), Ring = C(0.95f, 0.85f, 0.75f),
+                Grid = C(0.85f, 0.85f, 0.9f, 0.030f), GridMajor = C(0.85f, 0.85f, 0.9f, 0.075f), Ring = C(0.95f, 0.85f, 0.75f),
                 ShadowStrength = 0.75f,
             },
 
@@ -62,7 +62,7 @@ namespace ValheimTomrer.Editor.View
                 Elevation = 58f, Azimuth = -35f, KeyColor = C(1.00f, 0.96f, 0.88f), KeyIntensity = 1.05f,
                 FillColor = C(0.62f, 0.72f, 0.92f), FillIntensity = 0.32f, Ambient = C(0.34f, 0.38f, 0.45f),
                 Sky = C(0.27f, 0.34f, 0.45f), Ground = C(0.19f, 0.21f, 0.20f),
-                Grid = C(1f, 1f, 1f, 0.07f), GridMajor = C(1f, 1f, 1f, 0.15f), Ring = C(0.9f, 0.92f, 0.95f),
+                Grid = C(0.9f, 0.9f, 0.95f, 0.028f), GridMajor = C(0.9f, 0.9f, 0.95f, 0.070f), Ring = C(0.9f, 0.92f, 0.95f),
                 ShadowStrength = 0.8f,
             },
 
@@ -72,7 +72,7 @@ namespace ValheimTomrer.Editor.View
                 Elevation = 11f, Azimuth = 100f, KeyColor = C(1.00f, 0.55f, 0.32f), KeyIntensity = 0.85f,
                 FillColor = C(0.46f, 0.40f, 0.62f), FillIntensity = 0.24f, Ambient = C(0.22f, 0.19f, 0.25f),
                 Sky = C(0.24f, 0.17f, 0.22f), Ground = C(0.12f, 0.11f, 0.12f),
-                Grid = C(1f, 0.85f, 0.75f, 0.07f), GridMajor = C(1f, 0.85f, 0.75f, 0.15f), Ring = C(0.95f, 0.75f, 0.6f),
+                Grid = C(0.85f, 0.8f, 0.8f, 0.026f), GridMajor = C(0.85f, 0.8f, 0.8f, 0.065f), Ring = C(0.95f, 0.75f, 0.6f),
                 ShadowStrength = 0.7f,
             },
 
@@ -82,7 +82,7 @@ namespace ValheimTomrer.Editor.View
                 Elevation = 42f, Azimuth = 35f, KeyColor = C(0.55f, 0.66f, 1.00f), KeyIntensity = 0.40f,
                 FillColor = C(0.22f, 0.28f, 0.50f), FillIntensity = 0.14f, Ambient = C(0.07f, 0.09f, 0.15f),
                 Sky = C(0.025f, 0.035f, 0.07f), Ground = C(0.055f, 0.065f, 0.09f),
-                Grid = C(0.6f, 0.7f, 1f, 0.09f), GridMajor = C(0.6f, 0.7f, 1f, 0.18f), Ring = C(0.7f, 0.78f, 1f),
+                Grid = C(0.7f, 0.78f, 1f, 0.030f), GridMajor = C(0.7f, 0.78f, 1f, 0.075f), Ring = C(0.7f, 0.78f, 1f),
                 ShadowStrength = 0.6f,
             },
         };
