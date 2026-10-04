@@ -278,15 +278,16 @@ namespace ValheimTomrer.Editor.Ui
             LeftDock = NewDock("LeftDock", root, true);
             RightDock = NewDock("RightDock", root, false);
 
+            // The edge tabs are under the header, so the header's menu draws over them and takes the clicks.
+            LayersTab = Tab("LayersTab", root, "Layers", true, () => SetLayers(true));
+            InspectorTab = Tab("InspectorTab", root, "Inspector", false, () => SetInspector(true));
+
             // The header: only a frame for the islands that Header builds into it. It has no picture,
             // so a click between the islands goes through to the view.
             Header = UiBuild.Rect("Header", root);
             Header.anchorMin = new Vector2(0f, 1f);
             Header.anchorMax = new Vector2(1f, 1f);
             Header.pivot = new Vector2(0.5f, 1f);
-
-            LayersTab = Tab("LayersTab", root, "Layers", true, () => SetLayers(true));
-            InspectorTab = Tab("InspectorTab", root, "Inspector", false, () => SetInspector(true));
 
             ApplyLayout();
         }

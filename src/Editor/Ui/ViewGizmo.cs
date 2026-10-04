@@ -33,6 +33,9 @@ namespace ValheimTomrer.Editor.Ui
             ViewPreset.Right, ViewPreset.Left, ViewPreset.Top, ViewPreset.Bottom, ViewPreset.Front, ViewPreset.Back,
         };
 
+        /// <summary>In the order of <see cref="ViewPreset"/>, so no name is made every frame.</summary>
+        private static readonly string[] SideNames = { "Front", "Back", "Right", "Left", "Top", "Bottom", "Corner" };
+
         private static readonly string[] Letters = { "X", "", "Y", "", "Z", "" };
 
         private static RectTransform _host;
@@ -119,7 +122,7 @@ namespace ValheimTomrer.Editor.Ui
 
         private static string Name(ViewPreset view)
         {
-            return view == ViewPreset.Iso ? "Corner" : view.ToString();
+            return SideNames[(int)view];
         }
 
         private static Color Colour(int disc)
@@ -127,11 +130,11 @@ namespace ValheimTomrer.Editor.Ui
             switch (disc / 2)
             {
                 case 0:
-                    return UiTheme.Dark ? new Color32(0xE5, 0x4D, 0x4D, 0xFF) : new Color32(0xD6, 0x3A, 0x3A, 0xFF);
+                    return new Color32(0xE5, 0x4D, 0x4D, 0xFF);
                 case 1:
-                    return UiTheme.Dark ? new Color32(0x3F, 0xB9, 0x6B, 0xFF) : new Color32(0x25, 0x9C, 0x52, 0xFF);
+                    return new Color32(0x3F, 0xB9, 0x6B, 0xFF);
                 default:
-                    return UiTheme.Dark ? new Color32(0x4C, 0x8D, 0xFF, 0xFF) : new Color32(0x0B, 0x6C, 0xF0, 0xFF);
+                    return new Color32(0x4C, 0x8D, 0xFF, 0xFF);
             }
         }
 
@@ -165,10 +168,10 @@ namespace ValheimTomrer.Editor.Ui
                 Lines[axis].anchoredPosition = Vector2.zero;
             }
 
-            // The dim ends first, so the bright ones draw over them.
+            // The dim ends (odd) first, so the bright ones draw over them and take the click.
             for (var pass = 0; pass < 2; pass++)
             {
-                for (var i = pass; i < Discs.Length; i += 2)
+                for (var i = 1 - pass; i < Discs.Length; i += 2)
                 {
                     var index = i;
                     var face = UiBuild.Panel("Disc" + Letters[i] + i, centre, UiTheme.Round, Colour(i));

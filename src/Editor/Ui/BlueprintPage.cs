@@ -36,6 +36,7 @@ namespace ValheimTomrer.Editor.Ui
         private static TextMeshProUGUI _cardText;
         private static RectTransform _materials;
         private static LayoutElement _materialsSize;
+        private static TextMeshProUGUI _materialsNote;
         private static MaterialList _list;
 
         private static MaterialSources _sources;
@@ -94,6 +95,9 @@ namespace ValheimTomrer.Editor.Ui
             _sources = null;   // let go of the chests; the next open reads them again
         }
 
+        /// <summary>The materials list is on screen: the Inspector is out and on this tab. Nothing is read from chests otherwise.</summary>
+        private static bool ListVisible => EditorWindow.RightShown && Inspector.Tab == Inspector.BlueprintTab;
+
         public static void Tick()
         {
             if (_root == null || _document == null)
@@ -105,7 +109,7 @@ namespace ValheimTomrer.Editor.Ui
             {
                 Refresh();
             }
-            else if (Time.unscaledTime >= _nextMaterials)
+            else if (Time.unscaledTime >= _nextMaterials && ListVisible)
             {
                 FillMaterials();
             }
@@ -278,6 +282,13 @@ namespace ValheimTomrer.Editor.Ui
             {
                 _materialsSize.minHeight = _materialsSize.preferredHeight = _list.Height;
             }
+
+            // An empty list says why, instead of leaving a caption with nothing under it.
+            var none = _list.Height < 1f;
+            _materialsNote.gameObject.SetActive(none);
+            _materialsNote.text = _document != null && _document.Pieces.Count == 0
+                ? "No pieces yet. Press Tab to add one."
+                : "Nothing to craft: these pieces cost nothing here.";
         }
 
         private static float ListWidth()
@@ -351,6 +362,8 @@ namespace ValheimTomrer.Editor.Ui
             _materialsSize = _materials.gameObject.AddComponent<LayoutElement>();
             _list = MaterialList.Create(_materials, EditorWindow.RightWidth - 48f, 1);
             _list.FooterShown = false;
+            _materialsNote = Kit.Note(card.transform, "", Kit.CaptionSize, UiTheme.TextDim);
+            _materialsNote.gameObject.SetActive(false);
         }
 
         private static void Caption(Transform parent, string text)

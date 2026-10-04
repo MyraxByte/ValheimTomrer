@@ -77,6 +77,12 @@ namespace ValheimTomrer.Editor.Ui
             Pool.Clear();
             _first = -1;
             Build(host);
+
+            // The box is new after a theme switch, the filter is not: show it, or the list looks filtered by nothing.
+            if (!string.IsNullOrEmpty(_filter))
+            {
+                _search.SetTextWithoutNotify(_filter);
+            }
         }
 
         public static void Show(BlueprintDocument document)
@@ -99,7 +105,7 @@ namespace ValheimTomrer.Editor.Ui
                 return;
             }
 
-            if (_document != null && (_document.Revision != _revision || EditorState.Version != _version))
+            if (_document != null && (_document.PiecesRevision != _revision || EditorState.Version != _version))
             {
                 Reload();
                 return;
@@ -144,7 +150,7 @@ namespace ValheimTomrer.Editor.Ui
             _version = EditorState.Version;
             if (_document != null)
             {
-                _revision = _document.Revision;
+                _revision = _document.PiecesRevision;
                 var groups = new Dictionary<string, List<DocPiece>>();
                 var order = new List<string>();
                 foreach (var piece in _document.Pieces)

@@ -425,7 +425,6 @@ namespace ValheimTomrer.Dev
             Default(EditorConfig.ShowAllPieces);
             Default(EditorConfig.SnapDots);
             Default(EditorConfig.Boxes);
-            Default(EditorConfig.Theme);
             Default(EditorConfig.RecentPieces);
             Default(EditorConfig.FavouritePieces);
             Default(EditorConfig.LayersOpen);

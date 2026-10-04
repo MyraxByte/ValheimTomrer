@@ -390,17 +390,22 @@ namespace ValheimTomrer.Editor.Doc
                 File.WriteAllText(temp, text, NoBom);
                 if (File.Exists(path))
                 {
-                    File.Delete(path);
+                    // One swap: the old file is never gone while the new one is not in place.
+                    File.Replace(temp, path, null);
+                }
+                else
+                {
+                    File.Move(temp, path);
                 }
 
-                File.Move(temp, path);
                 error = null;
                 return true;
             }
             catch (Exception e) when (e is IOException || e is UnauthorizedAccessException || e is ArgumentException)
             {
-                error = $"cannot write {Path.GetFileName(path)}: {e.Message}";
-                TryDelete(temp);
+                // The temp file stays when the swap failed: it may be the only copy of the new text.
+                error = $"cannot write {Path.GetFileName(path)}: {e.Message}. "
+                    + (File.Exists(temp) ? $"The new text is kept in {Path.GetFileName(temp)}." : "");
                 return false;
             }
         }
@@ -417,18 +422,6 @@ namespace ValheimTomrer.Editor.Doc
             {
                 error = $"cannot delete {Path.GetFileName(path)}: {e.Message}";
                 return false;
-            }
-        }
-
-        private static void TryDelete(string path)
-        {
-            try
-            {
-                File.Delete(path);
-            }
-            catch (Exception)
-            {
-                // Nothing to do: the temp file is already the fallback.
             }
         }
     }

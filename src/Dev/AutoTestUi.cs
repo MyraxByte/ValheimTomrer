@@ -37,9 +37,9 @@ namespace ValheimTomrer.Dev
             yield return RedesignLayout();
             yield return RedesignIslands();
             yield return RedesignSpace(document);
+            yield return RedesignTools(document);
             yield return RedesignQuickAdd();
             yield return RedesignWheel();
-            yield return RedesignTheme(document);
             RedesignKeymap();
             yield return RedesignWindows();
             RedesignHideLock(document);
@@ -125,8 +125,11 @@ namespace ValheimTomrer.Dev
             yield return Frames(2);
 
             Header.ToggleMenu();
-            yield return null;
+            yield return Frames(3);
             Check(Header.MenuOpen, "the menu button opens the menu");
+            var menuBox = Header.MenuBox;
+            Check(Contains(new Rect(0f, 0f, Screen.width, Screen.height), menuBox) && menuBox.width > 100f,
+                $"the menu is all on the screen: x {menuBox.xMin:0} to {menuBox.xMax:0} of {Screen.width}, y {menuBox.yMin:0} to {menuBox.yMax:0} of {Screen.height}");
             Check(Bindings.Cancel() && !Header.MenuOpen && ModUi.Open, "Esc closes the menu first");
 
             Inspector.SetTab(Inspector.BlueprintTab);
@@ -336,6 +339,113 @@ namespace ValheimTomrer.Dev
             yield return Screenshot("editor-ui-space");
         }
 
+        /// <summary>
+        /// Groups, copy and paste, sizes and gaps, the ruler, saved views, close the gap, typing a bad number,
+        /// dragging a caption, a click on a hidden piece.
+        /// </summary>
+        private static IEnumerator RedesignTools(BlueprintDocument document)
+        {
+            var camera = ValheimTomrer.Editor.Ui.ViewportHost.Camera;
+            var ids = document.Pieces.Take(3).Select(p => p.Id).ToArray();
+
+            // Groups: one click on a piece picks the group; ungroup breaks it.
+            EditorState.Select(ids);
+            Bindings.Press(KeyCode.G, KeyMods.Ctrl);
+            yield return Frames(1);
+            Check(EditorState.GroupCount == 1, $"Ctrl+G groups the selection: {EditorState.GroupCount} group");
+            EditorState.Select(ids[0]);
+            Check(EditorState.SelectionCount == 3, $"a click on one piece of a group picks all three: {EditorState.SelectionCount}");
+            Bindings.Press(KeyCode.G, KeyMods.Ctrl | KeyMods.Shift);
+            EditorState.Select(ids[0]);
+            Check(EditorState.GroupCount == 0 && EditorState.SelectionCount == 1, "Ctrl+Shift+G breaks it up");
+
+            // Copy and paste.
+            Bindings.Press(KeyCode.C, KeyMods.Ctrl);
+            Check(EditorState.ClipboardCount == 1, "Ctrl+C keeps the selection");
+            Bindings.Press(KeyCode.V, KeyMods.Ctrl);
+            yield return Frames(1);
+            Check(EditorState.Mode == EditMode.Place && EditorState.Moving != null, "Ctrl+V puts the copy in hand");
+            EditorState.CancelMode();
+
+            // Sizes and gaps: lines are drawn for a selection, and Alt+Z takes them away.
+            ValheimTomrer.Editor.Ui.ViewportHost.Frame();
+            EditorState.Select(ids[0]);
+            yield return Frames(3);
+            var drawn = Annotations.Drawn;
+            Check(EditorState.DimensionsOn && drawn >= 1, $"a selection gets its size lines: {drawn} drawn");
+            Bindings.Press(KeyCode.Z, KeyMods.Alt);
+            yield return Frames(2);
+            Check(!EditorState.DimensionsOn && Annotations.Drawn == 0, "Alt+Z hides them");
+            Bindings.Press(KeyCode.Z, KeyMods.Alt);
+
+            // The ruler: M on, two clicks at the crosshair, lines drawn, Esc off.
+            Bindings.Press(KeyCode.M, KeyMods.None);
+            Check(ValheimTomrer.Editor.Ui.ViewportHost.RulerOn, "M turns the ruler on");
+            ValheimTomrer.Editor.Ui.ViewportHost.RulerClickAim();
+            camera.Orbit(camera.Pivot, 25f, 0f);
+            ValheimTomrer.Editor.Ui.ViewportHost.RulerClickAim();
+            yield return Frames(2);
+            Check(ValheimTomrer.Editor.Ui.ViewportHost.RulerStart.HasValue && ValheimTomrer.Editor.Ui.ViewportHost.RulerEnd.HasValue,
+                "two clicks set the ruler's ends");
+            Check(Annotations.Drawn >= 1, $"the ruler is drawn: {Annotations.Drawn}");
+            Check(Bindings.Cancel() && !ValheimTomrer.Editor.Ui.ViewportHost.RulerOn, "Esc turns the ruler off first");
+
+            // Saved views.
+            ValheimTomrer.Editor.Ui.ViewportHost.ClearBookmarks();
+            ValheimTomrer.Editor.Ui.ViewportHost.ShowView(ValheimTomrer.Editor.View.ViewPreset.Left);
+            var here = camera.Pose;
+            Bindings.Press(KeyCode.B, KeyMods.Ctrl);
+            ValheimTomrer.Editor.Ui.ViewportHost.ShowView(ValheimTomrer.Editor.View.ViewPreset.Top);
+            Bindings.Press(KeyCode.B, KeyMods.None);
+            Check(ValheimTomrer.Editor.Ui.ViewportHost.BookmarkCount == 1 && (camera.Pose.Position - here.Position).magnitude < 0.01f
+                && Mathf.Abs(camera.Pose.Pitch - here.Pitch) < 0.01f, "Ctrl+B saves the view and B flies back to it");
+            Bindings.Press(KeyCode.B, KeyMods.Ctrl | KeyMods.Shift);
+            Check(ValheimTomrer.Editor.Ui.ViewportHost.BookmarkCount == 0, "Ctrl+Shift+B forgets the saved views");
+
+            // Close the gap: two walls far from the rest, 5 m apart, the first moves up to the second.
+            var a = document.AddPiece("woodwall", new Vector3(0f, 0f, 300f), Quaternion.identity);
+            var b = document.AddPiece("woodwall", new Vector3(5f, 0f, 300f), Quaternion.identity);
+            EditorState.Select(a);
+            while (EditorState.AlignAxis != 0)
+            {
+                EditorState.CycleAlignAxis();
+            }
+
+            Check(EditorMeasure.CloseGap(), "Close gap finds the wall beside it");
+            var wallA = EditorState.BoxOf(document.Find(a));
+            var wallB = EditorState.BoxOf(document.Find(b));
+            Check(Mathf.Abs(wallB.min.x - wallA.max.x) < 0.01f, $"and the walls touch now: gap {wallB.min.x - wallA.max.x:0.000} m");
+            EditorState.Undo();
+            EditorState.Undo();
+            EditorState.Undo();
+            Check(document.Find(a) == null && document.Find(b) == null, "three undos take the test walls away");
+
+            // A typed value that is not a number: red box, old value back. A caption drag scrubs.
+            EditorState.Select(ids[0]);
+            Inspector.SetTab(Inspector.DesignTab);
+            yield return Frames(3);
+            var x = DesignPage.XField;
+            var before = x.text;
+            x.onEndEdit.Invoke("abc");
+            Check(x.GetComponent<FieldLook>().Invalid && x.text == before, "'abc' in a number box turns it red and keeps the old value");
+            var start = document.Find(ids[0]).Position.x;
+            var scrub = x.transform.Find("Caption").GetComponent<ScrubEvents>();
+            scrub.OnDrag(new PointerEventData(EventSystem.current) { delta = new Vector2(100f, 0f) });
+            yield return Frames(2);
+            Check(Mathf.Abs(document.Find(ids[0]).Position.x - (start + 1f)) < 0.02f,
+                $"a 100 pixel drag on the X caption moves the piece 1 m: {document.Find(ids[0]).Position.x - start:0.000}");
+            EditorState.Undo();
+
+            // A click on a hidden piece keeps the selection and says why.
+            EditorState.Select(ids[1]);
+            EditorState.SetHidden(new[] { ids[0] }, true);
+            EditorState.Select(ids[0]);
+            Check(EditorState.IsSelected(ids[1]) && EditorState.Message != null && EditorState.Message.Contains("hidden or locked"),
+                "picking only hidden pieces keeps the selection and says so");
+            EditorState.SetHidden(new[] { ids[0] }, false);
+            EditorState.Select(new int[0]);
+        }
+
         /// <summary>Tab opens Quick add with the search box typing; a pick goes in hand, closes it and heads Recent; stars filter.</summary>
         private static IEnumerator RedesignQuickAdd()
         {
@@ -412,23 +522,6 @@ namespace ValheimTomrer.Dev
             Check(Mathf.Abs(grid.content.anchoredPosition.y - start) < 1f,
                 $"a raw Windows notch (120) up scrolls one step back: {grid.content.anchoredPosition.y:0} (start {start:0})");
             QuickAdd.Close();
-        }
-
-        /// <summary>The theme switch rebuilds the window in the other colours and keeps the blueprint.</summary>
-        private static IEnumerator RedesignTheme(BlueprintDocument document)
-        {
-            var dark = UiTheme.Dark;
-            var generation = UiTheme.Generation;
-            EditorCommands.ToggleTheme();
-            yield return Frames(3);
-            Check(UiTheme.Dark != dark && UiTheme.Generation > generation && ModUi.Open && EditorSession.Document == document,
-                $"the theme switch rebuilt the window (dark {dark} -> {UiTheme.Dark}) and kept the blueprint");
-            ViewportHost.Preview?.Render();
-            var camera = ViewportHost.Preview != null ? ViewportHost.Preview.Unity : null;
-            Check(camera != null && camera.backgroundColor == UiTheme.SceneBackground, "the 3D view took the theme's background");
-            EditorCommands.ToggleTheme();
-            yield return Frames(3);
-            Check(UiTheme.Dark == dark && ModUi.Open, "and back");
         }
 
         /// <summary>The table picks the most specific chord, the presets differ, rebinding moves a taken key, reset puts it back.</summary>

@@ -64,9 +64,20 @@ namespace ValheimTomrer.Editor.Ui
         private static int _boxRevision = -1;
         private static Bounds? _selectionBox;
 
+        // Saved camera views and the ruler: this session only, never in the file.
+        private static readonly List<CameraPose> Bookmarks = new List<CameraPose>();
+        private static int _bookmarkAt = -1;
+        private const int MostBookmarks = 9;
+        private static Vector3? _rulerA;
+        private static Vector3? _rulerB;
+        private static int _gapVersion = -1;
+        private static int _gapRevision = -1;
+        private static List<Gap> _gaps = new List<Gap>();
+
         private static readonly ViewPreset[] ViewCycle =
         {
-            ViewPreset.Front, ViewPreset.Right, ViewPreset.Back, ViewPreset.Left, ViewPreset.Top, ViewPreset.Iso,
+            ViewPreset.Front, ViewPreset.Right, ViewPreset.Back, ViewPreset.Left, ViewPreset.Top, ViewPreset.Bottom,
+            ViewPreset.Iso,
         };
 
         private static MovingSet _ghostSet;
@@ -97,13 +108,6 @@ namespace ValheimTomrer.Editor.Ui
         public static EditorCamera Camera => _camera;
 
         public static EditorScene Scene => _scene;
-
-        /// <summary>Paints the ground and grid in the current theme, in the live scene and the one kept while closed.</summary>
-        public static void ApplyTheme()
-        {
-            _scene?.ApplyTheme();
-            _closedScene?.ApplyTheme();
-        }
 
         public static PreviewCamera Preview => _preview;
 
@@ -418,6 +422,185 @@ namespace ValheimTomrer.Editor.Ui
             _camera.SetView(ViewCycle[next]);
         }
 
+        // ---------- saved views ----------
+
+        public static int BookmarkCount => Bookmarks.Count;
+
+        /// <summary>Remembers where the camera is. The ninth view pushes out the oldest.</summary>
+        public static void AddBookmark()
+        {
+            if (_camera == null)
+            {
+                return;
+            }
+
+            if (Bookmarks.Count >= MostBookmarks)
+            {
+                Bookmarks.RemoveAt(0);
+            }
+
+            Bookmarks.Add(_camera.Pose);
+            _bookmarkAt = Bookmarks.Count - 1;
+            Toasts.Ok($"Saved view {Bookmarks.Count} of {Bookmarks.Count}. B flies to the next one.");
+        }
+
+        /// <summary>Flies to the next saved view, round and round.</summary>
+        public static void NextBookmark()
+        {
+            if (_camera == null)
+            {
+                return;
+            }
+
+            if (Bookmarks.Count == 0)
+            {
+                Toasts.Info("No saved views yet. Save the camera's place first.");
+                return;
+            }
+
+            _bookmarkAt = (_bookmarkAt + 1) % Bookmarks.Count;
+            _camera.SetPose(Bookmarks[_bookmarkAt]);
+            Toasts.Info($"View {_bookmarkAt + 1} of {Bookmarks.Count}.");
+        }
+
+        public static void ClearBookmarks()
+        {
+            if (Bookmarks.Count == 0)
+            {
+                return;
+            }
+
+            Toasts.Info($"Forgot {Bookmarks.Count} saved view{(Bookmarks.Count == 1 ? "" : "s")}.");
+            Bookmarks.Clear();
+            _bookmarkAt = -1;
+        }
+
+        // ---------- the ruler ----------
+
+        public static bool RulerOn { get; private set; }
+
+        /// <summary>The two ends clicked so far, or null.</summary>
+        public static Vector3? RulerStart => _rulerA;
+
+        public static Vector3? RulerEnd => _rulerB;
+
+        public static void ToggleRuler()
+        {
+            SetRuler(!RulerOn);
+        }
+
+        public static void SetRuler(bool on)
+        {
+            if (on == RulerOn)
+            {
+                return;
+            }
+
+            RulerOn = on;
+            _rulerA = _rulerB = null;
+            if (on)
+            {
+                // What is in hand would take the clicks.
+                EditorState.CancelMode();
+                Toasts.Info("Ruler: click two points. Esc stops.");
+            }
+        }
+
+        /// <summary>
+        /// A click with the ruler on: the first is the start, the second the end, the third starts over.
+        /// The point is the surface under the cursor, pulled to a corner of the piece's box when one is close.
+        /// </summary>
+        private static void RulerClick(Vector2 viewport)
+        {
+            var point = RulerPoint(viewport);
+            if (!point.HasValue)
+            {
+                return;
+            }
+
+            if (!_rulerA.HasValue || _rulerB.HasValue)
+            {
+                _rulerA = point;
+                _rulerB = null;
+                return;
+            }
+
+            _rulerB = point;
+            var d = _rulerB.Value - _rulerA.Value;
+            Toasts.Ok($"{d.magnitude:0.###} m  (across {Mathf.Abs(d.x):0.##}, up {Mathf.Abs(d.y):0.##}, along {Mathf.Abs(d.z):0.##})");
+        }
+
+        /// <summary>The pad: R2 places a ruler point at the crosshair.</summary>
+        public static void RulerClickAim()
+        {
+            RulerClick(new Vector2(0.5f, 0.5f));
+        }
+
+        /// <summary>Where a point of the pane lands in the blueprint's own space: a box corner near it, else the surface or the ground.</summary>
+        private static Vector3? RulerPoint(Vector2 viewport)
+        {
+            if (_raycast == null || _scene == null)
+            {
+                return null;
+            }
+
+            var ray = _raycast.RayAt(viewport);
+            var distance = _raycast.SurfaceDistance(viewport);
+            Vector3 world;
+            if (distance.HasValue)
+            {
+                world = ray.origin + (ray.direction * distance.Value);
+            }
+            else
+            {
+                // Nothing there: the ground plane, if the ray goes down to it.
+                var plane = new Plane(_scene.Root.up, _scene.Root.position);
+                if (!plane.Raycast(ray, out var enter))
+                {
+                    return null;
+                }
+
+                world = ray.origin + (ray.direction * enter);
+            }
+
+            var local = _scene.Root.InverseTransformPoint(world);
+            if (EditorState.Document == null)
+            {
+                return local;
+            }
+
+            // Pull to the nearest box corner of the piece under the cursor when it is within a few pixels.
+            var id = _pieces != null && _raycast.Pick(viewport, out var hit)
+                ? _pieces.IdOf(hit.collider != null ? hit.collider.transform : null)
+                : -1;
+            var piece = id >= 0 ? EditorState.Document.Find(id) : null;
+            if (piece == null || !_raycast.Project(world, out var here))
+            {
+                return local;
+            }
+
+            var box = EditorState.BoxOf(piece);
+            var best = local;
+            var nearest = RulerSnapPixels;
+            for (var i = 0; i < 8; i++)
+            {
+                var corner = new Vector3(
+                    (i & 1) == 0 ? box.min.x : box.max.x,
+                    (i & 2) == 0 ? box.min.y : box.max.y,
+                    (i & 4) == 0 ? box.min.z : box.max.z);
+                if (_raycast.Project(_scene.Root.TransformPoint(corner), out var there)
+                    && Vector2.Distance(here, there) < nearest)
+                {
+                    nearest = Vector2.Distance(here, there);
+                    best = corner;
+                }
+            }
+
+            return best;
+        }
+
+        private const float RulerSnapPixels = 16f;
+
         /// <summary>Perspective and orthographic, back and forth.</summary>
         public static void ToggleOrtho()
         {
@@ -508,6 +691,9 @@ namespace ValheimTomrer.Editor.Ui
             _preview = null;
             _raycast = null;
             _boxVersion = -1;
+            _gapVersion = -1;
+            RulerOn = false;
+            _rulerA = _rulerB = null;
             _camera = null;
             HideSelectRect();
             if (_image != null)
@@ -727,6 +913,108 @@ namespace ValheimTomrer.Editor.Ui
             {
                 Status(DocumentLine());
             }
+
+            if (_hints != null && !placing)
+            {
+                // A bar wider than the room between the cards shrinks to fit instead of running under one.
+                _hints.FitTo(EditorWindow.Root.rect.width - EditorWindow.FreeLeft - EditorWindow.FreeRight);
+            }
+
+            DrawAnnotations(placing);
+        }
+
+        /// <summary>Where a point of the blueprint shows, in the interface's own units. False when it is behind the camera.</summary>
+        private static bool PlaceOnScreen(Vector3 point, out Vector2 ui)
+        {
+            ui = Vector2.zero;
+            return _raycast != null && _scene != null
+                && _raycast.Project(_scene.Root.TransformPoint(point), out var screen)
+                && Annotations.ToLocal(screen, out ui);
+        }
+
+        private static void Mark(Vector3 a, Vector3 b, string text, Color colour)
+        {
+            if (PlaceOnScreen(a, out var from) && PlaceOnScreen(b, out var to))
+            {
+                Annotations.Line(from, to, text, colour);
+            }
+        }
+
+        /// <summary>
+        /// What is drawn over the picture besides the pieces: the selection's size along three of its edges,
+        /// the gaps to the pieces beside it, and the ruler. Rebuilt every frame from cached numbers.
+        /// </summary>
+        private static void DrawAnnotations(bool placing)
+        {
+            Annotations.Begin();
+            var box = SelectionBox();
+            if (EditorState.DimensionsOn && box.HasValue && !placing && !RulerOn)
+            {
+                var b = box.Value;
+                var low = b.min;
+                var high = b.max;
+                if (b.size.x > 0.01f)
+                {
+                    Mark(new Vector3(low.x, low.y, high.z), new Vector3(high.x, low.y, high.z), Meters(b.size.x), Annotations.AxisX);
+                }
+
+                if (b.size.z > 0.01f)
+                {
+                    Mark(new Vector3(high.x, low.y, low.z), new Vector3(high.x, low.y, high.z), Meters(b.size.z), Annotations.AxisZ);
+                }
+
+                if (b.size.y > 0.01f)
+                {
+                    Mark(new Vector3(low.x, low.y, high.z), new Vector3(low.x, high.y, high.z), Meters(b.size.y), Annotations.AxisY);
+                }
+
+                var document = EditorState.Document;
+                var revision = document != null ? document.Revision : -1;
+                if (_gapVersion != EditorState.Version || _gapRevision != revision)
+                {
+                    _gapVersion = EditorState.Version;
+                    _gapRevision = revision;
+                    _gaps = EditorMeasure.Around(b, EditorState.Selection);
+                }
+
+                foreach (var gap in _gaps)
+                {
+                    Mark(gap.From, gap.To, Meters(gap.Distance), Annotations.Gap);
+                }
+            }
+
+            if (RulerOn && _rulerA.HasValue)
+            {
+                var end = _rulerB;
+                if (!end.HasValue && !Captured && _raycast != null && Mouse.current != null
+                    && _raycast.ScreenToViewport(Mouse.current.position.ReadValue(), out var hover))
+                {
+                    end = RulerPoint(hover);
+                }
+
+                if (end.HasValue)
+                {
+                    var d = end.Value - _rulerA.Value;
+                    Mark(_rulerA.Value, end.Value, $"{d.magnitude:0.###} m   Δ {Mathf.Abs(d.x):0.##} · {Mathf.Abs(d.y):0.##} · {Mathf.Abs(d.z):0.##}", Annotations.Ruler);
+                }
+
+                if (PlaceOnScreen(_rulerA.Value, out var dotA))
+                {
+                    Annotations.Dot(dotA, Annotations.Ruler);
+                }
+
+                if (_rulerB.HasValue && PlaceOnScreen(_rulerB.Value, out var dotB))
+                {
+                    Annotations.Dot(dotB, Annotations.Ruler);
+                }
+            }
+
+            Annotations.End();
+        }
+
+        private static string Meters(float value)
+        {
+            return $"{value:0.##} m";
         }
 
         /// <summary>
@@ -741,14 +1029,13 @@ namespace ValheimTomrer.Editor.Ui
                 return;
             }
 
-            _hints.SetActive(!placing);
-            if (placing)
-            {
-                return;
-            }
+            _hints.SetActive(true);
+            var set = placing ? (PadAim ? "placepad" : "place")
+                : FocusNav.Active ? "focus" : PadAim ? "pad" : Captured ? "held" : "mouse";
 
-            var set = FocusNav.Active ? "focus" : PadAim ? "pad" : Captured ? "held" : "mouse";
-            var key = set + (EditorInput.Pad != null && EditorInput.Pad.Ps ? "|ps" : "|xbox") + "|" + WorldPad.ModifierButton;
+            // The key names come from the keymap, so a rebound key shows: its version is part of the set's key.
+            var key = set + (EditorInput.Pad != null && EditorInput.Pad.Ps ? "|ps" : "|xbox") + "|" + WorldPad.ModifierButton
+                + "|" + Keymap.Version;
             if (_hints.Is(key))
             {
                 return;
@@ -756,6 +1043,25 @@ namespace ValheimTomrer.Editor.Ui
 
             switch (set)
             {
+                case "place":
+                    _hints.Show(key,
+                        new Hint("drop", HintIcon.Key("LMB")),
+                        new Hint("turn", HintIcon.Key("Wheel"), HintIcon.Key(KeyOf(Act.RotateRight))),
+                        new Hint("snap point", HintIcon.Key(KeyOf(Act.SnapPrev)), HintIcon.Key(KeyOf(Act.SnapNext))),
+                        new Hint("no snapping", HintIcon.Key("Shift")),
+                        new Hint("look", HintIcon.Key("RMB")),
+                        new Hint("cancel", HintIcon.Key("Esc")));
+                    return;
+
+                case "placepad":
+                    _hints.Show(key,
+                        new Hint("drop", Pad(PadButton.R2)),
+                        new Hint("turn", Pad(WorldPad.ModifierButton), HintIcon.Pad(PadGlyphs.Stick(true), EditorInput.Glyphs.Rs)),
+                        new Hint("snap point", Pad(PadButton.L3), Pad(PadButton.R3)),
+                        new Hint("no snapping", Pad(PadButton.L1)),
+                        new Hint("cancel", Pad(PadButton.Circle)));
+                    return;
+
                 case "focus":
                     _hints.Show(key,
                         new Hint("move",
@@ -791,17 +1097,25 @@ namespace ValheimTomrer.Editor.Ui
 
                 default:
                     _hints.Show(key,
-                        new Hint("add piece", HintIcon.Key("Tab")),
+                        new Hint("add piece", HintIcon.Key(KeyOf(Act.QuickAdd))),
                         new Hint("select", HintIcon.Key("LMB")),
                         new Hint("look", HintIcon.Key("RMB")),
                         new Hint("pan", HintIcon.Key("MMB")),
+                        new Hint("orbit", HintIcon.Key("Alt"), HintIcon.Key("RMB")),
                         new Hint("zoom", HintIcon.Key("Wheel")),
                         new Hint("fly", HintIcon.Key("W"), HintIcon.Key("A"), HintIcon.Key("S"), HintIcon.Key("D")),
-                        new Hint("mouse look", HintIcon.Key("C")),
-                        new Hint("hide panels", HintIcon.Key("Ctrl"), HintIcon.Key("\\")),
-                        new Hint("help", HintIcon.Key("H")));
+                        new Hint("mouse look", HintIcon.Key(KeyOf(Act.MouseLook))),
+                        new Hint("hide panels", HintIcon.Key(KeyOf(Act.HideUi))),
+                        new Hint("help", HintIcon.Key(KeyOf(Act.Help))));
                     return;
             }
+        }
+
+        /// <summary>The first key of an action as the keymap has it now, for a hint's key cap.</summary>
+        private static string KeyOf(Act act)
+        {
+            var chords = Keymap.Chords(act);
+            return chords.Length == 0 ? "-" : chords[0].ToString();
         }
 
         /// <summary>A controller button as a picture, or as its name when the game has no icon.</summary>
@@ -894,15 +1208,44 @@ namespace ValheimTomrer.Editor.Ui
             return $"{word} ({Mathf.RoundToInt(value / info.Max * 100f)} %)";
         }
 
+        private static string _lineText = "";
+        private static Doc.BlueprintDocument _lineDocument;
+        private static int _lineVersion = -1;
+        private static int _lineRevision = -1;
+        private static string _lineMessage;
+        private static bool _lineMessageShown;
+
+        /// <summary>The status line, rebuilt only when something it shows changed (it was a new string every frame).</summary>
         private static string DocumentLine()
         {
             var document = EditorState.Document;
+            var revision = document != null ? document.Revision : -1;
+            var shown = EditorState.Message != null && Time.unscaledTime - EditorState.MessageAt < MessageSeconds;
+            if (ReferenceEquals(_lineDocument, document) && _lineVersion == EditorState.Version && _lineRevision == revision
+                && _lineMessage == EditorState.Message && _lineMessageShown == shown)
+            {
+                return _lineText;
+            }
+
+            _lineDocument = document;
+            _lineVersion = EditorState.Version;
+            _lineRevision = revision;
+            _lineMessage = EditorState.Message;
+            _lineMessageShown = shown;
+            _lineText = BuildDocumentLine(document);
+            return _lineText;
+        }
+
+        private static string BuildDocumentLine(Doc.BlueprintDocument document)
+        {
             if (document == null)
             {
                 return "no blueprint open";
             }
 
-            var name = string.IsNullOrEmpty(document.Name) ? "New blueprint" : document.Name;
+            // The name is the user's and can be long: it is cut, the rest of the line is the part that matters.
+            var name = string.IsNullOrEmpty(document.Name) ? "New blueprint"
+                : document.Name.Length > 28 ? document.Name.Substring(0, 27) + "…" : document.Name;
             var line = $"{name}: {Count(document.Pieces.Count)}";
             if (EditorState.SelectionCount > 0)
             {
@@ -1011,7 +1354,7 @@ namespace ValheimTomrer.Editor.Ui
             _dragStart = data.position;
             _boxSelecting = false;
             _dragMoving = false;
-            _downPiece = EditorState.Mode == EditMode.Idle ? PieceAt(data.position) : -1;
+            _downPiece = EditorState.Mode == EditMode.Idle && !RulerOn ? PieceAt(data.position) : -1;
             HideSelectRect();
         }
 
@@ -1085,6 +1428,12 @@ namespace ValheimTomrer.Editor.Ui
         {
             if (_raycast == null || !_raycast.ScreenToViewport(screen, out var at))
             {
+                return;
+            }
+
+            if (RulerOn)
+            {
+                RulerClick(at);
                 return;
             }
 
@@ -1173,7 +1522,7 @@ namespace ValheimTomrer.Editor.Ui
             // Left drag is the selection rectangle, not a camera move.
             if (data.button == PointerEventData.InputButton.Left)
             {
-                if (Captured)
+                if (Captured || RulerOn)
                 {
                     return;
                 }

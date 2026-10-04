@@ -14,6 +14,16 @@ namespace ValheimTomrer.Editor.View
         Iso,
     }
 
+    /// <summary>Where the camera was: a saved view.</summary>
+    internal struct CameraPose
+    {
+        public Vector3 Position;
+        public float Yaw;
+        public float Pitch;
+        public float Distance;
+        public bool Orthographic;
+    }
+
     /// <summary>
     /// Where the pane looks from. One camera: it always flies free, like a player in fly mode.
     /// Which region has the mouse is not a camera setting, it is <see cref="Ui.ViewportHost.Captured"/>.
@@ -32,6 +42,8 @@ namespace ValheimTomrer.Editor.View
         private const float PadTurn = 110f;           // degrees a second, the game's (PlayerController.LateUpdate)
         private const float LookStep = 0.05f;         // degrees per mouse pixel, the game's (ZInput's mouse delta scale)
         private const float LookJump = 300f;          // pixels in one move: more is a jump, not a hand
+        private const float NearestDistance = 0.3f;      // zoom stops here ...
+        private const float FarthestDistance = 1500f;    // ... and here, inside the 2000 m far plane
         private const float DragSpeed = 0.6f;         // a drag turns slower than the same pixels of mouse look
 
         private readonly PreviewCamera _camera;
@@ -132,6 +144,24 @@ namespace ValheimTomrer.Editor.View
             Apply();
         }
 
+        /// <summary>Everything that says where the camera is and how it looks, for a saved view.</summary>
+        private static readonly Vector3 IsoLook = -new Vector3(0.28f, 0.5f, 1f).normalized;
+        private static readonly float IsoYaw = Mathf.Atan2(IsoLook.x, IsoLook.z) * Mathf.Rad2Deg;
+        private static readonly float IsoPitch = Mathf.Asin(IsoLook.y) * Mathf.Rad2Deg;
+
+        public CameraPose Pose => new CameraPose { Position = _pos, Yaw = _yaw, Pitch = _pitch, Distance = _dist, Orthographic = _ortho };
+
+        /// <summary>Goes back to a saved view.</summary>
+        public void SetPose(CameraPose pose)
+        {
+            _pos = pose.Position;
+            _yaw = pose.Yaw;
+            _pitch = pose.Pitch;
+            _dist = Mathf.Max(0.05f, pose.Distance);
+            _ortho = pose.Orthographic;
+            Apply();
+        }
+
         /// <summary>Perspective or orthographic, keeping the pivot and how much of the scene is seen.</summary>
         public void SetOrthographic(bool on)
         {
@@ -175,9 +205,8 @@ namespace ValheimTomrer.Editor.View
                     break;
                 default:
                     // The corner the Frame key looks from.
-                    var corner = -new Vector3(0.28f, 0.5f, 1f).normalized;
-                    _yaw = Mathf.Atan2(corner.x, corner.z) * Mathf.Rad2Deg;
-                    _pitch = Mathf.Asin(corner.y) * Mathf.Rad2Deg;
+                    _yaw = IsoYaw;
+                    _pitch = IsoPitch;
                     break;
             }
 
@@ -202,6 +231,11 @@ namespace ValheimTomrer.Editor.View
                 if (_pitch >= 90f - Tolerance)
                 {
                     return ViewPreset.Bottom;
+                }
+
+                if (Mathf.Abs(Mathf.DeltaAngle(_yaw, IsoYaw)) < Tolerance && Mathf.Abs(_pitch - IsoPitch) < Tolerance)
+                {
+                    return ViewPreset.Iso;
                 }
 
                 if (Mathf.Abs(_pitch) > Tolerance)
@@ -246,7 +280,12 @@ namespace ValheimTomrer.Editor.View
             {
                 // In perspective the point is what the camera turns round and zooms toward. Without it
                 // the distance is only the size of the box seen, which must not jump.
-                _dist = Mathf.Max(0.05f, Vector3.Dot(point - _pos, Forward));
+                // A point beside or behind the camera has no depth ahead: keep the old distance then.
+                var ahead = Vector3.Dot(point - _pos, Forward);
+                if (ahead > NearestDistance)
+                {
+                    _dist = Mathf.Min(ahead, FarthestDistance);
+                }
             }
 
             Apply();
@@ -329,7 +368,7 @@ namespace ValheimTomrer.Editor.View
             }
 
             var scale = Mathf.Pow(0.95f, Mathf.Abs(delta) * 0.01f);
-            var next = delta < 0f ? _dist * scale : _dist / scale;
+            var next = Mathf.Clamp(delta < 0f ? _dist * scale : _dist / scale, NearestDistance, FarthestDistance);
             if (_ortho)
             {
                 // Zooming is the size of the box the camera sees: the camera stays on its pivot's line.
@@ -405,6 +444,10 @@ namespace ValheimTomrer.Editor.View
             if (unity != null)
             {
                 unity.orthographic = _ortho;
+
+                // Flat view: the camera sits only as far back as the zoom, so what is nearer would be cut
+                // off. A negative near plane keeps the whole blueprint, in front of the camera and behind.
+                unity.nearClipPlane = _ortho ? -FarthestDistance : Mathf.Max(0.02f, _near);
 
                 // The box the camera sees is the one the perspective camera shows at the pivot.
                 unity.orthographicSize = Mathf.Max(0.05f, _dist * Mathf.Tan(unity.fieldOfView * 0.5f * Mathf.Deg2Rad));

@@ -112,6 +112,8 @@ namespace ValheimTomrer.Editor.Input
             // 3. Options opens the help.
             if (pad.Pressed(PadButton.Options))
             {
+                // Quick add would stay open under the dialog.
+                QuickAdd.Close();
                 Dialogs.Help();
                 return;
             }
@@ -171,7 +173,12 @@ namespace ValheimTomrer.Editor.Input
             }
 
             // 8. R2: copy the aimed kind, drop what is in hand, or take the aimed piece.
-            if (pad.Pressed(PadButton.R2))
+            if (pad.Pressed(PadButton.R2) && ViewportHost.RulerOn)
+            {
+                // The ruler takes R2: a point at the crosshair.
+                ViewportHost.RulerClickAim();
+            }
+            else if (pad.Pressed(PadButton.R2))
             {
                 if (l2)
                 {
@@ -190,7 +197,12 @@ namespace ValheimTomrer.Editor.Input
             // 9. Cross opens Quick add. Not while moving: those pieces are out of the
             //    blueprint until they are dropped. Not while a button is selected either, or the
             //    UI would press that button with the same press.
-            if (pad.Pressed(PadButton.Cross) && !moving && !selected)
+            if (pad.Pressed(PadButton.Cross) && l2 && !placing)
+            {
+                // L2 + cross: the ruler on and off (M on the keyboard).
+                ViewportHost.ToggleRuler();
+            }
+            else if (pad.Pressed(PadButton.Cross) && !moving && !selected)
             {
                 QuickAdd.Open();
             }
@@ -228,6 +240,11 @@ namespace ValheimTomrer.Editor.Input
                 if (placing)
                 {
                     EditorState.SetManualSnap(EditorState.Manual + (back ? -1 : 1));
+                }
+                else if (next && l2)
+                {
+                    // L2 + R3: the next saved view (B on the keyboard). Saving one is in the commands.
+                    ViewportHost.NextBookmark();
                 }
                 else if (next)
                 {
@@ -380,6 +397,12 @@ namespace ValheimTomrer.Editor.Input
             {
                 QuickAdd.Pick();
             }
+
+            // Triangle stars the lit piece, like a right click.
+            if (pad.Pressed(PadButton.Triangle) && QuickAdd.Lit != null)
+            {
+                QuickAdd.ToggleStar(QuickAdd.Lit);
+            }
         }
 
         private static int Dir(bool negative, bool positive)
@@ -517,7 +540,7 @@ namespace ValheimTomrer.Editor.Input
                 new HelpRow($"{l3}, {r3} (while placing)", "Pick the snap point, like Q and E"),
                 new HelpRow($"{r3} (in the view)", "Look at the selection, or at everything"),
                 new HelpRow(cross,
-                    $"Quick add: {g.Dpad} to choose, {l1} {r1} for the tag, {cross} to place, {circle} to close"),
+                    $"Quick add: {g.Dpad} to choose, {l1} {r1} for the tag, {cross} to place, {g.Of(PadButton.Triangle)} to star, {circle} to close"),
                 new HelpRow(circle,
                     "Stop placing, else leave the panels for the view, else clear the selection, "
                     + "else close the editor"),
@@ -533,6 +556,8 @@ namespace ValheimTomrer.Editor.Input
                     + "on its own when the crosshair is on nothing"),
                 new HelpRow($"{l2} + {r2}", "Place another piece of the kind in the middle of the view, like the game's copy"),
                 new HelpRow(g.Dpad + " left, right", "Undo, redo"),
+                new HelpRow($"{l2} + {cross}", $"Ruler on and off. {r2} puts a point at the crosshair, {circle} stops."),
+                new HelpRow($"{l2} + {r3}", "Fly to the next saved view (save one from the command search)"),
                 new HelpRow($"{l2} + {g.Dpad} left, right", "View from the next side: front, right, back, left, top, corner"),
                 new HelpRow($"{l2} + {g.Dpad} up, down",
                     "Perspective or orthographic view, show only the selection (like 5 and I)"),

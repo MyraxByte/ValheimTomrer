@@ -33,7 +33,7 @@ namespace ValheimTomrer.Editor.Input
         public static bool Cancel => ZInput.GetKeyDown(KeyCode.Escape) || Pressed(PadButton.Circle);
 
         /// <summary>Enter, or the pad's A/cross.</summary>
-        public static bool Confirm => ZInput.GetKeyDown(KeyCode.Return) || Pressed(PadButton.Cross);
+        public static bool Confirm => ZInput.GetKeyDown(KeyCode.Return) || ZInput.GetKeyDown(KeyCode.KeypadEnter) || Pressed(PadButton.Cross);
 
         public static void Poll()
         {

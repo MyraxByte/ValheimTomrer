@@ -214,6 +214,10 @@ namespace ValheimTomrer.Editor.Ui
             var viewport = Stretch(Rect("Viewport", root));
             viewport.gameObject.AddComponent<RectMask2D>();
 
+            // Invisible, but it takes the wheel and the drag in the gaps between rows too.
+            var catcher = viewport.gameObject.AddComponent<Image>();
+            catcher.color = new Color(0f, 0f, 0f, 0f);
+
             var content = Rect("Content", viewport);
             content.anchorMin = new Vector2(0f, 1f);
             content.anchorMax = new Vector2(1f, 1f);
@@ -330,6 +334,8 @@ namespace ValheimTomrer.Editor.Ui
 
         private bool _hover;
         private float _invalidUntil;
+        private int _state = -1;
+        private int _built = -1;
 
         public bool Invalid => Time.unscaledTime < _invalidUntil;
 
@@ -355,17 +361,27 @@ namespace ValheimTomrer.Editor.Ui
                 return;
             }
 
+            // Every assignment below dirties the mesh, so only a changed state is written.
             var on = Field.interactable;
             var focused = on && Field.isFocused;
+            var invalid = Invalid;
+            var state = (on ? 1 : 0) | (focused ? 2 : 0) | (invalid ? 4 : 0) | (_hover ? 8 : 0);
+            if (state == _state && _built == UiTheme.Generation)
+            {
+                return;
+            }
+
+            _state = state;
+            _built = UiTheme.Generation;
             Back.color = on ? UiTheme.Field : Color.Lerp(UiTheme.Field, UiTheme.PanelFloat, 0.7f);
             if (Edge != null)
             {
                 Edge.effectColor = !on ? UiTheme.Border
-                    : Invalid ? UiTheme.Warn
+                    : invalid ? UiTheme.Warn
                     : focused ? UiTheme.Accent
                     : _hover ? UiTheme.FieldBorderHover
                     : UiTheme.FieldBorder;
-                Edge.effectDistance = focused || Invalid ? new Vector2(1.5f, -1.5f) : new Vector2(1f, -1f);
+                Edge.effectDistance = focused || invalid ? new Vector2(1.5f, -1.5f) : new Vector2(1f, -1f);
             }
 
             if (Field.textComponent != null)

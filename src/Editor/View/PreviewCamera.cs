@@ -119,6 +119,7 @@ namespace ValheimTomrer.Editor.View
             var fogTo = RenderSettings.fogEndDistance;
             var mode = RenderSettings.ambientMode;
             var light = RenderSettings.ambientLight;
+            var reflection = RenderSettings.reflectionIntensity;
             RenderSettings.fog = true;
             RenderSettings.fogMode = FogMode.Linear;
             RenderSettings.fogColor = Background;
@@ -126,6 +127,9 @@ namespace ValheimTomrer.Editor.View
             RenderSettings.fogEndDistance = FogTo;
             RenderSettings.ambientMode = AmbientMode.Flat;
             RenderSettings.ambientLight = Ambient;
+
+            // The world's sky is not reflected in the editor's pieces: it only washes them out.
+            RenderSettings.reflectionIntensity = 0f;
             try
             {
                 _camera.Render();
@@ -139,6 +143,7 @@ namespace ValheimTomrer.Editor.View
                 RenderSettings.fogEndDistance = fogTo;
                 RenderSettings.ambientMode = mode;
                 RenderSettings.ambientLight = light;
+                RenderSettings.reflectionIntensity = reflection;
             }
         }
 

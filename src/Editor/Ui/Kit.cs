@@ -199,6 +199,10 @@ namespace ValheimTomrer.Editor.Ui
                 button.onClick.AddListener(click);
             }
 
+            // A clicked button must not keep the EventSystem's selection: it would stay filled, and the next
+            // Enter or pad press would go to it as well.
+            button.onClick.AddListener(Deselect);
+
             var label = Text(image.transform, text, size, UiTheme.Text, TextAlignmentOptions.Center);
             label.overflowMode = TextOverflowModes.Overflow;
             UiBuild.Stretch(label.rectTransform, 8f, 0f, 8f, 0f);
@@ -210,6 +214,14 @@ namespace ValheimTomrer.Editor.Ui
             fit.Label = label;
             fit.Pad = 18f;
             return button;
+        }
+
+        private static void Deselect()
+        {
+            if (EventSystem.current != null)
+            {
+                EventSystem.current.SetSelectedGameObject(null);
+            }
         }
 
         public static TextMeshProUGUI LabelOf(Button button)
@@ -251,6 +263,7 @@ namespace ValheimTomrer.Editor.Ui
             {
                 var width = captionWidth > 0f ? captionWidth : 14f + (caption.Length * 7f);
                 var tag = Text(field.transform, caption, CaptionSize, UiTheme.TextDim);
+                tag.name = "Caption";
                 tag.rectTransform.anchorMin = new Vector2(0f, 0f);
                 tag.rectTransform.anchorMax = new Vector2(0f, 1f);
                 tag.rectTransform.pivot = new Vector2(0f, 0.5f);
@@ -260,6 +273,22 @@ namespace ValheimTomrer.Editor.Ui
             }
 
             return field;
+        }
+
+        /// <summary>
+        /// Makes a field's caption a handle: drag it sideways to change the number, like in a design tool.
+        /// <paramref name="by"/> gets the pixels dragged since the last event. The pad types the value instead.
+        /// </summary>
+        public static void Scrub(TMP_InputField field, Action<float> by)
+        {
+            var caption = field != null ? field.transform.Find("Caption") : null;
+            if (caption == null)
+            {
+                return;
+            }
+
+            caption.GetComponent<TMP_Text>().raycastTarget = true;
+            caption.gameObject.AddComponent<ScrubEvents>().By = by;
         }
 
         /// <summary>A section heading: a small semibold title, and an optional dim note on the right.</summary>
@@ -444,6 +473,24 @@ namespace ValheimTomrer.Editor.Ui
 
                     Buttons[i].colors = colours;
                 }
+            }
+        }
+    }
+
+    /// <summary>A sideways drag on a number box's caption: reports the pixels moved.</summary>
+    internal sealed class ScrubEvents : MonoBehaviour, IBeginDragHandler, IDragHandler
+    {
+        public Action<float> By;
+
+        public void OnBeginDrag(PointerEventData eventData)
+        {
+        }
+
+        public void OnDrag(PointerEventData eventData)
+        {
+            if (eventData.delta.x != 0f)
+            {
+                By?.Invoke(eventData.delta.x);
             }
         }
     }

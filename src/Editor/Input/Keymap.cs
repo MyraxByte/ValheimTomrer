@@ -45,7 +45,6 @@ namespace ValheimTomrer.Editor.Input
         ToggleLayers,
         ToggleInspector,
         HideUi,
-        ToggleNight,
         HideSelection,
         LockSelection,
         ShowAll,
@@ -62,6 +61,16 @@ namespace ValheimTomrer.Editor.Input
         CycleGrid,
         CycleAngle,
         ToggleSnapPoints,
+        Copy,
+        Paste,
+        Group,
+        Ungroup,
+        CloseGap,
+        Ruler,
+        ToggleDimensions,
+        BookmarkAdd,
+        BookmarkNext,
+        BookmarkClear,
         FlyForward,
         FlyBack,
         FlyLeft,
@@ -152,8 +161,6 @@ namespace ValheimTomrer.Editor.Input
             Def(Act.HideUi, "HideUi", "Hide the interface", GroupView,
                 "Hide the whole interface and keep the view. The same keys, or Esc, bring it back.",
                 "Ctrl+\\", "Ctrl+\\", "Ctrl+\\"),
-            Def(Act.ToggleNight, "ToggleTheme", "Dark and light theme", GroupView,
-                "Switch between the dark and the light theme", "Ctrl+Shift+N", "Ctrl+Shift+N", "Ctrl+Shift+N"),
             Def(Act.Frame, "Frame", "Look at the selection", GroupView,
                 "Look at the selection, or at everything", "F", "F, Shift+2", "Home, Num."),
             Def(Act.ViewFront, "ViewFront", "View: front", GroupView,
@@ -192,6 +199,32 @@ namespace ValheimTomrer.Editor.Input
             Def(Act.ToggleSnapPoints, "ToggleSnapPoints", "Snap points on and off", GroupEdit,
                 "Snap to the pieces' snap points, or not (the grid still works). Shift held turns all snapping off for a moment.",
                 "Alt+S", "Alt+S", "Shift+Tab"),
+            Def(Act.Copy, "Copy", "Copy", GroupEdit,
+                "Copy the selection. Paste puts it in hand, in this blueprint or in another one.",
+                "Ctrl+C", "Ctrl+C", "Ctrl+C"),
+            Def(Act.Paste, "Paste", "Paste", GroupEdit,
+                "Put what was copied in hand. It follows the mouse, click to drop, copies keep coming until Esc.",
+                "Ctrl+V", "Ctrl+V", "Ctrl+V"),
+            Def(Act.Group, "Group", "Group the selection", GroupEdit,
+                "A click on one piece of a group picks them all. Groups are not saved in the file.",
+                "Ctrl+G", "Ctrl+G", "Ctrl+G"),
+            Def(Act.Ungroup, "Ungroup", "Ungroup", GroupEdit, "Break up the groups of the selection",
+                "Ctrl+Shift+G", "Ctrl+Shift+G", "Ctrl+Alt+G"),
+            Def(Act.CloseGap, "CloseGap", "Close the gap to the nearest piece", GroupEdit,
+                "Move the selection along the align axis until it touches the nearest piece beside it",
+                "Alt+Q", "Alt+Q", "Alt+Q"),
+            Def(Act.Ruler, "Ruler", "Ruler", GroupView,
+                "Measure: click two points in the view, the distance and the three differences show. Click again to start over, Esc stops.",
+                "M", "Ctrl+Shift+M", "M"),
+            Def(Act.ToggleDimensions, "ToggleDimensions", "Sizes and gaps", GroupView,
+                "Show the selection's size along its edges and the gaps to the pieces beside it",
+                "Alt+Z", "Alt+Z", "Alt+Z"),
+            Def(Act.BookmarkAdd, "BookmarkAdd", "Save this view", GroupView,
+                "Remember where the camera is, up to 9 views. Not saved in the file.", "Ctrl+B", "Ctrl+B", "Ctrl+B"),
+            Def(Act.BookmarkNext, "BookmarkNext", "Next saved view", GroupView,
+                "Fly to the next saved view", "B", "B", "B"),
+            Def(Act.BookmarkClear, "BookmarkClear", "Forget the saved views", GroupView,
+                "Forget every saved view", "Ctrl+Shift+B", "Ctrl+Shift+B", "Ctrl+Shift+B"),
             Def(Act.SelectAll, "SelectAll", "Select all", GroupEdit, "Select all", "Ctrl+A", "Ctrl+A", "Ctrl+A"),
             Def(Act.Move, "Move", "Move the selection", GroupEdit,
                 "Move the selection: it follows the mouse, click to drop, Esc to cancel", "G", "V, G", "G"),
@@ -502,6 +535,20 @@ namespace ValheimTomrer.Editor.Input
             if (_preset != null && Array.IndexOf(Presets, preset) >= 0 && _preset.Value != preset)
             {
                 _preset.Value = preset;
+
+                // A key the player set stays, so the new preset's action on that key gives it up.
+                foreach (var def in Table)
+                {
+                    if (!IsChanged(def.Id))
+                    {
+                        continue;
+                    }
+
+                    foreach (var chord in Chords(def.Id))
+                    {
+                        Take(chord, def.Id);
+                    }
+                }
             }
         }
 
@@ -561,6 +608,12 @@ namespace ValheimTomrer.Editor.Input
             if (def != null && def.Entry != null)
             {
                 def.Entry.Value = "";
+
+                // The preset's key may be one another action took: it takes it back, as binding a key does.
+                foreach (var chord in Chords(act))
+                {
+                    Take(chord, act);
+                }
             }
         }
 

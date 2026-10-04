@@ -32,7 +32,7 @@ Scenario table and details: `.claude/design-decisions.md` §10.
 | `editor_build` | a blueprint made in the editor, built in the world, edited again |
 | `editor_capture` | the capture, keyboard and pad |
 | `editor_support` | the support rule against the game's numbers. `VT_SUPPORT_EDITOR_ONLY=1` skips the world half |
-| `editor_ui` | the editor screen: the window is the screen, the view between the panels, Alt+1 and Alt+2 fold them, Ctrl+\ and L2 + L3 hide all, the pad walk reaches header, Layers, Inspector and toolbar, the menu, the Inspector tabs, Layers groups, Quick add (Tab, search, Recent, Starred, keyboard and pad), the wheel step, Dark and Light, the keymap and presets, the Keys window and the command search, hide and lock, align, spread, mirror, copy in a row, Shift + arrow, grid and turn step |
+| `editor_ui` | the editor screen: the window is the screen, the view between the panels, Alt+1 and Alt+2 fold them, Ctrl+\ and L2 + L3 hide all, the pad walk reaches header, Layers, Inspector and toolbar, the menu, the Inspector tabs, Layers groups, Quick add (Tab, search, Recent, Starred, keyboard and pad), the wheel step, the keymap and presets, the Keys window and the command search, hide and lock, align, spread, mirror, copy in a row, Shift + arrow, grid and turn step |
 | `editor_all` | all of the above except `probe_build`, then the art guard. **This is the one to run.** |
 | `readme_gifs` | no test: records the README's GIF frames. Not in `editor_all`. Then `scripts/make-gifs.py` |
 

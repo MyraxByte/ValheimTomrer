@@ -168,7 +168,11 @@ namespace ValheimTomrer.Editor.Ui
 
             _host = host;
             _generation = UiTheme.Generation;
-            Kind = "";
+
+            // The old dialog's widgets are gone with the old window; what points at them must go too, or the next
+            // dialog adds to stale lists and the pad starts on a destroyed button.
+            Keymap.CancelCapture();
+            ForgetWidgets();
             Build(host);
         }
 
@@ -223,6 +227,20 @@ namespace ValheimTomrer.Editor.Ui
             }
 
             Keymap.CancelCapture();
+            ForgetWidgets();
+            if (_root != null)
+            {
+                _root.gameObject.SetActive(false);
+            }
+
+            // The walk goes back to the panel it came from, or off if it was off.
+            FocusNav.LeaveDialog();
+            return true;
+        }
+
+        /// <summary>Lets go of everything the open dialog's widgets were kept in.</summary>
+        private static void ForgetWidgets()
+        {
             KeyCells.Clear();
             PresetLabels.Clear();
             CommandsShown.Clear();
@@ -240,14 +258,6 @@ namespace ValheimTomrer.Editor.Ui
             RowDetails.Clear();
             RowButtons.Clear();
             DeleteButtons.Clear();
-            if (_root != null)
-            {
-                _root.gameObject.SetActive(false);
-            }
-
-            // The walk goes back to the panel it came from, or off if it was off.
-            FocusNav.LeaveDialog();
-            return true;
         }
 
         // ---------- the dialogs ----------
@@ -306,6 +316,7 @@ namespace ValheimTomrer.Editor.Ui
 
             NameField = UiBuild.InputField("Name", _body, "Name", 34f);
             Line(NameField.GetComponent<RectTransform>(), 24f, 34f);
+            NameField.characterLimit = 60;
             NameField.text = initial ?? "";
             NameField.onValueChanged.AddListener(_ => CheckName());
             NameField.onSubmit.AddListener(_ => SubmitSaveAs());
@@ -442,12 +453,18 @@ namespace ValheimTomrer.Editor.Ui
                 KeyBinderRow(scroll.content, def);
             }
 
-            Foot("Reset all", () =>
-            {
-                Keymap.ResetAll();
-                RefreshKeys();
-                Toasts.Info("Keys: back to the " + Keymap.Preset + " preset.");
-            }, "Close", () => Close());
+            Foot("Reset all", () => Confirm(
+                "Reset every key?",
+                "Every key you changed goes back to the " + Keymap.Preset + " preset.",
+                "Reset",
+                () =>
+                {
+                    Keymap.ResetAll();
+                    Toasts.Info("Keys: back to the " + Keymap.Preset + " preset.");
+                    Controls();
+                },
+                () => Controls(),
+                true), "Close", () => Close());
             Start(_submit);
             RefreshKeys();
         }
@@ -567,6 +584,13 @@ namespace ValheimTomrer.Editor.Ui
                 Cell(background.transform, "Keys", command.Keys, 14f, TextAlignmentOptions.MidlineRight,
                     UiTheme.TextDim, 0.62f, 1f, 6f, 10f);
             }
+
+            // Nothing matches: say so, and Enter and Run do nothing (they would otherwise do nothing silently).
+            if (CommandsShown.Count == 0)
+            {
+                var none = UiBuild.Label("None", _commandRows, $"No command matches \"{text}\".", 15f, TextAlignmentOptions.TopLeft, UiTheme.TextDim);
+                none.gameObject.AddComponent<LayoutElement>().preferredHeight = RowHeight;
+            }
         }
 
         private static void RunFirstCommand()
@@ -651,9 +675,21 @@ namespace ValheimTomrer.Editor.Ui
         /// </summary>
         public static void Confirm(string title, string text, string ok, Action run, Action back = null, bool risky = false)
         {
+            // A question asked from the Blueprints list or from Save as goes back to it when cancelled.
+            var before = Kind;
+            var typed = NameField != null ? NameField.text : null;
             if (!Begin("confirm", title, 560f, 240f))
             {
                 return;
+            }
+
+            if (back == null && before == "open")
+            {
+                back = () => Open();
+            }
+            else if (back == null && before == "saveAs" && typed != null)
+            {
+                back = () => SaveAs(typed);
             }
 
             _confirmRun = run;
@@ -782,24 +818,32 @@ namespace ValheimTomrer.Editor.Ui
             var label = UiBuild.Label("Note", parent, text, 14f, TextAlignmentOptions.TopLeft, UiTheme.TextDim);
             label.enableWordWrapping = true;
             var element = label.gameObject.AddComponent<LayoutElement>();
-            element.preferredHeight = Mathf.Max(20f, label.GetPreferredValues(text, 900f, 0f).y + 4f);
+            element.preferredHeight = Mathf.Max(20f, label.GetPreferredValues(text, Mathf.Max(300f, _modal.rect.width - 80f), 0f).y + 4f);
         }
 
         /// <summary>One line of the help table: the keys on the left, what they do on the right.</summary>
         private static void KeyRow(Transform parent, HelpRow row)
         {
+            // A row is as tall as its longest text: the words wrap in the room they get, and the layout reads
+            // that room, so a long line never runs into the next row.
             var host = UiBuild.Rect("Row", parent);
-            host.gameObject.AddComponent<LayoutElement>().preferredHeight = 22f;
+            var line = host.gameObject.AddComponent<HorizontalLayoutGroup>();
+            line.spacing = 8f;
+            line.childAlignment = TextAnchor.UpperLeft;
+            line.childControlWidth = true;
+            line.childControlHeight = true;
+            line.childForceExpandWidth = false;
+            line.childForceExpandHeight = false;
+            host.gameObject.AddComponent<LayoutElement>().minHeight = 22f;
 
             var keys = UiBuild.Label("Keys", host, row.Keys, 14f, TextAlignmentOptions.TopLeft, UiTheme.Accent);
-            keys.rectTransform.anchorMin = new Vector2(0f, 0f);
-            keys.rectTransform.anchorMax = new Vector2(0f, 1f);
-            keys.rectTransform.pivot = new Vector2(0f, 0.5f);
-            keys.rectTransform.anchoredPosition = Vector2.zero;
-            keys.rectTransform.sizeDelta = new Vector2(250f, 0f);
+            keys.enableWordWrapping = true;
+            var keysSize = keys.gameObject.AddComponent<LayoutElement>();
+            keysSize.minWidth = keysSize.preferredWidth = 250f;
 
             var what = UiBuild.Label("What", host, row.What, 14f, TextAlignmentOptions.TopLeft);
-            UiBuild.Stretch(what.rectTransform, 258f, 0f, 0f, 0f);
+            what.enableWordWrapping = true;
+            what.gameObject.AddComponent<LayoutElement>().flexibleWidth = 1f;
         }
 
         /// <summary>
@@ -993,6 +1037,8 @@ namespace ValheimTomrer.Editor.Ui
             _modal.sizeDelta = new Vector2(700f, 500f);
 
             _title = UiBuild.Label("Title", _modal, "", 20f, TextAlignmentOptions.Left, UiTheme.Text);
+            _title.textWrappingMode = TextWrappingModes.NoWrap;
+            _title.overflowMode = TextOverflowModes.Ellipsis;
             _title.rectTransform.anchorMin = new Vector2(0f, 1f);
             _title.rectTransform.anchorMax = new Vector2(1f, 1f);
             _title.rectTransform.pivot = new Vector2(0.5f, 1f);

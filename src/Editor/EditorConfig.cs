@@ -9,13 +9,6 @@ namespace ValheimTomrer.Editor
     /// Config for the in-game blueprint editor. Bound from the plugin so every editor
     /// setting sits in one place instead of growing the plugin file.
     /// </summary>
-    /// <summary>The editor's look: dark (the default, easy on the eyes) or light.</summary>
-    internal enum EditorTheme
-    {
-        Dark,
-        Light,
-    }
-
     internal static class EditorConfig
     {
         /// <summary>
@@ -61,7 +54,6 @@ namespace ValheimTomrer.Editor
         public static ConfigEntry<bool> SnapPoints;
 
         /// <summary>Dark or Light. The top bar's theme button writes this.</summary>
-        public static ConfigEntry<EditorTheme> Theme;
 
         public static void Bind(ConfigFile config)
         {
@@ -96,13 +88,6 @@ namespace ValheimTomrer.Editor
                 "Boxes",
                 false,
                 "Draw pieces as plain boxes instead of models. Easier to see through a full blueprint.");
-
-            Theme = config.Bind(
-                "Editor",
-                "Theme",
-                EditorTheme.Dark,
-                "The editor's look. Dark: dark panels and a dark 3D view, easy on the eyes at night. Light: "
-                + "white panels and a light grey view.");
 
             RecentPieces = config.Bind(
                 "Editor",

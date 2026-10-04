@@ -189,13 +189,19 @@ namespace ValheimTomrer.Blueprints
             return text.Length == 0 || text == "-0" ? "0" : text;
         }
 
-        /// <summary>"Camp hut" -> "camp-hut.blueprint": lowercase letters and digits, anything else one dash.</summary>
+        /// <summary>Names Windows keeps for devices: a file called this cannot be made.</summary>
+        private static readonly string[] DeviceNames = { "con", "prn", "aux", "nul" };
+
+        /// <summary>
+        /// "Camp hut" -> "camp-hut.blueprint": lowercase letters and digits (any language: "Дом 2" ->
+        /// "дом-2.blueprint"), anything else one dash. At most 60 characters, and never a Windows device name.
+        /// </summary>
         public static string FileNameFor(string name)
         {
             var slug = new StringBuilder();
             foreach (var c in (name ?? "").ToLowerInvariant())
             {
-                if ((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9'))
+                if ((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || (c > 127 && char.IsLetterOrDigit(c)))
                 {
                     slug.Append(c);
                 }
@@ -205,12 +211,24 @@ namespace ValheimTomrer.Blueprints
                 }
             }
 
+            if (slug.Length > 60)
+            {
+                slug.Length = 60;
+            }
+
             while (slug.Length > 0 && slug[slug.Length - 1] == '-')
             {
                 slug.Length--;
             }
 
-            return (slug.Length > 0 ? slug.ToString() : "blueprint") + ".blueprint";
+            var word = slug.ToString();
+            if (System.Array.IndexOf(DeviceNames, word) >= 0
+                || ((word.StartsWith("com") || word.StartsWith("lpt")) && word.Length == 4 && char.IsDigit(word[3])))
+            {
+                word += "-file";
+            }
+
+            return (word.Length > 0 ? word : "blueprint") + ".blueprint";
         }
 
         /// <summary>

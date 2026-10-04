@@ -98,6 +98,9 @@ namespace ValheimTomrer.Editor.Doc
         /// <summary>Counts up on every change, so the 3D pane can tell it has to rebuild.</summary>
         public int Revision { get; private set; }
 
+        /// <summary>Counts up only when the pieces change (also on undo and redo), not for the name or the description (the problem list reads the icon, so that counts), so the lists and the checks are not worked out again for every typed letter.</summary>
+        public int PiecesRevision { get; private set; }
+
         public string Name => _now.Name;
 
         public string Description => _now.Description;
@@ -180,27 +183,48 @@ namespace ValheimTomrer.Editor.Doc
 
         public DocPiece Find(int id)
         {
-            foreach (var piece in _now.Pieces)
+            // One lookup table per state of the document: an edit of thousands of pieces asks a lot.
+            if (!ReferenceEquals(_byIdFor, _now))
             {
-                if (piece.Id == id)
+                _byId.Clear();
+                foreach (var piece in _now.Pieces)
                 {
-                    return piece;
+                    _byId[piece.Id] = piece;
                 }
+
+                _byIdFor = _now;
             }
 
-            return null;
+            return _byId.TryGetValue(id, out var found) ? found : null;
         }
+
+        private readonly Dictionary<int, DocPiece> _byId = new Dictionary<int, DocPiece>();
+        private Snapshot _byIdFor;
+
+        /// <summary>
+        /// Ends a run of coalesced edits: the next nudge or typed number is a new undo step. Called when
+        /// the selection changes and when the file is saved.
+        /// </summary>
+        public void BreakRun()
+        {
+            _lastTag = null;
+        }
+
+        /// <summary>A run of one tag stays one undo step only while the edits follow each other this closely (seconds).</summary>
+        private const float RunSeconds = 1.2f;
+
+        private float _lastTagAt;
 
         // ---------- edits ----------
 
         public void SetName(string value)
         {
-            Change("name", s => s.Name = value ?? "");
+            Change("name", s => s.Name = value ?? "", false);
         }
 
         public void SetDescription(string value)
         {
-            Change("description", s => s.Description = value ?? "");
+            Change("description", s => s.Description = value ?? "", false);
         }
 
         public void SetIcon(string prefabName)
@@ -243,10 +267,11 @@ namespace ValheimTomrer.Editor.Doc
                 return false;
             }
 
+            var set = ids as HashSet<int> ?? new HashSet<int>(ids);
             var hit = false;
             foreach (var piece in _now.Pieces)
             {
-                if (ids.Contains(piece.Id))
+                if (set.Contains(piece.Id))
                 {
                     hit = true;
                     break;
@@ -258,7 +283,7 @@ namespace ValheimTomrer.Editor.Doc
                 return false;
             }
 
-            Change(null, s => s.Pieces.RemoveAll(p => ids.Contains(p.Id)));
+            Change(null, s => s.Pieces.RemoveAll(p => set.Contains(p.Id)));
             return true;
         }
 
@@ -296,15 +321,20 @@ namespace ValheimTomrer.Editor.Doc
             }
 
             var by = new Dictionary<int, PieceMove>(moves.Count);
+            var differs = false;
             foreach (var move in moves)
             {
-                if (Find(move.Id) != null)
+                var piece = Find(move.Id);
+                if (piece != null)
                 {
                     by[move.Id] = move;
+                    differs |= (piece.Position - move.Position).sqrMagnitude > 1e-10f
+                        || Quaternion.Angle(piece.Rotation, move.Rotation) > 1e-3f;
                 }
             }
 
-            if (by.Count == 0)
+            // Nothing would change: no undo step, no unsaved-changes mark.
+            if (by.Count == 0 || !differs)
             {
                 return false;
             }
@@ -337,6 +367,7 @@ namespace ValheimTomrer.Editor.Doc
             _now = back;
             _lastTag = null;
             Revision++;
+            PiecesRevision++;
             return true;
         }
 
@@ -353,6 +384,7 @@ namespace ValheimTomrer.Editor.Doc
             _now = forward;
             _lastTag = null;
             Revision++;
+            PiecesRevision++;
             return true;
         }
 
@@ -360,6 +392,7 @@ namespace ValheimTomrer.Editor.Doc
         public void MarkSaved()
         {
             _saved = _now;
+            _lastTag = null;
         }
 
         /// <summary>
@@ -389,14 +422,15 @@ namespace ValheimTomrer.Editor.Doc
             _saved = null;
         }
 
-        private void Change(string tag, Action<Snapshot> edit)
+        private void Change(string tag, Action<Snapshot> edit, bool pieces = true)
         {
             var before = _now;
             var next = before.Copy();
             edit(next);
 
             // Repeated typing in one field is one step: only the first keystroke pushes.
-            if (tag == null || tag != _lastTag || _undo.Count == 0)
+            var now = Time.realtimeSinceStartup;
+            if (tag == null || tag != _lastTag || _undo.Count == 0 || now - _lastTagAt > RunSeconds)
             {
                 _undo.Add(before);
                 if (_undo.Count > UndoLimit)
@@ -406,9 +440,14 @@ namespace ValheimTomrer.Editor.Doc
             }
 
             _lastTag = tag;
+            _lastTagAt = now;
             _redo.Clear();
             _now = next;
             Revision++;
+            if (pieces)
+            {
+                PiecesRevision++;
+            }
         }
 
         /// <summary>One state of the document. Replaced whole, never patched.</summary>

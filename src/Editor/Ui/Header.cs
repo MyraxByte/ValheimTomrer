@@ -29,10 +29,12 @@ namespace ValheimTomrer.Editor.Ui
         private static TabStrip _modes;
         private static Button _undo;
         private static Button _redo;
-        private static Button _theme;
         private static Button _build;
         private static Button _menuButton;
         private static RectTransform _menu;
+        private static RectTransform _menuCard;
+        private static ScrollRect _menuScroll;
+        private static readonly List<RectTransform> _islands = new List<RectTransform>();
 
         /// <summary>Every button in the bar, in the order the pad walks them.</summary>
         private static readonly List<Selectable> Walk = new List<Selectable>();
@@ -89,7 +91,7 @@ namespace ValheimTomrer.Editor.Ui
             var state = document == null ? ""
                 : document.ReadOnly ? "read only"
                 : string.IsNullOrEmpty(document.SourcePath) ? "not saved yet"
-                : Path.GetFileName(document.SourcePath);
+                : FileNameOf(document.SourcePath);
             if (_state.text != state)
             {
                 _state.text = state;
@@ -102,7 +104,11 @@ namespace ValheimTomrer.Editor.Ui
             Kit.LabelOf(_undo).color = _undo.interactable ? UiTheme.Text : UiTheme.TextDim;
             Kit.LabelOf(_redo).color = _redo.interactable ? UiTheme.Text : UiTheme.TextDim;
             _build.interactable = document != null && document.Pieces.Count > 0;
-            Kit.SetLabel(_theme, UiTheme.Dark ? "Light" : "Dark");
+            var buildText = UiTheme.TextOnAccent;
+            buildText.a = _build.interactable ? 1f : 0.6f;
+            Kit.LabelOf(_build).color = buildText;
+            FitIslands();
+            KeepMenuOnScreen();
 
             var mode = EditorState.Mode != EditMode.Place ? (QuickAdd.IsOpen ? 1 : 0)
                 : EditorState.Action == PlaceAction.Add ? 1
@@ -115,9 +121,92 @@ namespace ValheimTomrer.Editor.Ui
 
             var busy = EditorCommands.Busy;
             _busy.gameObject.SetActive(busy != null);
-            if (busy != null)
+            if (busy != null && busy != _busyShown)
             {
+                _busyShown = busy;
                 _busy.text = busy + "…";
+            }
+        }
+
+        private static string _busyShown;
+        private static string _pathShown;
+        private static string _nameShown = "";
+
+        /// <summary>The file's name, worked out again only when the path changed.</summary>
+        private static string FileNameOf(string path)
+        {
+            if (path != _pathShown)
+            {
+                _pathShown = path;
+                _nameShown = Path.GetFileName(path);
+            }
+
+            return _nameShown;
+        }
+
+        /// <summary>
+        /// The three islands share the screen's width: when they would run into each other (a narrow
+        /// window, a big interface scale) all three shrink a little, down to 60 percent.
+        /// </summary>
+        private static void FitIslands()
+        {
+            var room = EditorWindow.Root.rect.width - (4f * EditorWindow.Margin);
+            var wide = 0f;
+            foreach (var island in _islands)
+            {
+                wide += LayoutUtility.GetPreferredWidth(island);
+            }
+
+            var scale = wide > room && wide > 1f ? Mathf.Clamp(room / wide, 0.6f, 1f) : 1f;
+            foreach (var island in _islands)
+            {
+                if (!Mathf.Approximately(island.localScale.x, scale))
+                {
+                    island.localScale = new Vector3(scale, scale, 1f);
+                }
+            }
+        }
+
+        /// <summary>
+        /// While the menu is open, its card is moved back inside the screen if any part of it is outside: it
+        /// opens under the menu button, and nothing the screen's size or the interface scale does may push
+        /// it off an edge. Measured on the real card, so it holds whatever the cause.
+        /// </summary>
+        private static void KeepMenuOnScreen()
+        {
+            if (!MenuOpen || _menuCard == null || EditorWindow.Root == null)
+            {
+                return;
+            }
+
+            var root = EditorWindow.Root;
+            var corners = new Vector3[4];
+            _menuCard.GetWorldCorners(corners);
+            var low = root.InverseTransformPoint(corners[0]);
+            var high = root.InverseTransformPoint(corners[2]);
+            var rect = root.rect;
+            var margin = EditorWindow.Margin;
+            var dx = Mathf.Max(0f, (rect.xMin + margin) - low.x) - Mathf.Max(0f, high.x - (rect.xMax - margin));
+            var dy = Mathf.Max(0f, (rect.yMin + margin) - low.y) - Mathf.Max(0f, high.y - (rect.yMax - margin));
+            if (Mathf.Abs(dx) > 0.5f || Mathf.Abs(dy) > 0.5f)
+            {
+                _menu.anchoredPosition += new Vector2(dx, dy);
+            }
+        }
+
+        /// <summary>Where the menu card is on the screen, in screen pixels. For the tests.</summary>
+        public static Rect MenuBox
+        {
+            get
+            {
+                if (_menuCard == null)
+                {
+                    return new Rect();
+                }
+
+                var corners = new Vector3[4];
+                _menuCard.GetWorldCorners(corners);
+                return Rect.MinMaxRect(corners[0].x, corners[0].y, corners[2].x, corners[2].y);
             }
         }
 
@@ -134,6 +223,15 @@ namespace ValheimTomrer.Editor.Ui
             if (open)
             {
                 _menu.SetAsLastSibling();
+                foreach (var tag in MenuTags)
+                {
+                    tag.Key.text = Keymap.Describe(tag.Value);
+                }
+
+                // As tall as the items, or as the screen allows: then the list scrolls.
+                var room = EditorWindow.Root.rect.height - EditorWindow.TopBand - 24f;
+                var wanted = LayoutUtility.GetPreferredHeight(_menuScroll.content) + 8f;
+                _menuCard.sizeDelta = new Vector2(0f, Mathf.Min(wanted, Mathf.Max(120f, room)));
             }
         }
 
@@ -182,6 +280,8 @@ namespace ValheimTomrer.Editor.Ui
         private static void Build(RectTransform host)
         {
             Walk.Clear();
+            MenuTags.Clear();
+            _islands.Clear();
             _root = UiBuild.Rect("HeaderContent", host);
             UiBuild.Stretch(_root);
 
@@ -218,6 +318,9 @@ namespace ValheimTomrer.Editor.Ui
             _dirty.raycastTarget = false;
             Kit.Size(_dirty, 6f, 6f);
             _state = Kit.Chip(left, "", out _stateBack);
+            _state.overflowMode = TextOverflowModes.Ellipsis;
+            _stateBack.GetComponent<LabelWidth>().Max = 170f;
+            _stateBack.GetComponent<LabelWidth>().Priority = 2;
             _busy = Kit.Text(left, "", Kit.CaptionSize, UiTheme.Accent);
             Kit.Size(_busy, -1f, 24f);
             var busyWidth = _busy.gameObject.AddComponent<LabelWidth>();
@@ -244,7 +347,6 @@ namespace ValheimTomrer.Editor.Ui
             _redo = Add(right, Kit.Ghost(right, "Redo", () => EditorState.Redo(), 32f));
             Kit.Divider(right, true);
             Add(right, Kit.Ghost(right, "Commands", Dialogs.Commands, 32f));
-            _theme = Add(right, Kit.Ghost(right, "Light", EditorCommands.ToggleTheme, 32f));
             Add(right, Kit.Ghost(right, "Help", EditorCommands.Help, 32f));
             _build = Add(right, Kit.Primary(right, "Build in world", () => EditorCommands.BuildThis(), 32f));
             Pad(right, 2);
@@ -282,8 +384,9 @@ namespace ValheimTomrer.Editor.Ui
             row.childControlWidth = true;
             row.childControlHeight = true;
             row.childForceExpandWidth = false;
-            row.childForceExpandHeight = true;
+            row.childForceExpandHeight = false;
             Kit.Fit(rect, true, false);
+            _islands.Add(rect);
             return rect;
         }
 
@@ -316,45 +419,46 @@ namespace ValheimTomrer.Editor.Ui
             catcher.gameObject.AddComponent<ClickEvents>().Clicked = _ => CloseMenu();
 
             var card = UiBuild.Card("Card", _menu);
-            card.rectTransform.anchorMin = new Vector2(0f, 1f);
-            card.rectTransform.anchorMax = new Vector2(1f, 1f);
-            card.rectTransform.pivot = new Vector2(0.5f, 1f);
-            card.rectTransform.anchoredPosition = Vector2.zero;
-            var column = card.gameObject.AddComponent<VerticalLayoutGroup>();
-            column.padding = new RectOffset(4, 4, 4, 4);
-            column.spacing = 0f;
-            column.childControlWidth = true;
-            column.childControlHeight = true;
-            column.childForceExpandWidth = true;
-            column.childForceExpandHeight = false;
-            Kit.Fit(card.rectTransform, false, true);
+            _menuCard = card.rectTransform;
+            _menuCard.anchorMin = new Vector2(0f, 1f);
+            _menuCard.anchorMax = new Vector2(1f, 1f);
+            _menuCard.pivot = new Vector2(0.5f, 1f);
+            _menuCard.anchoredPosition = Vector2.zero;
 
-            Item(card.transform, "New blueprint", "", EditorCommands.NewBlueprint);
-            Item(card.transform, "Open…", "", EditorCommands.OpenDialog);
-            Item(card.transform, "Save", Keymap.Describe(Act.Save), () => EditorCommands.Save());
-            Item(card.transform, "Save as…", "", () => Dialogs.SaveAs(EditorState.Document != null ? EditorState.Document.Name : "New blueprint"));
-            Kit.Divider(card.transform);
-            Item(card.transform, "Center the origin", "", EditorCommands.CenterOrigin);
-            Item(card.transform, "Build in world", "", () => EditorCommands.BuildThis());
-            Kit.Divider(card.transform);
-            Item(card.transform, "Layers card", Keymap.Describe(Act.ToggleLayers), () => EditorWindow.SetLayers(!EditorWindow.LayersOpen));
-            Item(card.transform, "Inspector card", Keymap.Describe(Act.ToggleInspector), () => EditorWindow.SetInspector(!EditorWindow.InspectorOpen));
-            Item(card.transform, "Hide the interface", Keymap.Describe(Act.HideUi), () => EditorWindow.SetUiHidden(true));
-            Item(card.transform, "Look at the selection", Keymap.Describe(Act.Frame), ViewportHost.Frame);
-            Item(card.transform, "Perspective / orthographic", Keymap.Describe(Act.ToggleOrtho), ViewportHost.ToggleOrtho);
-            Item(card.transform, "Show only the selection", Keymap.Describe(Act.Isolate), EditorState.IsolateSelection);
-            Kit.Divider(card.transform);
-            Item(card.transform, "Keys…", "", Dialogs.Controls);
-            Item(card.transform, "Search commands", Keymap.Describe(Act.Commands), Dialogs.Commands);
-            Item(card.transform, "Help", Keymap.Describe(Act.Help), EditorCommands.Help);
-            Kit.Divider(card.transform);
-            Item(card.transform, "Close the editor", EditorConfig.Key != null ? EditorConfig.Key.Value.ToString() : "F7", EditorSession.Close);
+            // The items scroll when the screen is too short for all of them.
+            _menuScroll = Kit.Scroll(card.transform, 0f, 4);
+            UiBuild.Stretch((RectTransform)_menuScroll.transform);
+            var list = _menuScroll.content;
+
+            Item(list, "New blueprint", Act.None, EditorCommands.NewBlueprint);
+            Item(list, "Open…", Act.None, EditorCommands.OpenDialog);
+            Item(list, "Save", Act.Save, () => EditorCommands.Save());
+            Item(list, "Save as…", Act.None, () => Dialogs.SaveAs(EditorState.Document != null ? EditorState.Document.Name : "New blueprint"));
+            Kit.Divider(list);
+            Item(list, "Center the origin", Act.None, EditorCommands.CenterOrigin);
+            Item(list, "Build in world", Act.None, () => EditorCommands.BuildThis());
+            Kit.Divider(list);
+            Item(list, "Layers card", Act.ToggleLayers, () => EditorWindow.SetLayers(!EditorWindow.LayersOpen));
+            Item(list, "Inspector card", Act.ToggleInspector, () => EditorWindow.SetInspector(!EditorWindow.InspectorOpen));
+            Item(list, "Hide the interface", Act.HideUi, () => EditorWindow.SetUiHidden(true));
+            Item(list, "Look at the selection", Act.Frame, ViewportHost.Frame);
+            Item(list, "Perspective / orthographic", Act.ToggleOrtho, ViewportHost.ToggleOrtho);
+            Item(list, "Show only the selection", Act.Isolate, EditorState.IsolateSelection);
+            Kit.Divider(list);
+            Item(list, "Keys…", Act.None, Dialogs.Controls);
+            Item(list, "Search commands", Act.Commands, Dialogs.Commands);
+            Item(list, "Help", Act.Help, EditorCommands.Help);
+            Kit.Divider(list);
+            Item(list, "Close the editor", Act.None, EditorSession.Close, EditorConfig.Key != null ? EditorConfig.Key.Value.ToString() : "F7");
 
             _menu.gameObject.SetActive(false);
         }
 
-        /// <summary>One line of the menu: what it does on the left, its keys on the right. Running it closes the menu.</summary>
-        private static void Item(Transform parent, string text, string keys, UnityEngine.Events.UnityAction run)
+        /// <summary>
+        /// One line of the menu: what it does on the left, its keys on the right (read again each time the
+        /// menu opens, so a changed key shows). Running it closes the menu.
+        /// </summary>
+        private static void Item(Transform parent, string text, Act act, UnityEngine.Events.UnityAction run, string fixedKeys = "")
         {
             var button = Kit.Ghost(parent, text, () =>
             {
@@ -364,9 +468,17 @@ namespace ValheimTomrer.Editor.Ui
             var label = Kit.LabelOf(button);
             label.alignment = TextAlignmentOptions.MidlineLeft;
             UiBuild.Stretch(label.rectTransform, 10f, 0f, 90f, 0f);
-            var tag = Kit.Text(button.transform, keys, Kit.CaptionSize, UiTheme.TextDim, TextAlignmentOptions.MidlineRight);
+            var tag = Kit.Text(button.transform, fixedKeys, Kit.CaptionSize, UiTheme.TextDim, TextAlignmentOptions.MidlineRight);
             UiBuild.Stretch(tag.rectTransform, 120f, 0f, 10f, 0f);
+            if (act != Act.None)
+            {
+                MenuTags.Add(new KeyValuePair<TextMeshProUGUI, Act>(tag, act));
+                tag.text = Keymap.Describe(act);
+            }
+
             Walk.Add(button);
         }
+
+        private static readonly List<KeyValuePair<TextMeshProUGUI, Act>> MenuTags = new List<KeyValuePair<TextMeshProUGUI, Act>>();
     }
 }

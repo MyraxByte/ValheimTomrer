@@ -24,11 +24,14 @@ namespace ValheimTomrer.Editor.View
         private const float GridY = 0.003f;
         private const float RingY = 0.006f;
 
-        // Day colours are Tomrer's, so both editors look the same. Night ones: UiTheme.Scene*.
+        // The scene's colours: UiTheme.Scene*.
         private static readonly Color FrontColor = Hex(0xD9412B);
+        private static readonly Color AxisXColor = new Color(0.90f, 0.30f, 0.30f, 0.85f);
+        private static readonly Color AxisZColor = new Color(0.30f, 0.55f, 1f, 0.85f);
 
         private Material _groundMaterial;
         private Material _gridMaterial;
+        private Material _majorMaterial;
         private Material _ringMaterial;
 
         private readonly int _layer;
@@ -48,7 +51,9 @@ namespace ValheimTomrer.Editor.View
             var unlit = Shading.Unlit();
 
             _groundMaterial = Paint(lit, UiTheme.SceneGround);
+            Matte(_groundMaterial);
             _gridMaterial = Paint(unlit, UiTheme.SceneGrid);
+            _majorMaterial = Paint(unlit, UiTheme.SceneGridMajor);
             _ringMaterial = Paint(unlit, UiTheme.SceneRing);
             var ground = Add("Ground", Quad(GroundSize), _groundMaterial, 0f);
             GroundCollider = ground.gameObject.AddComponent<BoxCollider>();
@@ -57,7 +62,12 @@ namespace ValheimTomrer.Editor.View
             groundRenderer.receiveShadows = true;
             groundRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
 
-            Add("Grid", Grid(GridCells), _gridMaterial, GridY);
+            // A 1 m grid with every fifth line brighter, so distances can be counted, and the two ground
+            // axes in the gizmo's colours (X red, Z blue).
+            Add("Grid", Grid(GridCells, 5, true), _gridMaterial, GridY);
+            Add("GridMajor", Grid(GridCells, 5, false), _majorMaterial, GridY + 0.001f);
+            Add("AxisX", Axis(true), Paint(unlit, AxisXColor), GridY + 0.002f);
+            Add("AxisZ", Axis(false), Paint(unlit, AxisZColor), GridY + 0.002f);
             Add("Origin", Ring(0.12f, 0.2f, 32), _ringMaterial, RingY);
 
             _front = new GameObject("Front") { layer = layer };
@@ -67,30 +77,12 @@ namespace ValheimTomrer.Editor.View
             _chevron = Add("Chevron", Chevron(), frontMaterial, 0f, _front.transform);
             _dot = Add("Anchor", Disc(0.09f, 16), frontMaterial, 0f, _front.transform);
 
-            AddLight("Key", Quaternion.Euler(50f, -35f, 0f), Hex(0xFFF4E0), 1.35f, true);
-            AddLight("Fill", Quaternion.Euler(-20f, 150f, 0f), Hex(0x8FA8C8), 0.45f, false);
+            // Dim and neutral: a bright key washed the ground out and hid the grid.
+            AddLight("Key", Quaternion.Euler(50f, -35f, 0f), Hex(0xEDEBE6), 0.95f, true);
+            AddLight("Fill", Quaternion.Euler(-20f, 150f, 0f), Hex(0x8FA0BC), 0.25f, false);
         }
 
         public Transform Root => _root != null ? _root.transform : null;
-
-        /// <summary>Paints the ground, the grid and the origin ring in the current theme.</summary>
-        public void ApplyTheme()
-        {
-            if (_groundMaterial != null)
-            {
-                _groundMaterial.color = UiTheme.SceneGround;
-            }
-
-            if (_gridMaterial != null)
-            {
-                _gridMaterial.color = UiTheme.SceneGrid;
-            }
-
-            if (_ringMaterial != null)
-            {
-                _ringMaterial.color = UiTheme.SceneRing;
-            }
-        }
 
         public BoxCollider GroundCollider { get; }
 
@@ -210,13 +202,23 @@ namespace ValheimTomrer.Editor.View
         }
 
         /// <summary>A line mesh: one metre per cell, drawn as lines so it stays one draw call.</summary>
-        private Mesh Grid(int cells)
+        /// <summary>
+        /// The grid's lines on the ground, 1 m apart. With <paramref name="skipEvery"/> the lines on every
+        /// <paramref name="every"/>-th metre are left out (they are the other mesh's); without it only those are drawn.
+        /// </summary>
+        private Mesh Grid(int cells, int every, bool skipEvery)
         {
             var half = cells * 0.5f;
             var vertices = new List<Vector3>((cells + 1) * 4);
             var indices = new List<int>((cells + 1) * 4);
             for (var i = 0; i <= cells; i++)
             {
+                var onMajor = i % every == 0;
+                if (onMajor == skipEvery)
+                {
+                    continue;
+                }
+
                 var at = -half + i;
                 indices.Add(vertices.Count);
                 vertices.Add(new Vector3(at, 0f, -half));
@@ -233,6 +235,36 @@ namespace ValheimTomrer.Editor.View
             mesh.SetIndices(indices, MeshTopology.Lines, 0);
             mesh.RecalculateBounds();
             return Take(mesh);
+        }
+
+        /// <summary>One line through the origin along the X or the Z axis, the length of the grid.</summary>
+        private Mesh Axis(bool x)
+        {
+            var half = GridCells * 0.5f;
+            var mesh = new Mesh();
+            mesh.SetVertices(new List<Vector3>
+            {
+                x ? new Vector3(-half, 0f, 0f) : new Vector3(0f, 0f, -half),
+                x ? new Vector3(half, 0f, 0f) : new Vector3(0f, 0f, half),
+            });
+            mesh.SetIndices(new[] { 0, 1 }, MeshTopology.Lines, 0);
+            mesh.RecalculateBounds();
+            return Take(mesh);
+        }
+
+        /// <summary>No shine: the standard shader gives a glossy sheen that reflects the world's sky and washes the ground out.</summary>
+        private static void Matte(Material material)
+        {
+            foreach (var property in new[] { "_Glossiness", "_Metallic", "_Smoothness", "_SpecularHighlights", "_GlossyReflections" })
+            {
+                if (material.HasProperty(property))
+                {
+                    material.SetFloat(property, 0f);
+                }
+            }
+
+            material.EnableKeyword("_SPECULARHIGHLIGHTS_OFF");
+            material.EnableKeyword("_GLOSSYREFLECTIONS_OFF");
         }
 
         private Mesh Ring(float inner, float outer, int segments)

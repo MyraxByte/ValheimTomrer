@@ -83,6 +83,13 @@ namespace ValheimTomrer.Editor.Ui
                 return;
             }
 
+            // The same message again (a key pressed a few times) keeps the one that is there, a little longer.
+            if (Live.Count > 0 && Live[0].Label != null && Live[0].Label.text == text && Live[0].Level == level)
+            {
+                Live[0].Until = Time.unscaledTime + (level == ToastLevel.Error ? ErrorSeconds : Seconds);
+                return;
+            }
+
             var toast = New(level, text);
             Live.Insert(0, toast);
             while (Live.Count > Cap)
@@ -100,6 +107,12 @@ namespace ValheimTomrer.Editor.Ui
             {
                 // Middle of the room the islands leave, wherever they are now.
                 _root.anchoredPosition = new Vector2(EditorWindow.FreeShift, 104f);
+
+                // Over a dialog too: an error from Save as must not sit under the dialog that caused it.
+                if (_root.GetSiblingIndex() != _root.parent.childCount - 1)
+                {
+                    _root.SetAsLastSibling();
+                }
             }
 
             var now = Time.unscaledTime;
@@ -162,6 +175,9 @@ namespace ValheimTomrer.Editor.Ui
         private static Toast New(ToastLevel level, string text)
         {
             var panel = UiBuild.Card("Toast", _root);
+
+            // A message is never in the way of a click.
+            panel.raycastTarget = false;
             var rect = panel.rectTransform;
             rect.anchorMin = new Vector2(0f, 0f);
             rect.anchorMax = new Vector2(1f, 0f);

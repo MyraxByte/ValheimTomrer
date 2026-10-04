@@ -7,7 +7,7 @@ using UnityEngine.U2D;
 namespace ValheimTomrer.Editor.Ui
 {
     /// <summary>
-    /// The editor's look: flat, modern panels in a Dark or a Light theme, a clean sans font, and a
+    /// The editor's look: flat, modern dark panels, a clean sans font, and a
     /// blue accent. It does not copy the game's wood on purpose: the editor is a tool, and it reads
     /// best like one. Every colour is plain code; the font is one the game already loaded. Nothing
     /// is shipped on disk and nothing is written.
@@ -50,54 +50,51 @@ namespace ValheimTomrer.Editor.Ui
 
         public static bool InGame => _gameLook > 0;
 
-        /// <summary>True in the Dark theme (the default). Read live: a switch shows at the next build of the window.</summary>
-        public static bool Dark => EditorConfig.Theme == null || EditorConfig.Theme.Value == EditorTheme.Dark;
-
-        public static Color Text => InGame ? Color.white : Dark ? Hex(0xE8EAED) : Hex(0x1C1F24);
+        public static Color Text => InGame ? Color.white : Hex(0xE8EAED);
 
         /// <summary>Captions, footers, hints and placeholders.</summary>
-        public static Color TextDim => InGame ? Color.white : Dark ? Hex(0x9AA0A9) : Hex(0x667080);
+        public static Color TextDim => InGame ? Color.white : Hex(0x9AA0A9);
 
-        public static Color Accent => InGame ? (Color)new Color32(0xFF, 0xB4, 0x4C, 0xFF) : Dark ? Hex(0x4C8DFF) : Hex(0x0B6CF0);
+        public static Color Accent => InGame ? (Color)new Color32(0xFF, 0xB4, 0x4C, 0xFF) : Hex(0x4C8DFF);
 
         /// <summary>The label on an accent chip or button.</summary>
         public static Color TextOnAccent => Color.white;
 
-        public static Color Warn => InGame ? (Color)new Color32(0xE8, 0x6A, 0x4A, 0xFF) : Dark ? Hex(0xFF6B5E) : Hex(0xD9372B);
+        public static Color Warn => InGame ? (Color)new Color32(0xE8, 0x6A, 0x4A, 0xFF) : Hex(0xFF6B5E);
 
-        public static Color Good => InGame ? (Color)new Color32(0x8C, 0xD0, 0x7A, 0xFF) : Dark ? Hex(0x4CC77F) : Hex(0x1E9E55);
+        public static Color Good => InGame ? (Color)new Color32(0x8C, 0xD0, 0x7A, 0xFF) : Hex(0x4CC77F);
 
-        public static Color Backdrop => InGame ? new Color(0f, 0f, 0f, 0.65f) : new Color(0f, 0f, 0f, Dark ? 0.55f : 0.35f);
+        public static Color Backdrop => InGame ? new Color(0f, 0f, 0f, 0.65f) : new Color(0f, 0f, 0f, 0.55f);
 
         /// <summary>A floating card: the Layers and Inspector cards, the top bar, dialogs, popups, toasts.</summary>
-        public static Color PanelFloat => Dark ? Hex(0x1C1D21) : Hex(0xFFFFFF);
+        public static Color PanelFloat => Hex(0x1C1D21);
 
         /// <summary>The soft shadow under an island, so it reads as floating over the view.</summary>
-        public static Color IslandShadow => new Color(0f, 0f, 0f, Dark ? 0.45f : 0.22f);
+        public static Color IslandShadow => new Color(0f, 0f, 0f, 0.45f);
 
         /// <summary>The same as <see cref="PanelFloat"/>. Kept for the code that still says interior.</summary>
         public static Color PanelInterior => PanelFloat;
 
         /// <summary>A row, a tile, a chip or a button on a card.</summary>
-        public static Color Surface => InGame ? new Color(0.17f, 0.14f, 0.11f, 0.94f) : Dark ? Hex(0x2A2C31) : Hex(0xEEF0F3);
+        public static Color Surface => InGame ? new Color(0.17f, 0.14f, 0.11f, 0.94f) : Hex(0x2A2C31);
 
         /// <summary>The same under the mouse.</summary>
-        public static Color SurfaceHover => Dark ? Hex(0x363940) : Hex(0xE1E4E9);
+        public static Color SurfaceHover => Hex(0x363940);
 
         /// <summary>A pressed button.</summary>
-        public static Color SurfacePressed => Dark ? Hex(0x41454D) : Hex(0xD3D7DD);
+        public static Color SurfacePressed => Hex(0x41454D);
 
         /// <summary>The inside of a text box.</summary>
-        public static Color Field => Dark ? Hex(0x0E0F12) : Hex(0xF3F5F8);
+        public static Color Field => Hex(0x0E0F12);
 
         /// <summary>The outline of a text box at rest: strong enough that the box reads as one you can type in.</summary>
-        public static Color FieldBorder => Dark ? Hex(0x4A4F59) : Hex(0xB3BBC7);
+        public static Color FieldBorder => Hex(0x4A4F59);
 
         /// <summary>The same under the mouse.</summary>
-        public static Color FieldBorderHover => Dark ? Hex(0x7A8190) : Hex(0x7D8797);
+        public static Color FieldBorderHover => Hex(0x7A8190);
 
         /// <summary>The thin line round a card, a text box or a key cap.</summary>
-        public static Color Border => Dark ? Hex(0x34373D) : Hex(0xD6DAE0);
+        public static Color Border => Hex(0x34373D);
 
         /// <summary>A row or a tile that carries text.</summary>
         public static Color Slot => Surface;
@@ -106,25 +103,28 @@ namespace ValheimTomrer.Editor.Ui
         public static Color SlotDim => Alpha(Surface, 0.6f);
 
         /// <summary>A sunken area inside a card, such as the build card copy.</summary>
-        public static Color Inset => Dark ? Hex(0x16171A) : Hex(0xF6F7F9);
+        public static Color Inset => Hex(0x16171A);
 
         /// <summary>The hint text drawn straight over the 3D picture: light on the dark scene, dark on the light one.</summary>
-        public static Color TextOnPicture => Dark ? Hex(0xD9DCE1) : Hex(0x2A2F36);
+        public static Color TextOnPicture => Hex(0xD9DCE1);
 
         /// <summary>A key cap in the hint row over the picture.</summary>
-        public static Color Cap => Dark ? Alpha(Hex(0x2A2C31), 0.92f) : Alpha(Hex(0xFFFFFF), 0.92f);
+        public static Color Cap => Alpha(Hex(0x2A2C31), 0.92f);
 
         public static Color Viewport => SceneBackground;
 
         // The 3D pane's own colours: a neutral canvas, like a design tool's.
-        public static Color SceneBackground => Dark ? Hex(0x17191D) : Hex(0xE6E9ED);
-        public static Color SceneAmbient => Dark ? new Color(0.30f, 0.32f, 0.36f, 1f) : new Color(0.48f, 0.50f, 0.54f, 1f);
-        public static Color SceneGround => Dark ? Hex(0x23262B) : Hex(0xD2D6DC);
-        public static Color SceneGrid => Dark ? new Color(0.62f, 0.68f, 0.78f, 0.16f) : new Color(0.22f, 0.27f, 0.34f, 0.20f);
-        public static Color SceneRing => Dark ? Hex(0xC9CED6) : Hex(0x2A2F36);
+        public static Color SceneBackground => Hex(0x0C0D10);
+        public static Color SceneAmbient => new Color(0.20f, 0.21f, 0.24f, 1f);
+        public static Color SceneGround => Hex(0x16181C);
+        public static Color SceneGrid => new Color(0.55f, 0.62f, 0.74f, 0.30f);
+
+        /// <summary>Every fifth grid line, brighter, so distances can be counted.</summary>
+        public static Color SceneGridMajor => new Color(0.72f, 0.80f, 0.92f, 0.60f);
+        public static Color SceneRing => Hex(0xC9CED6);
 
         /// <summary>The selection's boxes and the box drag in the pane.</summary>
-        public static Color Selection => Dark ? Hex(0x4C8DFF) : Hex(0x0B6CF0);
+        public static Color Selection => Hex(0x4C8DFF);
 
         private static Color Hex(int rgb)
         {

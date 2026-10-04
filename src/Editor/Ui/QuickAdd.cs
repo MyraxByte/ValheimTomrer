@@ -291,12 +291,12 @@ namespace ValheimTomrer.Editor.Ui
             // Names that start with what was typed first, then the rest; Recent newest first.
             if (_tag == RecentKey)
             {
-                Shown.Sort((a, b) => PieceMemory.RecentIndex(a.Entry.PrefabName).CompareTo(PieceMemory.RecentIndex(b.Entry.PrefabName)));
+                Reorder(t => PieceMemory.RecentIndex(t.Entry.PrefabName));
             }
             else if (words.Length > 0)
             {
                 var first = words[0];
-                Shown.Sort((a, b) => Rank(a, first).CompareTo(Rank(b, first)));
+                Reorder(t => Rank(t, first));
             }
 
             for (var i = 0; i < Shown.Count; i++)
@@ -621,7 +621,9 @@ namespace ValheimTomrer.Editor.Ui
             };
             back.gameObject.AddComponent<HoverEvents>().Changed = on =>
             {
-                if (on)
+                // Only a mouse that moved lights a tile: the grid reorders under a resting mouse while typing.
+                var mouse = UnityEngine.InputSystem.Mouse.current;
+                if (on && mouse != null && mouse.delta.ReadValue() != Vector2.zero)
                 {
                     var index = Shown.IndexOf(tile);
                     if (index >= 0)
@@ -632,6 +634,18 @@ namespace ValheimTomrer.Editor.Ui
             };
             tile.Refresh(false);
             return tile;
+        }
+
+        /// <summary>Sorts the shown tiles by a number, and keeps tiles with the same number in the order they had (a plain sort scrambles ties).</summary>
+        private static void Reorder(System.Func<Tile, int> rank)
+        {
+            var ordered = Shown.Select((tile, index) => new { tile, index, rank = rank(tile) })
+                .OrderBy(x => x.rank)
+                .ThenBy(x => x.index)
+                .Select(x => x.tile)
+                .ToList();
+            Shown.Clear();
+            Shown.AddRange(ordered);
         }
 
         private static Chip NewChip(string key, string text)

@@ -255,7 +255,7 @@ namespace ValheimTomrer.Editor.Ui
             Collect(Current);
             if (Walk.Count == 0)
             {
-                Leave();
+                MoveToAnyRegion();
                 return;
             }
 
@@ -293,7 +293,7 @@ namespace ValheimTomrer.Editor.Ui
             Collect(Current);
             if (Walk.Count == 0)
             {
-                Leave();
+                MoveToAnyRegion();
                 return;
             }
 
@@ -455,7 +455,7 @@ namespace ValheimTomrer.Editor.Ui
             Collect(Current);
             if (Walk.Count == 0)
             {
-                Leave();
+                MoveToAnyRegion();
                 return;
             }
 
@@ -555,7 +555,7 @@ namespace ValheimTomrer.Editor.Ui
             Collect(Current);
             if (Walk.Count == 0)
             {
-                Leave();
+                MoveToAnyRegion();
                 return;
             }
 
@@ -586,14 +586,56 @@ namespace ValheimTomrer.Editor.Ui
                 return;
             }
 
-            // false: only the widgets that are really on screen, so a hidden tab's pane is out.
+            // false: only the widgets that are really on screen. A tab's pane that is slid out of sight is
+            // still switched on, so a widget also has to be over its region: its own box, or for a list
+            // the list's window (a row scrolled out of that window is reached from inside the list).
+            var regionBox = Box(rect);
             foreach (var selectable in rect.GetComponentsInChildren<Selectable>(false))
             {
-                if (selectable != null && selectable.interactable && selectable.gameObject.activeInHierarchy)
+                if (selectable == null || !selectable.interactable || !selectable.gameObject.activeInHierarchy)
+                {
+                    continue;
+                }
+
+                var list = selectable.GetComponentInParent<ScrollRect>();
+                var shown = list != null && list.viewport != null ? Box(list.viewport) : Box(selectable);
+                if (regionBox.Overlaps(shown))
                 {
                     into.Add(selectable);
                 }
             }
+        }
+
+        /// <summary>
+        /// The region the walk was in has nothing to walk now (its card was put away, its tab is empty):
+        /// the walk goes to the next region that has something, and ends only when none has.
+        /// </summary>
+        private static void MoveToAnyRegion()
+        {
+            if (Current == FocusRegion.Dialog)
+            {
+                Leave();
+                return;
+            }
+
+            for (var step = 1; step < Regions; step++)
+            {
+                var next = (FocusRegion)((((int)Current + step) % Regions + Regions) % Regions);
+                if (next == FocusRegion.Dialog)
+                {
+                    continue;
+                }
+
+                Collect(next);
+                if (Walk.Count > 0)
+                {
+                    Current = next;
+                    Focus(0);
+                    return;
+                }
+            }
+
+            Leave();
         }
 
         // ---------- the step by screen position ----------

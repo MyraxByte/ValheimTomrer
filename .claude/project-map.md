@@ -2,7 +2,7 @@
 
 Nothing here is a guess. Use it instead of searching. Every file outside `bin/`, `obj/` and `.devtest/`. Add or remove a file, update this list in the same commit.
 
-Nothing here is a guess. Use this instead of searching. All 88 source files, and every other
+Nothing here is a guess. Use this instead of searching. All 90 source files, and every other
 **Build, scripts, data**
 
 ```
@@ -156,6 +156,7 @@ PieceMemory.cs                    the pieces used last and the starred ones, kep
 EditorSession.cs                  open, close (keeps everything), Forget, the one per-frame tick
 EditorState.cs                    selection, what is in hand, every action that changes the
                                   blueprint. No UI, no scene, the autotest drives it alone
+EditorMeasure.cs                  the gaps between the selection and the pieces beside it, closing one
 EditorCommands.cs                 the top-bar verbs. Every one reports through a toast
 WorldCapture.cs                   F8: the turned rectangle under the aim, the wheel, and the
                                   blueprint it makes
@@ -211,13 +212,15 @@ Ui/BlueprintPage.cs               the Blueprint tab: name, description, icon, th
 Ui/ChecksPage.cs                  the Checks tab: the problem list, a click selects its pieces
 Ui/Toolbar.cs                     the floating bar at the bottom of the view: grid, turn step, snap
                                   points, dots, boxes, hide panels
+Ui/Annotations.cs                 numbers on lines over the picture: the selection's size, the gaps, the
+                                  ruler. Pooled, drawn between Begin and End every frame
 Ui/ViewGizmo.cs                   the axis marker in the view's corner: six discs that follow the
                                   camera and click to a side, the side's name, perspective switch
 Ui/QuickAdd.cs                    Tab, cross or the Add mode: the piece search over the view. Typing
                                   filters, Enter places, arrows and the D-pad move, L1 R1 change tags,
                                   Recent and Starred
 Ui/ModUi.cs                       the Blocking flag every input patch reads
-Ui/UiTheme.cs                     the editor's flat modern look, Dark (default) or Light: colours,
+Ui/UiTheme.cs                     the editor's flat modern look, dark only: colours,
                                   a sans font the game ships, own copies of its material. GameLook()
                                   gives the game's colours and font to widgets inside the game's
                                   HUD (the hammer card's list, the capture line). Keyed on the Hud

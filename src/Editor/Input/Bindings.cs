@@ -219,6 +219,13 @@ namespace ValheimTomrer.Editor.Input
 
             if (act != Act.None && Run(act))
             {
+                // Ctrl went down first as the fly-down key; with a shortcut after it, it was a modifier.
+                if ((mods & KeyMods.Ctrl) != 0)
+                {
+                    Held.Remove(KeyCode.LeftControl);
+                    Held.Remove(KeyCode.RightControl);
+                }
+
                 return true;
             }
 
@@ -331,6 +338,36 @@ namespace ValheimTomrer.Editor.Input
                 case Act.Isolate:
                     EditorState.IsolateSelection();
                     return true;
+                case Act.Copy:
+                    EditorState.CopySelection();
+                    return true;
+                case Act.Paste:
+                    EditorState.StartPaste();
+                    return true;
+                case Act.Group:
+                    EditorState.GroupSelection();
+                    return true;
+                case Act.Ungroup:
+                    EditorState.UngroupSelection();
+                    return true;
+                case Act.CloseGap:
+                    EditorMeasure.CloseGap();
+                    return true;
+                case Act.Ruler:
+                    ViewportHost.ToggleRuler();
+                    return true;
+                case Act.ToggleDimensions:
+                    EditorCommands.ToggleDimensions();
+                    return true;
+                case Act.BookmarkAdd:
+                    ViewportHost.AddBookmark();
+                    return true;
+                case Act.BookmarkNext:
+                    ViewportHost.NextBookmark();
+                    return true;
+                case Act.BookmarkClear:
+                    ViewportHost.ClearBookmarks();
+                    return true;
                 case Act.MouseLook:
                     // Hand the mouse to the pane, so it looks around instead of pointing. Esc
                     // gives it back. A click never does this: it selects.
@@ -373,9 +410,6 @@ namespace ValheimTomrer.Editor.Input
                     return true;
                 case Act.HideUi:
                     EditorWindow.SetUiHidden(!EditorWindow.UiHidden);
-                    return true;
-                case Act.ToggleNight:
-                    EditorCommands.ToggleTheme();
                     return true;
                 case Act.HideSelection:
                     EditorState.HideSelection();
@@ -442,6 +476,19 @@ namespace ValheimTomrer.Editor.Input
                 }
 
                 var act = Keymap.Capturing;
+
+                // The keys that open the editor and the capture are not for actions: they would run it and close the window.
+                if (key == EditorConfig.Key.Value || key == EditorConfig.CaptureKey.Value)
+                {
+                    continue;
+                }
+
+                // Ctrl is a modifier for every action but the fly keys: it must not end the capture before the key it goes with.
+                if ((key == KeyCode.LeftControl || key == KeyCode.RightControl) && act < Act.FlyForward)
+                {
+                    continue;
+                }
+
                 if (key == KeyCode.Backspace && (Mods & (KeyMods.Ctrl | KeyMods.Alt | KeyMods.Shift | KeyMods.Cmd)) == 0)
                 {
                     Keymap.Clear(act);
@@ -600,6 +647,12 @@ namespace ValheimTomrer.Editor.Input
             if (EditorState.Mode != EditMode.Idle)
             {
                 EditorState.CancelMode();
+                return true;
+            }
+
+            if (ViewportHost.RulerOn)
+            {
+                ViewportHost.SetRuler(false);
                 return true;
             }
 

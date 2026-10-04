@@ -16,7 +16,7 @@ Asked by the owner on 2026-10-03. Decisions made with the owner are marked **Dec
 - Key bindings: presets (Figma, Valheim, Blender) plus own bindings, with a Controls window.
 - Moving pieces stays as it is now: G, the piece follows the mouse, click drops. No axis handles.
   Dragging a piece moves it too (Figma), G is unchanged.
-- The look does not follow the game: a modern flat tool look, Dark by default, Light as an option
+- The look does not follow the game: a modern flat tool look, dark only (the owner dropped the Light theme)
   (changed by the owner during phase 4).
 - "Привязки" covers both: key bindings (phase 3) and snapping (phase 6).
 - Every feature works on a controller too (CLAUDE.md), with its autotest check and README line.
@@ -25,7 +25,7 @@ Asked by the owner on 2026-10-03. Decisions made with the owner are marked **Dec
 
 | # | Phase | Contents | State |
 |---|---|---|---|
-| 1 | Theme and wheel | Own wheel scroll for every list. Dark and Light themes | done, not run in the game |
+| 1 | Theme and wheel | Own wheel scroll for every list. A dark theme (Light was added, then removed) | done, not run in the game |
 | 2 | Viewport first | The view fills the screen, Layers and Inspector cards fold (Alt+1, Alt+2), `Ctrl+\` / L2 + L3 hide everything, Tab opens Quick add (search, Recent, Starred), the walk moves to F6 | done, not run in the game |
 | 3 | Key bindings | One table of actions, presets Tomrer, Figma, Blender, the Keys window (H, Change keys), config section `Keys`. The pad keeps the game's layout (decided: no pad rebinding) | done, not run in the game |
 | 4 | Figma-style work | Drag to move, Alt+drag copies, double click selects the same kind, hide and lock (keys, Selection card, Layers rows), align and spread, Shift + arrow. Modern flat look. Groups are left out: the file format has none | done, not run in the game |

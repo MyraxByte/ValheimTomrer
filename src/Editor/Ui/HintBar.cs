@@ -72,7 +72,7 @@ namespace ValheimTomrer.Editor.Ui
         {
             var root = UiBuild.Rect(name, parent);
             var row = root.gameObject.AddComponent<HorizontalLayoutGroup>();
-            row.childAlignment = TextAnchor.MiddleLeft;
+            row.childAlignment = TextAnchor.MiddleCenter;
             row.spacing = BetweenHints;
             row.childControlWidth = true;
             row.childControlHeight = true;
@@ -86,6 +86,20 @@ namespace ValheimTomrer.Editor.Ui
             if (_root != null && _root.gameObject.activeSelf != on)
             {
                 _root.gameObject.SetActive(on);
+            }
+        }
+
+        /// <summary>
+        /// Shrinks the bar (down to half) when its hints are wider than the room it has, so none runs under
+        /// a card. The layout's width is read, so a set that was just built is fitted a frame later.
+        /// </summary>
+        public void FitTo(float width)
+        {
+            var wide = LayoutUtility.GetPreferredWidth(_root);
+            var scale = wide > width && wide > 1f ? Mathf.Clamp(width / wide, 0.5f, 1f) : 1f;
+            if (!Mathf.Approximately(_root.localScale.x, scale))
+            {
+                _root.localScale = new Vector3(scale, scale, 1f);
             }
         }
 

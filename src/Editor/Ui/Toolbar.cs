@@ -15,11 +15,15 @@ namespace ValheimTomrer.Editor.Ui
         private static RectTransform _host;
         private static RectTransform _root;
         private static int _generation = -1;
+        private static float _gridShown = -1f;
+        private static float _turnShown = -1f;
         private static Button _grid;
         private static Button _turn;
         private static Button _points;
         private static Button _dots;
         private static Button _boxes;
+        private static Button _sizes;
+        private static Button _ruler;
 
         /// <summary>The bar itself, for the pad walk.</summary>
         public static RectTransform Root => _root;
@@ -35,6 +39,7 @@ namespace ValheimTomrer.Editor.Ui
 
             _host = host;
             _generation = UiTheme.Generation;
+            _gridShown = _turnShown = -1f;
             Build(host);
         }
 
@@ -45,13 +50,36 @@ namespace ValheimTomrer.Editor.Ui
                 return;
             }
 
+            // The words are rebuilt only when the number changed.
             var grid = EditorState.GridStep;
-            Set(_grid, grid > 0f ? $"Grid {grid:0.##} m" : "Grid off", grid > 0f);
-            Set(_turn, $"Turn {EditorState.AngleStep:0.##}°", false);
+            if (!Mathf.Approximately(grid, _gridShown))
+            {
+                _gridShown = grid;
+                Set(_grid, grid > 0f ? $"Grid {grid:0.##} m" : "Grid off", grid > 0f);
+            }
+
+            var turn = EditorState.AngleStep;
+            if (!Mathf.Approximately(turn, _turnShown))
+            {
+                _turnShown = turn;
+                Set(_turn, $"Turn {turn:0.##}°", false);
+            }
+
             var points = EditorConfig.SnapPoints == null || EditorConfig.SnapPoints.Value;
             Set(_points, points ? "Snap points" : "Snap points off", points);
             Set(_dots, "Dots", EditorState.SnapDotsOn);
             Set(_boxes, "Boxes", EditorState.PieceBoxesOn);
+            Set(_sizes, "Sizes", EditorState.DimensionsOn);
+            Set(_ruler, "Ruler", ViewportHost.RulerOn);
+
+            // Wider than the room between the cards: smaller, never under a card.
+            var room = EditorWindow.Root.rect.width - EditorWindow.FreeLeft - EditorWindow.FreeRight;
+            var wide = LayoutUtility.GetPreferredWidth(_root);
+            var scale = wide > room && wide > 1f ? Mathf.Clamp(room / wide, 0.55f, 1f) : 1f;
+            if (!Mathf.Approximately(_root.localScale.x, scale))
+            {
+                _root.localScale = new Vector3(scale, scale, 1f);
+            }
         }
 
         private static void Set(Button button, string text, bool on)
@@ -84,6 +112,8 @@ namespace ValheimTomrer.Editor.Ui
             Kit.Divider(card.transform, true);
             _dots = Add(walk, Kit.Ghost(card.transform, "Dots", EditorCommands.ToggleSnapDots, 30f));
             _boxes = Add(walk, Kit.Ghost(card.transform, "Boxes", EditorCommands.ToggleBoxes, 30f));
+            _sizes = Add(walk, Kit.Ghost(card.transform, "Sizes", EditorCommands.ToggleDimensions, 30f));
+            _ruler = Add(walk, Kit.Ghost(card.transform, "Ruler", ViewportHost.ToggleRuler, 30f));
             Kit.Divider(card.transform, true);
             Add(walk, Kit.Ghost(card.transform, "Hide panels", () => EditorWindow.SetUiHidden(true), 30f));
             UiBuild.LinkRow(walk, true);

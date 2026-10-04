@@ -224,7 +224,14 @@ layout and has no setting.
 | 1, 2, 3 | Look from the front, the right, the top. With Ctrl: the back, the left, the bottom. The camera keeps its distance and the point it looks at. |
 | 4 | Look from a corner, a bit above |
 | 5 | Perspective or orthographic (flat) view, where parallel lines stay parallel |
-| I | Show only the selection, to work inside a room. Again, or with nothing selected, shows everything. |
+| I | Show only the selection, to work inside a room. Again brings back only what it hid. |
+| Ctrl + C, Ctrl + V | Copy the selection, and paste it into hand, in this blueprint or another one. Copies keep coming until Esc. |
+| Ctrl + G, Ctrl + Shift + G | Group the selection (a click on one piece picks the whole group), and break the group up. Groups are not saved in the file. |
+| Alt + Q | Close the gap: move the selection along the align axis until it touches the nearest piece beside it |
+| Alt + Z | Show or hide the selection's size along its edges and the gaps to the pieces beside it (orange) |
+| M | Ruler: click two points in the view (a corner of a piece pulls the point to it). The distance and the three differences show. Esc stops. |
+| Ctrl + B, B, Ctrl + Shift + B | Save the camera's place (up to 9), fly to the next saved place, forget them all. Not saved in the file. |
+| Drag a number box's name (X, Y, Z, Yaw) | Change the number: 1 cm a pixel, with Shift 10 times more, with Alt a tenth |
 | Ctrl + S | Save |
 | H, ? | Help, with these tables |
 | Ctrl + Shift + H | Hide the selection to see inside. With nothing selected it shows everything again. |
@@ -234,7 +241,6 @@ layout and has no setting.
 | Alt + X | Pick the axis for aligning: X, Y or Z |
 | Alt + A, Alt + C, Alt + D | Line the selection up on its low edge, middle or high edge along that axis |
 | Alt + E | Spread three or more pieces so the gaps are equal |
-| Ctrl + Shift + N | Switch between the dark and the light theme |
 | Shift + H, Shift + V | Mirror the selection along X or Z |
 | Ctrl + Shift + D | Copy the selection right next to it. Press again for the next one in the row. |
 | Ctrl + K | Search every command by name and run it. The Commands button does the same. |
@@ -278,7 +284,10 @@ The controller works from the crosshair in the middle of the 3D view.
 | D-pad left, right | Undo, redo |
 | L2 (LT) + D-pad left, right | Look from the next or the previous side: front, right, back, left, top, corner |
 | L2 (LT) + D-pad up | Perspective or orthographic view |
-| L2 (LT) + D-pad down | Show only the selection, again to show everything |
+| L2 (LT) + D-pad down | Show only the selection, again to bring back what it hid |
+| L2 (LT) + × (A) | Ruler on and off. R2 puts a point at the crosshair, ○ stops. |
+| L2 (LT) + R3 | Fly to the next saved view |
+| △ (Y) in Quick add | Star or unstar the lit piece |
 | ○ (B) | Go back one step, like Esc. When there is nothing left, it closes the editor. |
 | L2 (LT) + □ (X) | Close the editor. The same buttons open it. |
 | Options (Menu) | Help |
@@ -302,6 +311,10 @@ Buttons and panels:
 Windows like Blueprints and Save as, and every question, put the ring on themselves as soon as
 they open: the D-pad moves, × picks, ○ closes. In Save as the name box is selected but not typing,
 so down and × saves with the name shown. Press × on the box to type a new one.
+
+Copy, paste, group, close the gap, the sizes switch and saving a view have no button combo: the pad
+reaches them as buttons in the Inspector (Copy, Paste, Group, Ungroup, Close gap), the Sizes and Ruler
+buttons of the toolbar, and the command search (the Commands button).
 
 The rows in the Layers list and the Checks tab can't be picked with the pad. Use Quick add (×) to
 place pieces. Hide, Lock, Same kind, align and spread, mirror and the rest are buttons in the
@@ -332,7 +345,6 @@ you can change it in the game (F1).
 | Editor | `GridStep` | `0` | Placing grid in metres (0, 0.25, 0.5, 1, 2, 4). 0 is no grid. |
 | Editor | `AngleStep` | `22.5` | Degrees per turn step (5, 15, 22.5, 45, 90) |
 | Editor | `SnapPoints` | `true` | Snap to the pieces' snap points, like the game |
-| Editor | `Theme` | `Dark` | `Dark` or `Light`, the editor's look. The Light / Dark button in the editor changes it. |
 | Editor | `LayersOpen` | `true` | The Layers panel on the left (the pieces of the blueprint). Alt + 1 folds it. |
 | Editor | `InspectorOpen` | `true` | The Inspector on the right (Design, Blueprint, Checks). Alt + 2 folds it. |
 | Editor | `RecentPieces`, `FavouritePieces` | empty | Kept by the editor: the pieces you used last and the ones you starred. Quick add shows them first. |

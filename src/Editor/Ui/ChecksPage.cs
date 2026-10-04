@@ -71,7 +71,7 @@ namespace ValheimTomrer.Editor.Ui
                 return;
             }
 
-            if (_document.Revision != _revision || PieceCatalog.Generation != _catalogGeneration)
+            if (_document.PiecesRevision != _revision || PieceCatalog.Generation != _catalogGeneration)
             {
                 Refresh();
             }
@@ -84,7 +84,7 @@ namespace ValheimTomrer.Editor.Ui
                 return;
             }
 
-            _revision = _document != null ? _document.Revision : -1;
+            _revision = _document != null ? _document.PiecesRevision : -1;
             _catalogGeneration = PieceCatalog.Generation;
             Found.Clear();
             Found.AddRange(Checks.Run(_document));

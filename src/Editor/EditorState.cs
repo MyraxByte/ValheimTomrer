@@ -52,6 +52,9 @@ namespace ValheimTomrer.Editor
         /// <summary>Draw the pieces as boxes instead of models. A top bar switch.</summary>
         public static bool PieceBoxesOn { get; set; }
 
+        /// <summary>Draw the selection's size and the gaps beside it over the view. This session only.</summary>
+        public static bool DimensionsOn { get; set; } = true;
+
         /// <summary>Show the snap points while placing. Snapping itself is always on.</summary>
         public static bool SnapDotsOn { get; set; } = true;
 
@@ -62,7 +65,16 @@ namespace ValheimTomrer.Editor
         private static readonly List<int> MovingIds = new List<int>();
         private static readonly HashSet<int> Hidden = new HashSet<int>();
         private static readonly HashSet<int> Locked = new HashSet<int>();
+        private static readonly HashSet<int> Isolated = new HashSet<int>();
         private static readonly List<int> NotDrawnIds = new List<int>();
+
+        // Groups belong to this editing session, like hide and lock: the file format has none.
+        private static readonly Dictionary<int, int> GroupOf = new Dictionary<int, int>();
+        private static readonly Dictionary<int, List<int>> GroupMembers = new Dictionary<int, List<int>>();
+        private static int _nextGroup = 1;
+
+        // What Copy took, kept across blueprints (pieces are immutable, so the list can be shared).
+        private static List<DocPiece> _clipboard = new List<DocPiece>();
 
         private static SceneIndex _index;
         private static int _indexRevision = -1;
@@ -174,6 +186,9 @@ namespace ValheimTomrer.Editor
             Selected.Clear();
             Hidden.Clear();
             Locked.Clear();
+            GroupOf.Clear();
+            GroupMembers.Clear();
+            Isolated.Clear();
             MovingIds.Clear();
             Mode = EditMode.Idle;
             Moving = null;
@@ -268,6 +283,14 @@ namespace ValheimTomrer.Editor
 
         public static void Select(IEnumerable<int> ids, SelectHow how = SelectHow.Set)
         {
+            // A new selection starts a new undo step for nudges and typed numbers.
+            if (Document != null)
+            {
+                Document.BreakRun();
+            }
+
+            var requested = ids != null ? ids.ToList() : new List<int>();
+            var previous = how == SelectHow.Set && requested.Count > 0 ? new List<int>(Selected) : null;
             if (how == SelectHow.Set)
             {
                 Selected.Clear();
@@ -275,17 +298,39 @@ namespace ValheimTomrer.Editor
 
             if (ids != null)
             {
-                foreach (var id in ids)
+                foreach (var id in requested)
                 {
+                    // A piece in a group brings its whole group.
+                    var members = MembersOf(id);
                     if (how == SelectHow.Toggle && Selected.Contains(id))
                     {
-                        Selected.Remove(id);
+                        foreach (var member in members)
+                        {
+                            Selected.Remove(member);
+                        }
                     }
-                    else if (!Locked.Contains(id) && !Hidden.Contains(id))
+                    else
                     {
-                        Selected.Add(id);
+                        foreach (var member in members)
+                        {
+                            if (!Locked.Contains(member) && !Hidden.Contains(member))
+                            {
+                                Selected.Add(member);
+                            }
+                        }
                     }
                 }
+            }
+
+            // Everything asked for is hidden or locked: say so, and keep what was selected.
+            if (previous != null && Selected.Count == 0)
+            {
+                foreach (var id in previous)
+                {
+                    Selected.Add(id);
+                }
+
+                Say("Those pieces are hidden or locked. Show or unlock them first.");
             }
 
             Version++;
@@ -316,6 +361,145 @@ namespace ValheimTomrer.Editor
             }
 
             Version++;
+        }
+
+        // ---------- groups ----------
+
+        /// <summary>The piece and everyone in its group, or only the piece when it has none.</summary>
+        private static IList<int> MembersOf(int id)
+        {
+            return GroupOf.TryGetValue(id, out var group) && GroupMembers.TryGetValue(group, out var list)
+                ? (IList<int>)list
+                : new[] { id };
+        }
+
+        public static bool IsGrouped(int id) => GroupOf.ContainsKey(id);
+
+        public static int GroupCount => GroupMembers.Count;
+
+        /// <summary>Picks of one piece select all of them from now on. Not saved in the file, like hide and lock.</summary>
+        public static bool GroupSelection()
+        {
+            if (Selected.Count < 2)
+            {
+                Say("Select two or more pieces to group them.");
+                return false;
+            }
+
+            var ids = Selected.ToList();
+            foreach (var id in ids)
+            {
+                Leave(id);
+            }
+
+            var group = _nextGroup++;
+            GroupMembers[group] = ids;
+            foreach (var id in ids)
+            {
+                GroupOf[id] = group;
+            }
+
+            Say($"Grouped {Count(ids.Count)}. A click on one picks them all. Not saved in the file.");
+            Version++;
+            return true;
+        }
+
+        /// <summary>Breaks up every group the selection touches.</summary>
+        public static bool UngroupSelection()
+        {
+            var groups = new HashSet<int>();
+            foreach (var id in Selected)
+            {
+                if (GroupOf.TryGetValue(id, out var group))
+                {
+                    groups.Add(group);
+                }
+            }
+
+            if (groups.Count == 0)
+            {
+                Say("Nothing selected is in a group.");
+                return false;
+            }
+
+            foreach (var group in groups)
+            {
+                foreach (var id in GroupMembers[group])
+                {
+                    GroupOf.Remove(id);
+                }
+
+                GroupMembers.Remove(group);
+            }
+
+            Say(groups.Count == 1 ? "Ungrouped." : $"Ungrouped {groups.Count} groups.");
+            Version++;
+            return true;
+        }
+
+        /// <summary>Takes a piece out of its group; a group left with one piece is gone.</summary>
+        private static void Leave(int id)
+        {
+            if (!GroupOf.TryGetValue(id, out var group))
+            {
+                return;
+            }
+
+            GroupOf.Remove(id);
+            var list = GroupMembers[group];
+            list.Remove(id);
+            if (list.Count < 2)
+            {
+                foreach (var left in list)
+                {
+                    GroupOf.Remove(left);
+                }
+
+                GroupMembers.Remove(group);
+            }
+        }
+
+        // ---------- the clipboard ----------
+
+        public static int ClipboardCount => _clipboard.Count;
+
+        /// <summary>Copy: the selection is kept, with its places, for Paste, in this blueprint or another.</summary>
+        public static bool CopySelection()
+        {
+            var pieces = SelectedPieces();
+            if (pieces.Count == 0)
+            {
+                Say("Select something to copy.");
+                return false;
+            }
+
+            _clipboard = pieces;
+            Say($"Copied {Count(pieces.Count)}. Paste puts them in hand.");
+            return true;
+        }
+
+        /// <summary>
+        /// Paste: what Copy kept goes in hand like a duplicate, around where it was copied from, and stays
+        /// there so more can be dropped.
+        /// </summary>
+        public static bool StartPaste()
+        {
+            if (Document == null || _clipboard.Count == 0)
+            {
+                Say("Nothing is copied yet.");
+                return false;
+            }
+
+            MovingIds.Clear();
+            Held = null;
+            Moving = MovingSet.Of(MovingPieces(_clipboard));
+            Action = PlaceAction.Duplicate;
+            Mode = EditMode.Place;
+            Steps = 0;
+            Manual = -1;
+            Aimed = null;
+            Version++;
+            return true;
         }
 
         // ---------- hide, lock, select alike, align: the Figma-like commands ----------
@@ -409,6 +593,7 @@ namespace ValheimTomrer.Editor
         /// <summary>Hides the selection. With nothing selected it shows everything again.</summary>
         public static void HideSelection()
         {
+            SettleHand();
             if (Selected.Count == 0)
             {
                 ShowAll();
@@ -426,26 +611,50 @@ namespace ValheimTomrer.Editor
         /// </summary>
         public static void IsolateSelection()
         {
-            if (Document == null || Selected.Count == 0)
+            SettleHand();
+            if (Document == null)
             {
-                ShowAll();
                 return;
             }
 
-            var others = Document.Pieces.Where(p => !Selected.Contains(p.Id)).Select(p => p.Id).ToList();
+            var others = Selected.Count == 0
+                ? new List<int>()
+                : Document.Pieces.Where(p => !Selected.Contains(p.Id)).Select(p => p.Id).ToList();
+
+            // Already isolated (or nothing selected): bring back only what Isolate hid, not what was hidden by hand.
             if (others.Count == 0 || others.All(IsHidden))
             {
-                ShowAll();
+                if (Isolated.Count > 0)
+                {
+                    SetHidden(Isolated.ToList(), false);
+                    Say($"Showed the {Count(Isolated.Count)} that were out of the way.");
+                    Isolated.Clear();
+                }
+                else if (Selected.Count == 0)
+                {
+                    ShowAll();
+                }
+
                 return;
+            }
+
+            Isolated.Clear();
+            foreach (var id in others)
+            {
+                if (!IsHidden(id))
+                {
+                    Isolated.Add(id);
+                }
             }
 
             SetHidden(others, true);
-            Say($"Showing only the selection ({Count(Selected.Count)}). Isolate again, or the Show all key, brings back the rest.");
+            Say($"Showing only the selection ({Count(Selected.Count)}). Isolate again brings back the rest.");
         }
 
         /// <summary>Locks the selection, so a click or a box can no longer pick it.</summary>
         public static void LockSelection()
         {
+            SettleHand();
             if (Selected.Count == 0)
             {
                 return;
@@ -467,6 +676,7 @@ namespace ValheimTomrer.Editor
             Say($"Showed {Hidden.Count} and unlocked {Locked.Count}.");
             Hidden.Clear();
             Locked.Clear();
+            Isolated.Clear();
             Version++;
         }
 
@@ -491,6 +701,7 @@ namespace ValheimTomrer.Editor
         /// </summary>
         public static bool AlignSelection(int mode)
         {
+            SettleHand();
             var pieces = SelectedPieces();
             if (pieces.Count < 2)
             {
@@ -513,7 +724,7 @@ namespace ValheimTomrer.Editor
                 moves.Add(new PieceMove { Id = pieces[i].Id, Position = position, Rotation = pieces[i].Rotation });
             }
 
-            Document.SetPieces(moves, "align");
+            Document.SetPieces(moves);
             Say($"Lined up {Count(pieces.Count)} along {AlignAxisName}.");
             return true;
         }
@@ -525,6 +736,7 @@ namespace ValheimTomrer.Editor
         /// </summary>
         public static bool MirrorSelection(int axis)
         {
+            SettleHand();
             var pieces = SelectedPieces();
             if (pieces.Count == 0)
             {
@@ -543,7 +755,7 @@ namespace ValheimTomrer.Editor
                 moves.Add(new PieceMove { Id = piece.Id, Position = position, Rotation = Clean(turned) });
             }
 
-            Document.SetPieces(moves, "mirror");
+            Document.SetPieces(moves);
             Say($"Mirrored {Count(pieces.Count)} along {(axis == 0 ? "X" : "Z")}.");
             return true;
         }
@@ -554,6 +766,7 @@ namespace ValheimTomrer.Editor
         /// </summary>
         public static bool CopyInRow(Vector3 direction)
         {
+            SettleHand();
             var pieces = SelectedPieces();
             if (pieces.Count == 0 || Document == null)
             {
@@ -583,6 +796,7 @@ namespace ValheimTomrer.Editor
         /// </summary>
         public static bool SpreadSelection()
         {
+            SettleHand();
             var pieces = SelectedPieces();
             if (pieces.Count < 3)
             {
@@ -609,7 +823,7 @@ namespace ValheimTomrer.Editor
                 edge += x.Box.size[axis] + gap;
             }
 
-            Document.SetPieces(moves, "spread");
+            Document.SetPieces(moves);
             Say($"Spread {Count(pieces.Count)} along {AlignAxisName}.");
             return true;
         }
@@ -982,6 +1196,15 @@ namespace ValheimTomrer.Editor
                 return;
             }
 
+            // The game does not turn this piece, so neither does the box.
+            var entry = PieceCatalog.Find(piece.PrefabName);
+            if (entry != null && !entry.CanRotate)
+            {
+                Say("This piece cannot turn in the game.");
+                return;
+            }
+
+            degrees = Mathf.Repeat(degrees, 360f);
             var level = Vector3.Angle(piece.Rotation * Vector3.up, Vector3.up) < 0.01f;
             var rotation = level
                 ? Quaternion.Euler(0f, degrees, 0f)
@@ -999,9 +1222,58 @@ namespace ValheimTomrer.Editor
                 return;
             }
 
+            position = Limited(position);
             Document.SetPieces(
                 new List<PieceMove> { new PieceMove { Id = id, Position = position, Rotation = piece.Rotation } },
                 "pos:" + id);
+        }
+
+        /// <summary>No piece is placed farther than this from the origin by typing: past it the box, the camera and the game misbehave.</summary>
+        public const float FarthestMetres = 10000f;
+
+        private static Vector3 Limited(Vector3 position)
+        {
+            var clamped = new Vector3(
+                Mathf.Clamp(position.x, -FarthestMetres, FarthestMetres),
+                Mathf.Clamp(position.y, -FarthestMetres, FarthestMetres),
+                Mathf.Clamp(position.z, -FarthestMetres, FarthestMetres));
+            if (clamped != position)
+            {
+                Say($"A piece stays within {FarthestMetres:0} m of the origin.");
+            }
+
+            return clamped;
+        }
+
+        /// <summary>
+        /// The group's bottom centre, one axis, typed: every selected piece moves by the difference. One
+        /// undo step for a run of typing.
+        /// </summary>
+        public static void MoveSelectionTo(int axis, float value)
+        {
+            var pieces = SelectedPieces();
+            if (pieces.Count == 0 || Document == null || float.IsNaN(value) || float.IsInfinity(value))
+            {
+                return;
+            }
+
+            SettleHand();
+            var by = Vector3.zero;
+            by[axis] = Mathf.Clamp(value, -FarthestMetres, FarthestMetres) - BottomCentre(pieces)[axis];
+            var moves = pieces.Select(p => new PieceMove { Id = p.Id, Position = p.Position + by, Rotation = p.Rotation }).ToList();
+            Document.SetPieces(moves, "group:" + axis);
+        }
+
+        /// <summary>
+        /// An edit made while pieces are being moved by hand would be overwritten by the drop, so the hand
+        /// is put away first: the moved pieces stand where they were.
+        /// </summary>
+        public static void SettleHand()
+        {
+            if (Mode == EditMode.Place && Action == PlaceAction.Move)
+            {
+                CancelMode();
+            }
         }
 
         /// <summary>Moves the origin to the bottom centre of the blueprint. The pieces shift the other way.</summary>
@@ -1036,25 +1308,71 @@ namespace ValheimTomrer.Editor
         public static bool Undo()
         {
             CancelMode();
-            if (Document == null || !Document.Undo())
+            if (Document == null)
+            {
+                return false;
+            }
+
+            var before = Placements();
+            if (!Document.Undo())
             {
                 return false;
             }
 
             Prune();
+            SelectWhatChanged(before);
             return true;
         }
 
         public static bool Redo()
         {
             CancelMode();
-            if (Document == null || !Document.Redo())
+            if (Document == null)
+            {
+                return false;
+            }
+
+            var before = Placements();
+            if (!Document.Redo())
             {
                 return false;
             }
 
             Prune();
+            SelectWhatChanged(before);
             return true;
+        }
+
+        /// <summary>Every piece's place, to tell afterwards which ones an undo or a redo touched.</summary>
+        private static Dictionary<int, KeyValuePair<Vector3, Quaternion>> Placements()
+        {
+            var all = new Dictionary<int, KeyValuePair<Vector3, Quaternion>>(Document.Pieces.Count);
+            foreach (var piece in Document.Pieces)
+            {
+                all[piece.Id] = new KeyValuePair<Vector3, Quaternion>(piece.Position, piece.Rotation);
+            }
+
+            return all;
+        }
+
+        /// <summary>After an undo or a redo the pieces it brought back or moved are the selection, so the step can be seen.</summary>
+        private static void SelectWhatChanged(Dictionary<int, KeyValuePair<Vector3, Quaternion>> before)
+        {
+            var changed = new List<int>();
+            foreach (var piece in Document.Pieces)
+            {
+                if (!before.TryGetValue(piece.Id, out var was)
+                    || (was.Key - piece.Position).sqrMagnitude > 1e-10f
+                    || Quaternion.Angle(was.Value, piece.Rotation) > 1e-3f)
+                {
+                    changed.Add(piece.Id);
+                }
+            }
+
+            if (changed.Count > 0)
+            {
+                Select(changed);
+            }
         }
 
         // ---------- boxes ----------
@@ -1183,12 +1501,27 @@ namespace ValheimTomrer.Editor
                 Selected.Remove(id);
             }
 
+            foreach (var id in GroupOf.Keys.ToList())
+            {
+                if (Document.Find(id) == null)
+                {
+                    Leave(id);
+                }
+            }
+
             Version++;
         }
 
         private static float YawOf(Quaternion q)
         {
             var forward = q * Vector3.forward;
+            if (Mathf.Abs(forward.x) < 1e-6f && Mathf.Abs(forward.z) < 1e-6f)
+            {
+                // Lying flat: the same baseline the Design tab shows.
+                var right = q * Vector3.right;
+                return Mathf.Atan2(-right.z, right.x) * Mathf.Rad2Deg;
+            }
+
             return Mathf.Atan2(forward.x, forward.z) * Mathf.Rad2Deg;
         }
 

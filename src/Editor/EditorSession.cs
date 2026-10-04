@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
 using ValheimTomrer.Blueprints;
@@ -29,6 +31,47 @@ namespace ValheimTomrer.Editor
         public static BlueprintDocument Document => EditorState.Document;
 
         private static int _syncedSelection = -1;
+        private static bool _failedThisFrame;
+        private static int _failedFrames;
+        private const int FailedFramesToClose = 90;
+        private static readonly HashSet<string> Reported = new HashSet<string>();
+
+        private static void Safe(string name, Action tick)
+        {
+            try
+            {
+                tick();
+            }
+            catch (Exception e)
+            {
+                _failedThisFrame = true;
+                if (Reported.Add(name))
+                {
+                    ValheimTomrerPlugin.Log.LogError($"editor: the {name} update threw (logged once): {e}");
+                }
+            }
+        }
+
+        private static bool _badKeyLogged;
+
+        /// <summary>The editor's own key, read safely: the game's input throws for a key it has no name for, and a config file can hold any.</summary>
+        private static bool OpenKeyDown()
+        {
+            try
+            {
+                return ZInput.GetKeyDown(EditorConfig.Key.Value);
+            }
+            catch (Exception)
+            {
+                if (!_badKeyLogged)
+                {
+                    _badKeyLogged = true;
+                    ValheimTomrerPlugin.Log.LogWarning($"editor: the game's input cannot read the key {EditorConfig.Key.Value}, F7 is used instead.");
+                }
+
+                return ZInput.GetKeyDown(KeyCode.F7);
+            }
+        }
 
         public static void Tick()
         {
@@ -59,7 +102,7 @@ namespace ValheimTomrer.Editor
                 }
 
                 // The key, or the pad's modifier + square (L2 + square in the game's default layout).
-                if (ZInput.GetKeyDown(EditorConfig.Key.Value) || WorldPad.OpenEditor)
+                if (OpenKeyDown() || WorldPad.OpenEditor)
                 {
                     // With a blueprint in hand the key edits that one, not the one left open. The
                     // build tool lets go of it: the Build this button puts it back.
@@ -91,16 +134,44 @@ namespace ValheimTomrer.Editor
                 return;
             }
 
-            ViewportHost.Tick();
-            QuickAdd.Tick();
-            LayersPanel.Tick();
-            Inspector.Tick();
-            Header.Tick();
-            Toolbar.Tick();
-            ViewGizmo.Tick();
-            Dialogs.Tick();
-            Toasts.Tick();
-            SyncSelection();
+            // One panel that throws must not stop the rest, or the Esc below that closes the window: the
+            // game's input stays held while it is open. A throw is logged once; a window that keeps
+            // failing frame after frame closes itself.
+            Safe("view", ViewportHost.Tick);
+            Safe("quick add", QuickAdd.Tick);
+            Safe("layers", LayersPanel.Tick);
+            Safe("inspector", Inspector.Tick);
+            Safe("header", Header.Tick);
+            Safe("toolbar", Toolbar.Tick);
+            Safe("gizmo", ViewGizmo.Tick);
+            Safe("dialogs", Dialogs.Tick);
+            Safe("toasts", Toasts.Tick);
+            Safe("selection", SyncSelection);
+            if (_failedThisFrame)
+            {
+                _failedThisFrame = false;
+                if (++_failedFrames >= FailedFramesToClose)
+                {
+                    ValheimTomrerPlugin.Log.LogError("editor: the window failed for too many frames in a row, closing it.");
+                    _failedFrames = 0;
+                    try
+                    {
+                        Close();
+                    }
+                    catch (Exception e)
+                    {
+                        ValheimTomrerPlugin.Log.LogError("editor: closing failed too: " + e);
+                        EditorWindow.Show(false);
+                        ModUi.MarkClosed();
+                    }
+
+                    return;
+                }
+            }
+            else
+            {
+                _failedFrames = 0;
+            }
 
             // A text box has the keyboard, now or a frame ago: Esc is the box's (it puts the old
             // text back and lets go), never the window's. The box may have read that Esc already,
@@ -127,28 +198,10 @@ namespace ValheimTomrer.Editor
             }
 
             // The key, or the same pad combo that opened it.
-            if (ZInput.GetKeyDown(EditorConfig.Key.Value) || cancel || PadBindings.ClosePressed())
+            if (OpenKeyDown() || cancel || PadBindings.ClosePressed())
             {
                 Close();
             }
-        }
-
-        /// <summary>
-        /// The theme changed: the pane is painted again and every panel is built again. With the
-        /// window up it closes and opens at once, which keeps everything (the document, its undo,
-        /// the selection, the hand, the camera), exactly as a world load's rebuild does.
-        /// </summary>
-        public static void Retheme()
-        {
-            ViewportHost.ApplyTheme();
-            UiTheme.Rebuild();
-            if (!ModUi.Open)
-            {
-                return;
-            }
-
-            Close();
-            Begin(null, null);
         }
 
         /// <summary>True while a blueprint is kept from the last time, so the next open comes back to it.</summary>
@@ -242,6 +295,21 @@ namespace ValheimTomrer.Editor
         /// <summary>Shows the window. A null document comes back to everything that was kept.</summary>
         private static void Begin(BlueprintDocument document, ResolvedBlueprint blueprint)
         {
+            try
+            {
+                BeginInner(document, blueprint);
+            }
+            catch (Exception e)
+            {
+                // Half built: the window must not stay on screen over a game that has its input back.
+                ValheimTomrerPlugin.Log.LogError("editor: opening failed: " + e);
+                EditorWindow.Show(false);
+                ModUi.MarkClosed();
+            }
+        }
+
+        private static void BeginInner(BlueprintDocument document, ResolvedBlueprint blueprint)
+        {
             // The window is about to cover the world, so a capture in progress goes, glow and all.
             WorldCapture.Cancel();
             if (!EditorWindow.Ensure())
@@ -289,6 +357,7 @@ namespace ValheimTomrer.Editor
             Inspector.Ensure(EditorWindow.RightDock);
             Inspector.Show(Document);
             Toolbar.Ensure(EditorWindow.Toolbar);
+            Annotations.Ensure(EditorWindow.Root);
             ViewGizmo.Ensure(EditorWindow.Root);
             QuickAdd.Ensure(EditorWindow.Root);
             QuickAdd.PieceChosen = StartAdd;

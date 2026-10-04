@@ -78,6 +78,18 @@ F7 opens a window with a 3D view, the piece list and the game's snapping.
   (`EditorCamera.Orbit`, Alt + right drag, pad L1 + right stick), orthographic (`ToggleOrtho`), Isolate
   (`EditorState.IsolateSelection`). The pad twins are L2 + D-pad. A new camera tool needs all three:
   a keymap act, a pad twin and a line in the help.
+- **The look is dark only.** There is no light theme (the owner dropped it). The 3D scene is dark and matte on
+  purpose: the ground has no shine, the sky is not reflected (`PreviewCamera.Render`), the grid has every fifth
+  line brighter. A bright scene hid the grid.
+- **Session-only, never in the file**: hide, lock, isolate, groups, the clipboard, saved views, the ruler.
+  Groups live in `EditorState` (`Select` expands a piece to its group). Anything that must be in the file
+  needs a format change in `Blueprint.cs` / `BlueprintFormat.cs`, which the desktop Tomrer shares: ask first.
+- **Over the picture**: sizes, gaps and the ruler are `Annotations` (UI lines and numbers), filled each frame by
+  `ViewportHost.DrawAnnotations` from cached numbers (`EditorMeasure`). Never a mesh or a texture.
+- **One throw must not trap the player**: `EditorSession.Tick` runs every panel's update inside `Safe`; the Esc
+  and close code runs outside it. A new per-frame panel update goes in through `Safe`.
+- **Undo runs** of one tag (nudge, a typed number) end after 1.2 s, on a new selection and on save; an edit
+  that changes nothing makes no step. Align, mirror and spread are one step each.
 - **Inspector tabs** slide too (`Inspector.SetTab`); only Quick add switches its popup off, and it
   builds its tiles and chips in `Open`, after switching on.
 - **Quick add** (`QuickAdd`) is the only piece picker: Tab, the pad's cross and the Add mode open it.

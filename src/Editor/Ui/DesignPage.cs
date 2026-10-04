@@ -36,7 +36,14 @@ namespace ValheimTomrer.Editor.Ui
         private static TabStrip _axis;
         private static Button _step;
         private static TextMeshProUGUI _notes;
-        private static readonly NumberField[] Numbers = new NumberField[4];
+        private static readonly NumberField[] Numbers = new NumberField[7];
+        private static RectTransform _many;
+        private static RectTransform _empty;
+        private static Button _paste;
+        private static Button _showAll;
+        private static Button _turnLess;
+        private static Button _turnMore;
+        private static float _stepShown = -1f;
         private static int _version = -1;
         private static int _revision = -1;
 
@@ -76,11 +83,13 @@ namespace ValheimTomrer.Editor.Ui
                 return;
             }
 
-            var revision = EditorState.Document != null ? EditorState.Document.Revision : -1;
+            var revision = EditorState.Document != null ? EditorState.Document.PiecesRevision : -1;
             if (EditorState.Version != _version || revision != _revision)
             {
                 Refresh();
             }
+
+            ShowStep();
         }
 
         public static void Refresh()
@@ -91,7 +100,7 @@ namespace ValheimTomrer.Editor.Ui
             }
 
             _version = EditorState.Version;
-            _revision = EditorState.Document != null ? EditorState.Document.Revision : -1;
+            _revision = EditorState.Document != null ? EditorState.Document.PiecesRevision : -1;
             var pieces = EditorState.SelectedPieces();
             Mode = pieces.Count == 0 ? 0 : pieces.Count == 1 ? 1 : 2;
 
@@ -99,9 +108,18 @@ namespace ValheimTomrer.Editor.Ui
             _one.gameObject.SetActive(Mode == 1);
             _edit.gameObject.SetActive(Mode != 0);
             _align.gameObject.SetActive(Mode == 2);
+            _many.gameObject.SetActive(Mode == 2);
             _arrange.gameObject.SetActive(Mode != 0);
+            _empty.gameObject.SetActive(Mode == 0);
             _axis.Set(EditorState.AlignAxis);
-            Kit.SetLabel(_step, $"Step {EditorState.AngleStep:0.##}°");
+            ShowStep();
+
+            // Nothing selected: what can still be done from here, and what is out of sight.
+            var away = EditorState.HiddenCount + EditorState.LockedCount;
+            _showAll.gameObject.SetActive(Mode == 0 && away > 0);
+            Kit.SetLabel(_showAll, $"Show all ({EditorState.HiddenCount} hidden, {EditorState.LockedCount} locked)");
+            _paste.gameObject.SetActive(Mode == 0 && EditorState.ClipboardCount > 0);
+            Kit.SetLabel(_paste, $"Paste {EditorState.ClipboardCount} copied");
 
             var box = EditorState.BoxOf(pieces);
             _size.text = box != null ? Size(box.Value.size) : "";
@@ -123,6 +141,12 @@ namespace ValheimTomrer.Editor.Ui
                 Numbers[1].Set(piece.Position.y, piece.Id);
                 Numbers[2].Set(piece.Position.z, piece.Id);
                 Numbers[3].Set(YawOf(piece.Rotation), piece.Id);
+
+                // A piece the game will not turn cannot be turned here either: the boxes say so.
+                var turns = entry == null || entry.CanRotate;
+                Numbers[3].Field.interactable = turns;
+                _turnLess.interactable = turns;
+                _turnMore.interactable = turns;
                 ShowNotes(piece, entry);
                 return;
             }
@@ -130,6 +154,24 @@ namespace ValheimTomrer.Editor.Ui
             _title.text = pieces.Count + " pieces";
             _sub.text = Kinds(pieces);
             _notes.gameObject.SetActive(false);
+
+            // Where the group stands: the middle of its footprint and its lowest point.
+            var centre = EditorState.BottomCentre(pieces);
+            Numbers[4].Set(centre.x, 0);
+            Numbers[5].Set(centre.y, 0);
+            Numbers[6].Set(centre.z, 0);
+        }
+
+        /// <summary>The turn step on its button, only when it changed (the key and the button both change it).</summary>
+        private static void ShowStep()
+        {
+            if (Mathf.Approximately(_stepShown, EditorState.AngleStep))
+            {
+                return;
+            }
+
+            _stepShown = EditorState.AngleStep;
+            Kit.SetLabel(_step, $"Step {_stepShown:0.##}°");
         }
 
         /// <summary>What is worth saying about one piece: a tilt, fields kept from the file, a scale, a problem.</summary>
@@ -227,6 +269,9 @@ namespace ValheimTomrer.Editor.Ui
             _sub = Kit.Text(head, "", Kit.CaptionSize, UiTheme.TextDim);
             Kit.Size(_sub, -1f, 16f);
             _nothing = Kit.Note(_root, "Click a piece, drag a box round several, or press Tab to add one.");
+            _empty = Kit.Column(_root, 6f, 0, "Empty");
+            _paste = Kit.Solid(_empty, "Paste", () => EditorState.StartPaste());
+            _showAll = Kit.Solid(_empty, "Show all", EditorState.ShowAll);
 
             // One piece: where it stands and how it turns.
             _one = Kit.Column(_root, 6f, 0, "One");
@@ -238,18 +283,35 @@ namespace ValheimTomrer.Editor.Ui
             Caption(_one, "Rotation");
             var turn = Kit.Row(_one, 6f);
             Numbers[3] = Number(turn, "Yaw", YawDecimals, EditorState.SetYaw);
-            Flexible(Kit.Solid(turn, "-", () => EditorState.RotateSelection(-1)), 0f, 32f);
-            Flexible(Kit.Solid(turn, "+", () => EditorState.RotateSelection(1)), 0f, 32f);
+            _turnLess = Kit.Solid(turn, "-", () => EditorState.RotateSelection(-1));
+            Flexible(_turnLess, 0f, 32f);
+            _turnMore = Kit.Solid(turn, "+", () => EditorState.RotateSelection(1));
+            Flexible(_turnMore, 0f, 32f);
             _step = Kit.Ghost(turn, "Step 22.5°", EditorCommands.CycleAngle);
             _notes = Kit.Note(_one, "");
 
+            // Several pieces: where the group stands. Typing moves all of them by the difference.
+            _many = Kit.Column(_root, 6f, 0, "Many");
+            Caption(_many, "Group position (bottom centre)");
+            var group = Kit.Row(_many, 6f);
+            Numbers[4] = Number(group, "X", PositionDecimals, (id, v) => EditorState.MoveSelectionTo(0, v));
+            Numbers[5] = Number(group, "Y", PositionDecimals, (id, v) => EditorState.MoveSelectionTo(1, v));
+            Numbers[6] = Number(group, "Z", PositionDecimals, (id, v) => EditorState.MoveSelectionTo(2, v));
+
             // Any selection: the edit actions.
-            _edit = Group("Edit", out _, new[] { "Move", "Copy", "Delete", "Same kind" }, new UnityEngine.Events.UnityAction[]
+            _edit = Group("Edit", out _, new[] { "Move", "Duplicate", "Delete", "Same kind" }, new UnityEngine.Events.UnityAction[]
             {
                 () => EditorState.StartMove(),
                 () => EditorState.StartDuplicate(),
                 EditorState.DeleteSelection,
                 EditorState.SelectSimilar,
+            });
+            Buttons(_edit, new[] { "Copy", "Paste", "Group", "Ungroup" }, new UnityEngine.Events.UnityAction[]
+            {
+                () => EditorState.CopySelection(),
+                () => EditorState.StartPaste(),
+                () => EditorState.GroupSelection(),
+                () => EditorState.UngroupSelection(),
             });
 
             // Two or more: line them up or spread them, along one axis.
@@ -258,6 +320,10 @@ namespace ValheimTomrer.Editor.Ui
             var axisRow = Kit.Row(_align, 6f);
             _axis = Kit.Segmented(axisRow, new[] { "X", "Y", "Z" }, SetAxis);
             Kit.Spring(axisRow);
+            Buttons(_align, new[] { "Close gap" }, new UnityEngine.Events.UnityAction[]
+            {
+                () => EditorMeasure.CloseGap(),
+            });
             Buttons(_align, new[] { "Low", "Middle", "High", "Spread" }, new UnityEngine.Events.UnityAction[]
             {
                 () => EditorState.AlignSelection(-1),
@@ -347,6 +413,10 @@ namespace ValheimTomrer.Editor.Ui
             Kit.Size(field, -1f, Kit.ControlHeight, 1f);
             field.contentType = TMP_InputField.ContentType.Standard;
             var number = new NumberField { Field = field, Decimals = decimals, Commit = commit, Look = field.GetComponent<FieldLook>() };
+
+            // A metre box moves 1 cm a pixel, a yaw box turns 1 degree a pixel. Shift is ten times that, Alt a tenth.
+            number.PerPixel = decimals == YawDecimals ? 1f : 0.01f;
+            Kit.Scrub(field, pixels => number.Scrub(pixels));
             field.onEndEdit.AddListener(number.Finish);
             return number;
         }
@@ -383,6 +453,26 @@ namespace ValheimTomrer.Editor.Ui
                 if (!Field.isFocused)
                 {
                     Field.SetTextWithoutNotify(_shown);
+                }
+            }
+
+            /// <summary>How far a pixel of dragging on the caption moves the value.</summary>
+            public float PerPixel = 0.01f;
+
+            public void Scrub(float pixels)
+            {
+                if (_id < 0 || !Field.interactable
+                    || !float.TryParse(_shown, NumberStyles.Float, CultureInfo.InvariantCulture, out var now))
+                {
+                    return;
+                }
+
+                var fast = ZInput.GetKey(KeyCode.LeftShift, false) || ZInput.GetKey(KeyCode.RightShift, false);
+                var slow = ZInput.GetKey(KeyCode.LeftAlt, false) || ZInput.GetKey(KeyCode.RightAlt, false);
+                var value = now + (pixels * PerPixel * (fast ? 10f : slow ? 0.1f : 1f));
+                if (BlueprintFormat.FormatNumber(value, Decimals) != _shown)
+                {
+                    Commit(_id, value);
                 }
             }
 

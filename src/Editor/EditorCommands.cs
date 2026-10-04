@@ -293,13 +293,11 @@ namespace ValheimTomrer.Editor
             Toasts.Info(EditorState.SnapDotsOn ? "Snap dots on." : "Snap dots off.");
         }
 
-        /// <summary>Dark and Light. The window is built again in the other colours, nothing else changes.</summary>
-        public static void ToggleTheme()
+        /// <summary>The size of the selection along its edges, and the gaps to the pieces beside it.</summary>
+        public static void ToggleDimensions()
         {
-            var dark = EditorConfig.Theme.Value != EditorTheme.Dark;
-            EditorConfig.Theme.Value = dark ? EditorTheme.Dark : EditorTheme.Light;
-            EditorSession.Retheme();
-            Toasts.Info(dark ? "Dark theme." : "Light theme.");
+            EditorState.DimensionsOn = !EditorState.DimensionsOn;
+            Toasts.Info(EditorState.DimensionsOn ? "Sizes and gaps shown." : "Sizes and gaps hidden.");
         }
 
         private static readonly float[] Grids = { 0f, 0.25f, 0.5f, 1f, 2f, 4f };
