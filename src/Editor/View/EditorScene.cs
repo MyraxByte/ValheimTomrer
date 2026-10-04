@@ -64,11 +64,12 @@ namespace ValheimTomrer.Editor.View
 
             // A 1 m grid with every fifth line brighter, so distances can be counted, and the two ground
             // axes in the gizmo's colours (X red, Z blue).
-            Add("Grid", Grid(GridCells, 5, true), _gridMaterial, GridY);
-            Add("GridMajor", Grid(GridCells, 5, false), _majorMaterial, GridY + 0.001f);
-            Add("AxisX", Axis(true), Paint(unlit, AxisXColor), GridY + 0.002f);
-            Add("AxisZ", Axis(false), Paint(unlit, AxisZColor), GridY + 0.002f);
-            Add("Origin", Ring(0.12f, 0.2f, 32), _ringMaterial, RingY);
+            // These lift with the floor being built on (SetPlane); the dark ground quad under them stays.
+            _plane.Add(Add("Grid", Grid(GridCells, 5, true), _gridMaterial, GridY));
+            _plane.Add(Add("GridMajor", Grid(GridCells, 5, false), _majorMaterial, GridY + 0.001f));
+            _plane.Add(Add("AxisX", Axis(true), Paint(unlit, AxisXColor), GridY + 0.002f));
+            _plane.Add(Add("AxisZ", Axis(false), Paint(unlit, AxisZColor), GridY + 0.002f));
+            _plane.Add(Add("Origin", Ring(0.12f, 0.2f, 32), _ringMaterial, RingY));
 
             _front = new GameObject("Front") { layer = layer };
             _front.transform.SetParent(_root.transform, false);
@@ -77,12 +78,43 @@ namespace ValheimTomrer.Editor.View
             _chevron = Add("Chevron", Chevron(), frontMaterial, 0f, _front.transform);
             _dot = Add("Anchor", Disc(0.09f, 16), frontMaterial, 0f, _front.transform);
 
-            // Dim and neutral: a bright key washed the ground out and hid the grid.
-            AddLight("Key", Quaternion.Euler(50f, -35f, 0f), Hex(0xEDEBE6), 0.95f, true);
-            AddLight("Fill", Quaternion.Euler(-20f, 150f, 0f), Hex(0x8FA0BC), 0.25f, false);
+            _key = AddLight("Key", Quaternion.identity, Color.white, 1f, true);
+            _fill = AddLight("Fill", Quaternion.identity, Color.white, 0.3f, false);
+            ApplyLook(SceneLook.Now);
         }
 
         public Transform Root => _root != null ? _root.transform : null;
+
+        private readonly List<Transform> _plane = new List<Transform>();
+        private readonly List<float> _planeBase = new List<float>();
+        private float _planeY;
+
+        /// <summary>Puts the grid, the axes and the origin ring at the height of the floor being built on.</summary>
+        public void SetPlane(float y)
+        {
+            if (_planeBase.Count == 0)
+            {
+                foreach (var part in _plane)
+                {
+                    _planeBase.Add(part != null ? part.localPosition.y : 0f);
+                }
+            }
+
+            if (Mathf.Approximately(y, _planeY))
+            {
+                return;
+            }
+
+            _planeY = y;
+            for (var i = 0; i < _plane.Count; i++)
+            {
+                if (_plane[i] != null)
+                {
+                    var at = _plane[i].localPosition;
+                    _plane[i].localPosition = new Vector3(at.x, _planeBase[i] + y, at.z);
+                }
+            }
+        }
 
         public BoxCollider GroundCollider { get; }
 
@@ -156,7 +188,45 @@ namespace ValheimTomrer.Editor.View
             return go.transform;
         }
 
-        private void AddLight(string name, Quaternion rotation, Color color, float intensity, bool shadows)
+        private UnityEngine.Light _key;
+        private UnityEngine.Light _fill;
+        private TimeOfDay? _look;
+
+        /// <summary>
+        /// The light of a time of day: the sun's place and colour, the cool fill, the shadows' strength, and the
+        /// colours of the ground and the grid. A no-op when it is already that one.
+        /// </summary>
+        public void ApplyLook(TimeOfDay time)
+        {
+            if (_look == time || _key == null)
+            {
+                return;
+            }
+
+            _look = time;
+            var look = SceneLook.Of(time);
+            _key.transform.localRotation = Quaternion.Euler(look.Elevation, look.Azimuth, 0f);
+            _key.color = look.KeyColor;
+            _key.intensity = look.KeyIntensity;
+            _key.shadowStrength = look.ShadowStrength;
+            _fill.transform.localRotation = Quaternion.Euler(-15f, look.Azimuth + 160f, 0f);
+            _fill.color = look.FillColor;
+            _fill.intensity = look.FillIntensity;
+            Tint(_groundMaterial, look.Ground);
+            Tint(_gridMaterial, look.Grid);
+            Tint(_majorMaterial, look.GridMajor);
+            Tint(_ringMaterial, look.Ring);
+        }
+
+        private static void Tint(Material material, Color color)
+        {
+            if (material != null)
+            {
+                material.color = color;
+            }
+        }
+
+        private UnityEngine.Light AddLight(string name, Quaternion rotation, Color color, float intensity, bool shadows)
         {
             var go = new GameObject(name) { layer = _layer };
             go.transform.SetParent(_root.transform, false);
@@ -167,6 +237,7 @@ namespace ValheimTomrer.Editor.View
             light.intensity = intensity;
             light.shadows = shadows ? LightShadows.Soft : LightShadows.None;
             light.cullingMask = 1 << _layer;   // lights our scene only, never the player's world
+            return light;
         }
 
         private Material Paint(Shader shader, Color color)

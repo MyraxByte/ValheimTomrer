@@ -181,7 +181,9 @@ namespace ValheimTomrer.Editor.Ui
             element.preferredHeight = height;
 
             var area = Stretch(Rect("Text Area", background.transform), 10f, 5f, 10f, 5f);
-            area.gameObject.AddComponent<RectMask2D>();
+
+            // A little room beyond the box, or the caret at the very start of the text is cut in half.
+            area.gameObject.AddComponent<RectMask2D>().padding = new Vector4(-3f, -2f, -3f, -2f);
 
             var text = Label("Text", area, string.Empty);
             Stretch(text.rectTransform);
@@ -199,6 +201,9 @@ namespace ValheimTomrer.Editor.Ui
             field.pointSize = 16f;
             field.customCaretColor = true;
             field.caretColor = UiTheme.Text;
+            field.caretWidth = 2;
+            field.caretBlinkRate = 0.85f;
+            field.selectionColor = new Color(UiTheme.Accent.r, UiTheme.Accent.g, UiTheme.Accent.b, 0.55f);
             field.lineType = TMP_InputField.LineType.SingleLine;
             field.text = string.Empty;
             look.Field = field;
@@ -354,12 +359,108 @@ namespace ValheimTomrer.Editor.Ui
             _hover = false;
         }
 
+        private Image _caret;
+        private Image _selection;
+
+        /// <summary>
+        /// The text cursor and the selected text, drawn here as well as by TextMeshPro: its own were not
+        /// showing in this window, and a box you cannot see the cursor in is hard to use. Both sit in the text's
+        /// own space, so they follow it when a long line scrolls. The selection is the accent, the cursor blinks.
+        /// </summary>
+        private void DrawCaret(bool focused)
+        {
+            var text = Field.textComponent;
+            if (text == null)
+            {
+                return;
+            }
+
+            if (focused && _caret == null)
+            {
+                _selection = Mark(text.rectTransform, "Selection");
+                _caret = Mark(text.rectTransform, "Caret");
+            }
+
+            if (_caret == null)
+            {
+                return;
+            }
+
+            var info = text.textInfo;
+            var count = info != null ? info.characterCount : 0;
+            var from = Field.stringPosition;
+            var low = Mathf.Min(Field.selectionStringAnchorPosition, Field.selectionStringFocusPosition);
+            var high = Mathf.Max(Field.selectionStringAnchorPosition, Field.selectionStringFocusPosition);
+            var show = focused && info != null;
+            _caret.gameObject.SetActive(show && (Time.unscaledTime % 1.1f) < 0.7f);
+            _selection.gameObject.SetActive(show && high > low && count > 0);
+            if (!show)
+            {
+                return;
+            }
+
+            var height = text.fontSize * 1.2f;
+            var rect = text.rectTransform.rect;
+            var caretAt = EdgeOf(info, from, count) - rect.xMin;
+            var caretRect = _caret.rectTransform;
+            caretRect.anchoredPosition = new Vector2(caretAt - 1f, 0f);
+            caretRect.sizeDelta = new Vector2(2f, height);
+            _caret.color = UiTheme.Text;
+
+            if (_selection.gameObject.activeSelf)
+            {
+                var start = EdgeOf(info, low, count) - rect.xMin;
+                var end = EdgeOf(info, high, count) - rect.xMin;
+                var selectionRect = _selection.rectTransform;
+                selectionRect.anchoredPosition = new Vector2(start, 0f);
+                selectionRect.sizeDelta = new Vector2(Mathf.Max(2f, end - start), height);
+                var accent = UiTheme.Accent;
+                accent.a = 0.5f;
+                _selection.color = accent;
+            }
+        }
+
+        /// <summary>Where the edge before a character is, in the text's space: the start of that glyph, or the end of the last one.</summary>
+        private static float EdgeOf(TMP_TextInfo info, int index, int count)
+        {
+            if (count == 0)
+            {
+                return 0f;
+            }
+
+            if (index <= 0)
+            {
+                return info.characterInfo[0].origin;
+            }
+
+            if (index >= count)
+            {
+                return info.characterInfo[count - 1].xAdvance;
+            }
+
+            return info.characterInfo[index].origin;
+        }
+
+        private static Image Mark(RectTransform parent, string name)
+        {
+            var image = UiBuild.Panel(name, parent, null, Color.white);
+            image.type = Image.Type.Simple;
+            image.raycastTarget = false;
+            var rect = image.rectTransform;
+            rect.anchorMin = rect.anchorMax = new Vector2(0f, 0.5f);
+            rect.pivot = new Vector2(0f, 0.5f);
+            image.gameObject.SetActive(false);
+            return image;
+        }
+
         private void Update()
         {
             if (Plain || Field == null || Back == null)
             {
                 return;
             }
+
+            DrawCaret(Field.interactable && Field.isFocused);
 
             // Every assignment below dirties the mesh, so only a changed state is written.
             var on = Field.interactable;

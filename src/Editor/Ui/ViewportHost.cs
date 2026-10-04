@@ -357,6 +357,15 @@ namespace ValheimTomrer.Editor.Ui
 
             StepFill();
             Fit();
+
+            // The floor being built on, and a quarter turn that is under way.
+            _scene.SetPlane(EditorState.PlaneY);
+            _scene.ApplyLook(SceneLook.Now);
+            if (_camera != null)
+            {
+                _camera.Step(Time.unscaledDeltaTime);
+            }
+
             Bindings.Tick();
             PadBindings.Tick();
             ReadInput();
@@ -600,6 +609,24 @@ namespace ValheimTomrer.Editor.Ui
         }
 
         private const float RulerSnapPixels = 16f;
+
+        /// <summary>Isometric mode on and off: the flat building view that turns in quarters.</summary>
+        public static void ToggleIso()
+        {
+            if (_camera != null)
+            {
+                _camera.SetIso(!_camera.Iso);
+            }
+        }
+
+        /// <summary>A quarter turn of the view round what it looks at: -1 left, 1 right.</summary>
+        public static void TurnView(int quarters)
+        {
+            if (_camera != null)
+            {
+                _camera.TurnAround(quarters);
+            }
+        }
 
         /// <summary>Perspective and orthographic, back and forth.</summary>
         public static void ToggleOrtho()
@@ -1558,7 +1585,7 @@ namespace ValheimTomrer.Editor.Ui
                 return;
             }
 
-            var pan = data.button == PointerEventData.InputButton.Middle
+            var pan = _camera.Iso || data.button == PointerEventData.InputButton.Middle
                 || Key(KeyCode.LeftShift) + Key(KeyCode.RightShift) > 0f;
             var height = PaneHeight();
             if (pan)

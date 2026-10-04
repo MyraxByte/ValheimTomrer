@@ -23,6 +23,12 @@ namespace ValheimTomrer.Editor
         /// <summary>Puts down the rectangle that turns a standing building into a blueprint, and captures it.</summary>
         public static ConfigEntry<KeyCode> CaptureKey;
 
+        /// <summary>The light of the 3D view.</summary>
+        public static ConfigEntry<View.TimeOfDay> TimeOfDay;
+
+        /// <summary>How tall one floor is, in metres: the step of the floor switch.</summary>
+        public static ConfigEntry<float> FloorHeight;
+
         /// <summary>Off: the palette only lists what this character has unlocked.</summary>
         public static ConfigEntry<bool> ShowAllPieces;
 
@@ -88,6 +94,21 @@ namespace ValheimTomrer.Editor
                 "Boxes",
                 false,
                 "Draw pieces as plain boxes instead of models. Easier to see through a full blueprint.");
+
+            FloorHeight = config.Bind(
+                "Editor",
+                "FloorHeight",
+                2f,
+                new ConfigDescription(
+                    "How tall one floor is in metres. The floor switch (Ctrl + Up and Down) shows the pieces up to a floor "
+                    + "and puts the ground for new pieces on its level. 2 is the height of a wood wall.",
+                    new AcceptableValueRange<float>(0.5f, 10f)));
+
+            TimeOfDay = config.Bind(
+                "Editor",
+                "TimeOfDay",
+                View.TimeOfDay.Day,
+                "The light in the editor's 3D view: Morning, Day, Evening or Night. Only the view changes, never the blueprint.");
 
             RecentPieces = config.Bind(
                 "Editor",

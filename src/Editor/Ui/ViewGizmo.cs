@@ -46,12 +46,21 @@ namespace ValheimTomrer.Editor.Ui
         private static readonly RectTransform[] Lines = new RectTransform[3];
         private static TextMeshProUGUI _label;
         private static Button _mode;
+        private static Button _iso;
+        private static Button _floorDown;
+        private static Button _floorUp;
+        private static TextMeshProUGUI _floor;
+        private static int _levelShown = -2;
+        private static int _countShown = -1;
 
         /// <summary>The side the view is on, in words. For the tests.</summary>
         public static string LabelText => _label != null ? _label.text : "";
 
         /// <summary>The perspective switch's words. For the tests.</summary>
         public static string ModeText => _mode != null ? Kit.LabelOf(_mode).text : "";
+
+        /// <summary>The floor line under the gizmo. For the tests.</summary>
+        public static string FloorText => _floor != null ? _floor.text : "";
 
         public static int DiscCount => Discs.Length;
 
@@ -115,9 +124,18 @@ namespace ValheimTomrer.Editor.Ui
                 line.localRotation = Quaternion.Euler(0f, 0f, Mathf.Atan2(tip.y, tip.x) * Mathf.Rad2Deg);
             }
 
-            var name = look.HasValue ? Name(look.Value) : "Free view";
+            var name = camera.Iso ? "Isometric" : look.HasValue ? Name(look.Value) : "Free view";
             _label.text = name;
             Kit.SetLabel(_mode, camera.Orthographic ? "Orthographic" : "Perspective");
+            Kit.LabelOf(_iso).color = camera.Iso ? UiTheme.Accent : UiTheme.Text;
+
+            // The floor in view: which one, out of how many.
+            if (_levelShown != EditorState.Level || _countShown != EditorState.LevelCount)
+            {
+                _levelShown = EditorState.Level;
+                _countShown = EditorState.LevelCount;
+                _floor.text = _levelShown < 0 ? "All floors" : $"Floor {_levelShown + 1} of {Mathf.Max(_countShown, _levelShown + 1)}";
+            }
         }
 
         private static string Name(ViewPreset view)
@@ -143,7 +161,7 @@ namespace ValheimTomrer.Editor.Ui
             _root = UiBuild.Rect("ViewGizmo", host);
             _root.anchorMin = _root.anchorMax = new Vector2(1f, 1f);
             _root.pivot = new Vector2(1f, 1f);
-            _root.sizeDelta = new Vector2(Area + 24f, Area + 56f);
+            _root.sizeDelta = new Vector2(Area + 24f, Area + 112f);
 
             // Sits under the islands: right after the toolbar in the draw order.
             if (EditorWindow.Toolbar != null && _root.parent == EditorWindow.Toolbar.parent)
@@ -209,6 +227,36 @@ namespace ValheimTomrer.Editor.Ui
             mode.pivot = new Vector2(0.5f, 1f);
             mode.anchoredPosition = new Vector2(0f, -(Area + 22f));
             mode.sizeDelta = new Vector2(Area + 12f, 24f);
+
+            // Isometric mode, then the floor switch: down, which floor, up.
+            _iso = Kit.Solid(_root, "Isometric", ViewportHost.ToggleIso, 24f, Kit.CaptionSize);
+            var iso = (RectTransform)_iso.transform;
+            iso.anchorMin = iso.anchorMax = new Vector2(0.5f, 1f);
+            iso.pivot = new Vector2(0.5f, 1f);
+            iso.anchoredPosition = new Vector2(0f, -(Area + 50f));
+            iso.sizeDelta = new Vector2(Area + 12f, 24f);
+
+            _floorDown = Kit.Solid(_root, "-", EditorState.FloorDown, 24f, Kit.BodySize);
+            Place(_floorDown, new Vector2(-(Area + 12f) * 0.5f + 15f, -(Area + 80f)), new Vector2(30f, 24f));
+            _floorUp = Kit.Solid(_root, "+", EditorState.FloorUp, 24f, Kit.BodySize);
+            Place(_floorUp, new Vector2(((Area + 12f) * 0.5f) - 15f, -(Area + 80f)), new Vector2(30f, 24f));
+            _floor = Kit.Text(_root, "", Kit.CaptionSize, UiTheme.TextOnPicture, TextAlignmentOptions.Center);
+            UiBuild.OverPicture(_floor);
+            var floor = _floor.rectTransform;
+            floor.anchorMin = floor.anchorMax = new Vector2(0.5f, 1f);
+            floor.pivot = new Vector2(0.5f, 1f);
+            floor.anchoredPosition = new Vector2(0f, -(Area + 84f));
+            floor.sizeDelta = new Vector2(Area - 40f, 18f);
+            _levelShown = -2;
+        }
+
+        private static void Place(Button button, Vector2 at, Vector2 size)
+        {
+            var rect = (RectTransform)button.transform;
+            rect.anchorMin = rect.anchorMax = new Vector2(0.5f, 1f);
+            rect.pivot = new Vector2(0.5f, 1f);
+            rect.anchoredPosition = at;
+            rect.sizeDelta = size;
         }
     }
 }

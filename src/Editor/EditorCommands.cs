@@ -300,6 +300,19 @@ namespace ValheimTomrer.Editor
             Toasts.Info(EditorState.DimensionsOn ? "Sizes and gaps shown." : "Sizes and gaps hidden.");
         }
 
+        /// <summary>The next light for the 3D view: morning, day, evening, night, round.</summary>
+        public static void CycleTimeOfDay()
+        {
+            if (EditorConfig.TimeOfDay == null)
+            {
+                return;
+            }
+
+            var next = (View.TimeOfDay)(((int)EditorConfig.TimeOfDay.Value + 1) % 4);
+            EditorConfig.TimeOfDay.Value = next;
+            Toasts.Info(next + " light.");
+        }
+
         private static readonly float[] Grids = { 0f, 0.25f, 0.5f, 1f, 2f, 4f };
         private static readonly float[] Angles = { 22.5f, 45f, 90f, 5f, 15f };
 

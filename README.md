@@ -224,6 +224,10 @@ layout and has no setting.
 | 1, 2, 3 | Look from the front, the right, the top. With Ctrl: the back, the left, the bottom. The camera keeps its distance and the point it looks at. |
 | 4 | Look from a corner, a bit above |
 | 5 | Perspective or orthographic (flat) view, where parallel lines stay parallel |
+| 6 | Isometric view: flat, at a fixed angle, for building without free 3D. WASD slide the view, the wheel zooms, a right drag pans. |
+| [ and ] | Turn the view a quarter to the left or the right round what it looks at (in isometric, corner to corner) |
+| Ctrl + Up, Ctrl + Down, Ctrl + 0 | Floor up, floor down (from all floors: the top one), all floors. What is above the floor in view is hidden, new pieces are aimed at its level, and a piece placed higher takes the view up to it. The floor height is the `FloorHeight` setting (2 m). |
+| Alt + L | The light of the view: morning, day, evening, night (the Light button of the toolbar does the same) |
 | I | Show only the selection, to work inside a room. Again brings back only what it hid. |
 | Ctrl + C, Ctrl + V | Copy the selection, and paste it into hand, in this blueprint or another one. Copies keep coming until Esc. |
 | Ctrl + G, Ctrl + Shift + G | Group the selection (a click on one piece picks the whole group), and break the group up. Groups are not saved in the file. |
@@ -287,6 +291,8 @@ The controller works from the crosshair in the middle of the 3D view.
 | L2 (LT) + D-pad left, right | Look from the next or the previous side: front, right, back, left, top, corner |
 | L2 (LT) + D-pad up | Perspective or orthographic view |
 | L2 (LT) + D-pad down | Show only the selection, again to bring back what it hid |
+| L2 (LT) + △ (Y) | Isometric view on and off |
+| In isometric: right stick | Left or right turns the view a quarter, up or down zooms. The left stick slides the view, D-pad up and down change the floor. |
 | L2 (LT) + × (A) | Ruler on and off. R2 puts a point at the crosshair, ○ stops. |
 | L2 (LT) + R3 | Fly to the next saved view |
 | △ (Y) in Quick add | Star or unstar the lit piece |
@@ -346,6 +352,8 @@ you can change it in the game (F1).
 | Keys | `Preset` and one setting per action | `Tomrer` | Which keys the editor starts from (`Tomrer`, `Figma`, `Blender`). A setting per action replaces its keys: empty uses the preset's, `none` removes the key, or a list such as `Ctrl+Z, Ctrl+Y`. The Keys window writes these. |
 | Editor | `GridStep` | `0` | Placing grid in metres (0, 0.25, 0.5, 1, 2, 4). 0 is no grid. |
 | Editor | `AngleStep` | `22.5` | Degrees per turn step (5, 15, 22.5, 45, 90) |
+| Editor | `FloorHeight` | `2` | How tall one floor is, in metres: the step of the floor switch (Ctrl + Up and Down) |
+| Editor | `TimeOfDay` | `Day` | The light of the 3D view: `Morning`, `Day`, `Evening`, `Night`. Alt + L changes it. |
 | Editor | `SnapPoints` | `true` | Snap to the pieces' snap points, like the game |
 | Editor | `LayersOpen` | `true` | The Layers panel on the left (the pieces of the blueprint). Alt + 1 folds it. |
 | Editor | `InspectorOpen` | `true` | The Inspector on the right (Design, Blueprint, Checks). Alt + 2 folds it. |

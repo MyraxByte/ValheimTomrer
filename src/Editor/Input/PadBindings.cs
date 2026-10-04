@@ -40,6 +40,7 @@ namespace ValheimTomrer.Editor.Input
         private const float NavStick = 0.5f;
 
         private static readonly Repeater Turn = new Repeater(TurnDelay, TurnEvery);
+        private static readonly Repeater ViewTurn = new Repeater(0.45f, 0.4f);
         private static readonly Repeater NavX = new Repeater(NavDelay, NavEvery);
         private static readonly Repeater NavY = new Repeater(NavDelay, NavEvery);
 
@@ -159,7 +160,18 @@ namespace ValheimTomrer.Editor.Input
             }
 
             var camera = ViewportHost.Camera;
-            if (!l2 && camera != null)
+            if (!l2 && camera != null && camera.Iso)
+            {
+                // Isometric: a flick of the right stick turns the view a quarter, up and down zoom.
+                var flick = Mathf.Abs(pad.Rs.x) > 0.7f ? (pad.Rs.x > 0f ? 1 : -1) : 0;
+                if (ViewTurn.Step(flick, dt) && !camera.Turning)
+                {
+                    camera.TurnAround(flick);
+                }
+
+                camera.Zoom(-pad.Rs.y * 2500f * dt, new Vector2(0.5f, 0.5f));
+            }
+            else if (!l2 && camera != null)
             {
                 // L1 held: round the selection (Alt and a drag on the keyboard), else look around.
                 if (alt)
@@ -216,7 +228,12 @@ namespace ValheimTomrer.Editor.Input
                 MoveAimed();
             }
 
-            if (pad.Pressed(PadButton.Triangle) && !placing)
+            if (pad.Pressed(PadButton.Triangle) && l2)
+            {
+                // L2 + triangle: isometric on and off (6 on the keyboard).
+                ViewportHost.ToggleIso();
+            }
+            else if (pad.Pressed(PadButton.Triangle) && !placing)
             {
                 CloneAimed();
             }
@@ -259,6 +276,20 @@ namespace ValheimTomrer.Editor.Input
 
             // 14. The D-pad left and right: undo and redo. With L2: the view, one side on, or back; up is
             //     perspective and orthographic, down shows only the selection (the number keys, 5 and I).
+            if (camera != null && camera.Iso && !l2)
+            {
+                // Isometric: up and down are the floors (Ctrl + Up and Down), not flying.
+                if (pad.Pressed(PadButton.Up))
+                {
+                    EditorState.FloorUp();
+                }
+
+                if (pad.Pressed(PadButton.Down))
+                {
+                    EditorState.FloorDown();
+                }
+            }
+
             if (l2)
             {
                 if (pad.Pressed(PadButton.Left))
@@ -421,7 +452,7 @@ namespace ValheimTomrer.Editor.Input
 
             var stick = pad.Ls * pad.Ls.magnitude;
             // With L2 the D-pad picks views instead.
-            var up = pad.Held(PadButton.L2) ? 0f : (pad.Held(PadButton.Up) ? 1f : 0f) - (pad.Held(PadButton.Down) ? 1f : 0f);
+            var up = pad.Held(PadButton.L2) || camera.Iso ? 0f : (pad.Held(PadButton.Up) ? 1f : 0f) - (pad.Held(PadButton.Down) ? 1f : 0f);
             camera.FlyPad(new Vector3(stick.x, up, stick.y), pad.Held(PadButton.L1), dt);
         }
 

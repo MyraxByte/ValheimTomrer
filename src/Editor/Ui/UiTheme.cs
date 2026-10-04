@@ -113,15 +113,13 @@ namespace ValheimTomrer.Editor.Ui
 
         public static Color Viewport => SceneBackground;
 
-        // The 3D pane's own colours: a neutral canvas, like a design tool's.
-        public static Color SceneBackground => Hex(0x0C0D10);
-        public static Color SceneAmbient => new Color(0.20f, 0.21f, 0.24f, 1f);
-        public static Color SceneGround => Hex(0x16181C);
-        public static Color SceneGrid => new Color(0.55f, 0.62f, 0.74f, 0.30f);
-
-        /// <summary>Every fifth grid line, brighter, so distances can be counted.</summary>
-        public static Color SceneGridMajor => new Color(0.72f, 0.80f, 0.92f, 0.60f);
-        public static Color SceneRing => Hex(0xC9CED6);
+        // The 3D pane's colours follow the time of day (View/SceneLook.cs).
+        public static Color SceneBackground => View.SceneLook.Current.Sky;
+        public static Color SceneAmbient => View.SceneLook.Current.Ambient;
+        public static Color SceneGround => View.SceneLook.Current.Ground;
+        public static Color SceneGrid => View.SceneLook.Current.Grid;
+        public static Color SceneGridMajor => View.SceneLook.Current.GridMajor;
+        public static Color SceneRing => View.SceneLook.Current.Ring;
 
         /// <summary>The selection's boxes and the box drag in the pane.</summary>
         public static Color Selection => Hex(0x4C8DFF);

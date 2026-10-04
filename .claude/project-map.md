@@ -2,7 +2,7 @@
 
 Nothing here is a guess. Use it instead of searching. Every file outside `bin/`, `obj/` and `.devtest/`. Add or remove a file, update this list in the same commit.
 
-Nothing here is a guess. Use this instead of searching. All 90 source files, and every other
+Nothing here is a guess. Use this instead of searching. All 91 source files, and every other
 **Build, scripts, data**
 
 ```
@@ -245,6 +245,8 @@ Ui/Toasts.cs                      short messages over the bottom middle of the v
 View/EditorScene.cs               the little world: ground, grid, origin ring, front marker, two
                                   lights. 8000 m under the player, all on layer 30
 View/PreviewCamera.cs             the switched-off camera that renders the pane into a texture
+View/SceneLook.cs                 the four lights of the view (morning, day, evening, night): the sun, the
+                                  fill, the sky, the ground, the grid
 View/EditorCamera.cs              one camera: fly, look, pan, zoom, orbit round a point, the seven
                                   view presets, perspective or orthographic. No modes.
 View/SceneModel.cs                one copy per piece, kept in step with the document, and the

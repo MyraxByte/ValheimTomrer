@@ -22,6 +22,7 @@ namespace ValheimTomrer.Editor.View
         public float Pitch;
         public float Distance;
         public bool Orthographic;
+        public bool Iso;
     }
 
     /// <summary>
@@ -54,6 +55,8 @@ namespace ValheimTomrer.Editor.View
         private float _dist = 10f;
         private float _near = 0.05f;
         private bool _ortho;
+        private float _turnLeft;
+        private Vector3 _turnPivot;
 
         public EditorCamera(PreviewCamera camera)
         {
@@ -72,6 +75,17 @@ namespace ValheimTomrer.Editor.View
 
         /// <summary>No perspective: parallel lines stay parallel, so a side view can be measured by eye.</summary>
         public bool Orthographic => _ortho;
+
+        /// <summary>
+        /// Isometric mode: a flat view at a fixed angle that turns in quarter steps, for building without free
+        /// 3D. The look keys pan instead of turning, the wheel zooms, and the pitch never changes.
+        /// </summary>
+        public bool Iso { get; private set; }
+
+        /// <summary>True while a quarter turn is still under way.</summary>
+        public bool Turning => Mathf.Abs(_turnLeft) > 0.01f;
+
+        private const float IsoPitchDegrees = 35.264f;
 
         /// <summary>How far ahead the point the camera turns, pans and zooms around sits.</summary>
         public float Distance => _dist;
@@ -116,6 +130,7 @@ namespace ValheimTomrer.Editor.View
         /// </summary>
         public void TakePose(EditorCamera from)
         {
+            Iso = from.Iso;
             _pos = from._pos;
             _yaw = from._yaw;
             _pitch = from._pitch;
@@ -149,7 +164,7 @@ namespace ValheimTomrer.Editor.View
         private static readonly float IsoYaw = Mathf.Atan2(IsoLook.x, IsoLook.z) * Mathf.Rad2Deg;
         private static readonly float IsoPitch = Mathf.Asin(IsoLook.y) * Mathf.Rad2Deg;
 
-        public CameraPose Pose => new CameraPose { Position = _pos, Yaw = _yaw, Pitch = _pitch, Distance = _dist, Orthographic = _ortho };
+        public CameraPose Pose => new CameraPose { Position = _pos, Yaw = _yaw, Pitch = _pitch, Distance = _dist, Orthographic = _ortho, Iso = Iso };
 
         /// <summary>Goes back to a saved view.</summary>
         public void SetPose(CameraPose pose)
@@ -159,6 +174,8 @@ namespace ValheimTomrer.Editor.View
             _pitch = pose.Pitch;
             _dist = Mathf.Max(0.05f, pose.Distance);
             _ortho = pose.Orthographic;
+            Iso = pose.Iso;
+            _turnLeft = 0f;
             Apply();
         }
 
@@ -166,6 +183,78 @@ namespace ValheimTomrer.Editor.View
         public void SetOrthographic(bool on)
         {
             _ortho = on;
+            if (!on)
+            {
+                Iso = false;
+            }
+
+            Apply();
+        }
+
+        /// <summary>
+        /// Isometric on: orthographic, a fixed downward angle (35.26 degrees, the true isometric one) and the
+        /// nearest of the four corners (45, 135, 225, 315 degrees), looking at the same point. Off: it stays flat and free.
+        /// </summary>
+        public void SetIso(bool on)
+        {
+            if (on == Iso)
+            {
+                return;
+            }
+
+            Iso = on;
+            _turnLeft = 0f;
+            if (on)
+            {
+                var pivot = Pivot;
+                _ortho = true;
+                _pitch = -IsoPitchDegrees;
+                _yaw = (Mathf.Round((_yaw - 45f) / 90f) * 90f) + 45f;
+                _pos = pivot - (Forward * _dist);
+            }
+
+            Apply();
+        }
+
+        /// <summary>
+        /// Turns the view a quarter (or more, with several steps) round the point it looks at, eased over a
+        /// moment. Positive is to the right. Works in any view; in isometric it goes corner to corner.
+        /// </summary>
+        public void TurnAround(int quarters)
+        {
+            if (quarters == 0)
+            {
+                return;
+            }
+
+            if (!Turning)
+            {
+                _turnPivot = Pivot;
+            }
+
+            _turnLeft += quarters * 90f;
+        }
+
+        /// <summary>Once a frame: carries a quarter turn on.</summary>
+        public void Step(float dt)
+        {
+            if (!Turning)
+            {
+                _turnLeft = 0f;
+                return;
+            }
+
+            var last = Mathf.Abs(_turnLeft) < 0.3f;
+            var by = last ? _turnLeft : _turnLeft * (1f - Mathf.Exp(-14f * dt));
+            _turnLeft -= by;
+            _yaw += by;
+            if (!Turning && Iso)
+            {
+                // The end of a turn is exactly a corner.
+                _yaw = (Mathf.Round((_yaw - 45f) / 90f) * 90f) + 45f;
+            }
+
+            _pos = _turnPivot - (Forward * _dist);
             Apply();
         }
 
@@ -176,6 +265,8 @@ namespace ValheimTomrer.Editor.View
         /// </summary>
         public void SetView(ViewPreset view)
         {
+            Iso = false;
+            _turnLeft = 0f;
             var pivot = Pivot;
             switch (view)
             {
@@ -223,6 +314,11 @@ namespace ValheimTomrer.Editor.View
             get
             {
                 const float Tolerance = 0.6f;
+                if (Iso)
+                {
+                    return null;
+                }
+
                 if (_pitch <= -90f + Tolerance)
                 {
                     return ViewPreset.Top;
@@ -270,7 +366,7 @@ namespace ValheimTomrer.Editor.View
         /// </summary>
         public void Orbit(Vector3 point, float right, float up)
         {
-            var nextPitch = Limit(_pitch, up, PitchMin, PitchMax);
+            var nextPitch = Iso ? _pitch : Limit(_pitch, up, PitchMin, PitchMax);
             var yawRot = Quaternion.AngleAxis(right, Vector3.up);
             var pitchRot = Quaternion.AngleAxis(-(nextPitch - _pitch), yawRot * Right);
             _pos = point + (pitchRot * (yawRot * (_pos - point)));
@@ -316,7 +412,11 @@ namespace ValheimTomrer.Editor.View
         public void Turn(float right, float up)
         {
             _yaw += right;
-            _pitch = Limit(_pitch, up, PitchMin, PitchMax);
+            if (!Iso)
+            {
+                _pitch = Limit(_pitch, up, PitchMin, PitchMax);
+            }
+
             Apply();
         }
 
@@ -416,6 +516,15 @@ namespace ValheimTomrer.Editor.View
         {
             if (wish.sqrMagnitude == 0f)
             {
+                return;
+            }
+
+            if (Iso)
+            {
+                // The view is flat: the keys slide it over the ground, further and faster the more is in view.
+                var yaw = _yaw * Mathf.Deg2Rad;
+                var ground = new Vector3(Mathf.Sin(yaw), 0f, Mathf.Cos(yaw));
+                Move(((ground * wish.z) + (Right * wish.x)) * (Mathf.Max(speed, _dist * 0.9f) * dt));
                 return;
             }
 

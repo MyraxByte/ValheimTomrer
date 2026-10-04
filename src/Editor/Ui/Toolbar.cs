@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using ValheimTomrer.Editor.View;
 
 namespace ValheimTomrer.Editor.Ui
 {
@@ -24,6 +25,7 @@ namespace ValheimTomrer.Editor.Ui
         private static Button _boxes;
         private static Button _sizes;
         private static Button _ruler;
+        private static Button _light;
 
         /// <summary>The bar itself, for the pad walk.</summary>
         public static RectTransform Root => _root;
@@ -71,6 +73,7 @@ namespace ValheimTomrer.Editor.Ui
             Set(_boxes, "Boxes", EditorState.PieceBoxesOn);
             Set(_sizes, "Sizes", EditorState.DimensionsOn);
             Set(_ruler, "Ruler", ViewportHost.RulerOn);
+            Kit.SetLabel(_light, "Light: " + SceneLook.Name(SceneLook.Now));
 
             // Wider than the room between the cards: smaller, never under a card.
             var room = EditorWindow.Root.rect.width - EditorWindow.FreeLeft - EditorWindow.FreeRight;
@@ -114,6 +117,7 @@ namespace ValheimTomrer.Editor.Ui
             _boxes = Add(walk, Kit.Ghost(card.transform, "Boxes", EditorCommands.ToggleBoxes, 30f));
             _sizes = Add(walk, Kit.Ghost(card.transform, "Sizes", EditorCommands.ToggleDimensions, 30f));
             _ruler = Add(walk, Kit.Ghost(card.transform, "Ruler", ViewportHost.ToggleRuler, 30f));
+            _light = Add(walk, Kit.Ghost(card.transform, "Light: Day", EditorCommands.CycleTimeOfDay, 30f));
             Kit.Divider(card.transform, true);
             Add(walk, Kit.Ghost(card.transform, "Hide panels", () => EditorWindow.SetUiHidden(true), 30f));
             UiBuild.LinkRow(walk, true);
