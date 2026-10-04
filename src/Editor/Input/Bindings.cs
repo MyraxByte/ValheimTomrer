@@ -353,6 +353,12 @@ namespace ValheimTomrer.Editor.Input
                 case Act.CloseGap:
                     EditorMeasure.CloseGap();
                     return true;
+                case Act.DropToFloor:
+                    EditorState.DropToFloor();
+                    return true;
+                case Act.NextProblem:
+                    ChecksPage.SelectNext();
+                    return true;
                 case Act.Ruler:
                     ViewportHost.ToggleRuler();
                     return true;

@@ -37,6 +37,8 @@ namespace ValheimTomrer.Editor.Ui
         private static RectTransform _materials;
         private static LayoutElement _materialsSize;
         private static TextMeshProUGUI _materialsNote;
+        private static TextMeshProUGUI _summary;
+        private static int _problemsShown = -1;
         private static MaterialList _list;
 
         private static MaterialSources _sources;
@@ -109,6 +111,11 @@ namespace ValheimTomrer.Editor.Ui
             {
                 Refresh();
             }
+            else if (ChecksPage.RowCount != _problemsShown)
+            {
+                // The problem list is worked out after this page in the same frame, so its count arrives a tick later.
+                FillSummary();
+            }
             else if (Time.unscaledTime >= _nextMaterials && ListVisible)
             {
                 FillMaterials();
@@ -142,7 +149,40 @@ namespace ValheimTomrer.Editor.Ui
 
             FillChoices();
             FillCard();
+            FillSummary();
             FillMaterials();
+        }
+
+        /// <summary>
+        /// The blueprint in a few lines: pieces and kinds, the box it fills, the problems it has. Worked
+        /// out when the pieces change, not for every typed letter of the name.
+        /// </summary>
+        private static void FillSummary()
+        {
+            if (_summary == null)
+            {
+                return;
+            }
+
+            if (_document == null || _document.Pieces.Count == 0)
+            {
+                _summary.text = "No pieces yet.";
+                return;
+            }
+
+            var pieces = new List<DocPiece>(_document.Pieces);
+            var kinds = new HashSet<string>();
+            foreach (var piece in pieces)
+            {
+                kinds.Add(piece.PrefabName);
+            }
+
+            var box = EditorState.BoxOf(pieces) ?? new Bounds();
+            var problems = ChecksPage.RowCount;
+            _problemsShown = problems;
+            _summary.text = $"{pieces.Count} piece{(pieces.Count == 1 ? "" : "s")} of {kinds.Count} kind{(kinds.Count == 1 ? "" : "s")}\n"
+                + $"W {box.size.x:0.##} · D {box.size.z:0.##} · H {box.size.y:0.##} m\n"
+                + (problems == 0 ? "No problems found" : $"{problems} problem{(problems == 1 ? "" : "s")}, see Checks");
         }
 
         private static void ChooseIcon(string prefabName)
@@ -301,13 +341,17 @@ namespace ValheimTomrer.Editor.Ui
 
         public static void Build(RectTransform page)
         {
-            var scroll = Kit.Scroll(page, 14f, 14);
+            var scroll = Kit.Scroll(page, 12f, 16);
             UiBuild.Stretch((RectTransform)scroll.transform);
             _root = scroll.content;
             Choices.Clear();
             _kindsKey = "";
 
-            var about = Kit.Column(_root, 6f, 0, "About");
+            // What the blueprint is, in numbers: how many pieces, how big, how many problems.
+            var facts = Kit.Section(_root, "Summary");
+            _summary = Kit.Note(facts, "", Kit.BodySize, UiTheme.Text);
+
+            var about = Kit.Section(_root, null, "About");
             Caption(about, "Name");
             _name = Kit.Field(about, "", "The name on the build card");
             _name.onValueChanged.AddListener(text => _document?.SetName(text));
@@ -324,7 +368,7 @@ namespace ValheimTomrer.Editor.Ui
                 }
             });
 
-            var icon = Kit.Column(_root, 6f, 0, "Icon");
+            var icon = Kit.Section(_root, null, "Icon");
             Caption(icon, "Icon");
             _choices = UiBuild.Rect("Choices", icon);
             var grid = _choices.gameObject.AddComponent<GridLayoutGroup>();
@@ -335,18 +379,9 @@ namespace ValheimTomrer.Editor.Ui
             _iconWarning.gameObject.SetActive(false);
 
             // The card as the game shows it, then everything it costs.
-            var card = UiBuild.Panel("Card", _root, null, UiTheme.Inset);
-            card.type = Image.Type.Simple;
-            UiBuild.Border(card);
-            var column = card.gameObject.AddComponent<VerticalLayoutGroup>();
-            column.spacing = 6f;
-            column.padding = new RectOffset(10, 10, 10, 10);
-            column.childControlWidth = true;
-            column.childControlHeight = true;
-            column.childForceExpandWidth = true;
-            column.childForceExpandHeight = false;
-            Caption(card.transform, "On the build card");
-            var top = Kit.Row(card.transform, 10f, 44f);
+            var card = Kit.Section(_root, null, "Card");
+            Caption(card, "On the build card");
+            var top = Kit.Row(card, 10f, 44f);
             _cardIcon = UiBuild.Panel("Icon", top, null);
             _cardIcon.type = Image.Type.Simple;
             _cardIcon.preserveAspect = true;
@@ -357,12 +392,12 @@ namespace ValheimTomrer.Editor.Ui
             _cardName.fontStyle = FontStyles.Bold;
             _cardText = Kit.Note(names, "", Kit.CaptionSize, UiTheme.TextDim);
 
-            Caption(card.transform, "Materials, against what you have here");
-            _materials = UiBuild.Rect("Materials", card.transform);
+            Caption(card, "Materials, against what you have here");
+            _materials = UiBuild.Rect("Materials", card);
             _materialsSize = _materials.gameObject.AddComponent<LayoutElement>();
             _list = MaterialList.Create(_materials, EditorWindow.RightWidth - 48f, 1);
             _list.FooterShown = false;
-            _materialsNote = Kit.Note(card.transform, "", Kit.CaptionSize, UiTheme.TextDim);
+            _materialsNote = Kit.Note(card, "", Kit.CaptionSize, UiTheme.TextDim);
             _materialsNote.gameObject.SetActive(false);
         }
 

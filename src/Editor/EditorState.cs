@@ -760,6 +760,31 @@ namespace ValheimTomrer.Editor
             return true;
         }
 
+        /// <summary>Lowers or lifts the selection so its lowest point is at height 0. One undo step.</summary>
+        public static bool DropToFloor()
+        {
+            SettleHand();
+            var pieces = SelectedPieces();
+            if (pieces.Count == 0 || Document == null)
+            {
+                Say("Select something to drop to the floor.");
+                return false;
+            }
+
+            var low = BoxOf(pieces) ?? new Bounds();
+            var by = -low.min.y;
+            if (Mathf.Abs(by) < 1e-4f)
+            {
+                Say("It is on the floor already.");
+                return false;
+            }
+
+            var moves = pieces.Select(p => new PieceMove { Id = p.Id, Position = p.Position + new Vector3(0f, by, 0f), Rotation = p.Rotation }).ToList();
+            Document.SetPieces(moves);
+            Say($"Moved {Count(pieces.Count)} {(by < 0f ? "down" : "up")} {Mathf.Abs(by):0.##} m, onto the floor.");
+            return true;
+        }
+
         /// <summary>
         /// A copy of the selection right next to it, one box width along the ground axis given (the
         /// camera's right, from the key). The copy is selected, so pressing again lays a row. One undo step.

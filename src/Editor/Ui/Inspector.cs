@@ -16,7 +16,7 @@ namespace ValheimTomrer.Editor.Ui
         public const int DesignTab = 0;
         public const int BlueprintTab = 1;
         public const int ChecksTab = 2;
-        private const float TabsHeight = 36f;
+        private const float TabsHeight = 44f;
         private const float Away = 6000f;
 
         private static readonly string[] Names = { "Design", "Blueprint", "Checks" };
@@ -105,7 +105,7 @@ namespace ValheimTomrer.Editor.Ui
             var hide = (RectTransform)_hide.transform;
             hide.anchorMin = hide.anchorMax = new Vector2(1f, 1f);
             hide.pivot = new Vector2(1f, 1f);
-            hide.anchoredPosition = new Vector2(-8f, -5f);
+            hide.anchoredPosition = new Vector2(-10f, -9f);
             hide.sizeDelta = new Vector2(46f, 26f);
             var line = Kit.Divider(_root);
             line.rectTransform.anchorMin = new Vector2(0f, 1f);

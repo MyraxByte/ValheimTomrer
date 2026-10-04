@@ -18,6 +18,7 @@ namespace ValheimTomrer.Editor.Ui
         private static RectTransform _root;
         private static TextMeshProUGUI _summary;
         private static TextMeshProUGUI _clean;
+        private static Button _nextButton;
         private static readonly List<Row> Pool = new List<Row>();
         private static readonly List<Check> Found = new List<Check>();
         private static BlueprintDocument _document;
@@ -48,6 +49,37 @@ namespace ValheimTomrer.Editor.Ui
             {
                 EditorState.Select(pieces);
             }
+        }
+
+        private static int _next = -1;
+
+        /// <summary>
+        /// Selects the pieces of the next problem that has any, and looks at them: the way to walk the list with
+        /// a key or a pad button. Round and round.
+        /// </summary>
+        public static void SelectNext()
+        {
+            if (Found.Count == 0)
+            {
+                EditorState.Say("No problems found.");
+                return;
+            }
+
+            for (var step = 1; step <= Found.Count; step++)
+            {
+                var index = (_next + step) % Found.Count;
+                var pieces = Found[index].Pieces;
+                if (pieces != null && pieces.Length > 0)
+                {
+                    _next = index;
+                    EditorState.Select(pieces);
+                    EditorState.Say($"Problem {index + 1} of {Found.Count}: {Found[index].Message}");
+                    ViewportHost.Frame();
+                    return;
+                }
+            }
+
+            EditorState.Say("The problems found are not about pieces you can select.");
         }
 
         public static void Show(BlueprintDocument document)
@@ -91,6 +123,7 @@ namespace ValheimTomrer.Editor.Ui
 
             _summary.text = Checks.Summary(Found);
             _clean.gameObject.SetActive(Found.Count == 0);
+            _nextButton.gameObject.SetActive(Found.Count > 0);
             while (Pool.Count < Found.Count)
             {
                 Pool.Add(NewRow(Pool.Count));
@@ -110,11 +143,12 @@ namespace ValheimTomrer.Editor.Ui
         public static void Build(RectTransform page)
         {
             Pool.Clear();
-            var scroll = Kit.Scroll(page, 6f, 14);
+            var scroll = Kit.Scroll(page, 8f, 16);
             UiBuild.Stretch((RectTransform)scroll.transform);
             _root = scroll.content;
             _summary = Kit.Text(_root, "", Kit.CaptionSize, UiTheme.TextDim);
             Kit.Size(_summary, -1f, 16f);
+            _nextButton = Kit.Solid(_root, "Next problem", SelectNext);
             _clean = Kit.Text(_root, "No problems found.", Kit.BodySize, UiTheme.Good);
             Kit.Size(_clean, -1f, 20f);
         }

@@ -36,6 +36,8 @@ namespace ValheimTomrer.Editor.Ui
         private static TabStrip _axis;
         private static Button _step;
         private static TextMeshProUGUI _notes;
+        private static Image _icon;
+        private static TextMeshProUGUI _facts;
         private static readonly NumberField[] Numbers = new NumberField[7];
         private static RectTransform _many;
         private static RectTransform _empty;
@@ -127,6 +129,8 @@ namespace ValheimTomrer.Editor.Ui
             {
                 _title.text = "Nothing selected";
                 _sub.text = "";
+                _icon.gameObject.SetActive(false);
+                _facts.gameObject.SetActive(false);
                 _notes.gameObject.SetActive(false);
                 return;
             }
@@ -137,6 +141,9 @@ namespace ValheimTomrer.Editor.Ui
                 var entry = PieceCatalog.Find(piece.PrefabName);
                 _title.text = entry != null ? entry.DisplayName : "Unknown piece";
                 _sub.text = piece.PrefabName;
+                _icon.sprite = entry != null ? entry.Icon : null;
+                _icon.gameObject.SetActive(_icon.sprite != null);
+                ShowFacts(pieces, piece, entry);
                 Numbers[0].Set(piece.Position.x, piece.Id);
                 Numbers[1].Set(piece.Position.y, piece.Id);
                 Numbers[2].Set(piece.Position.z, piece.Id);
@@ -153,6 +160,8 @@ namespace ValheimTomrer.Editor.Ui
 
             _title.text = pieces.Count + " pieces";
             _sub.text = Kinds(pieces);
+            _icon.gameObject.SetActive(false);
+            ShowFacts(pieces, null, null);
             _notes.gameObject.SetActive(false);
 
             // Where the group stands: the middle of its footprint and its lowest point.
@@ -172,6 +181,78 @@ namespace ValheimTomrer.Editor.Ui
 
             _stepShown = EditorState.AngleStep;
             Kit.SetLabel(_step, $"Step {_stepShown:0.##}°");
+        }
+
+        /// <summary>
+        /// What the selection costs, and for one piece how well it is held up: the facts a builder looks for,
+        /// under its name. A group shows its total cost and how many are in a group or out of sight.
+        /// </summary>
+        private static void ShowFacts(List<DocPiece> pieces, DocPiece one, PieceEntry entry)
+        {
+            var lines = new List<string>();
+            var cost = CostOf(pieces);
+            if (cost.Length > 0)
+            {
+                lines.Add("Costs " + cost);
+            }
+
+            if (one != null && entry != null && EditorState.Stability.TryGet(one.Id, out var held, out _))
+            {
+                lines.Add(EditorState.Stability.Falls(one.Id)
+                    ? "Support: it would fall down"
+                    : "Support: " + ViewportHost.SupportWords(held, entry));
+            }
+
+            if (pieces.Count > 1)
+            {
+                var grouped = 0;
+                foreach (var piece in pieces)
+                {
+                    grouped += EditorState.IsGrouped(piece.Id) ? 1 : 0;
+                }
+
+                if (grouped > 0)
+                {
+                    lines.Add($"{grouped} of them are in a group");
+                }
+            }
+
+            _facts.text = string.Join("\n", lines.ToArray());
+            _facts.gameObject.SetActive(lines.Count > 0);
+        }
+
+        /// <summary>"26 Wood, 7 Resin": what building these pieces takes, summed.</summary>
+        private static string CostOf(List<DocPiece> pieces)
+        {
+            var order = new List<string>();
+            var amounts = new Dictionary<string, int>();
+            foreach (var piece in pieces)
+            {
+                var entry = PieceCatalog.Find(piece.PrefabName);
+                if (entry == null || entry.Cost == null)
+                {
+                    continue;
+                }
+
+                foreach (var part in entry.Cost)
+                {
+                    if (!amounts.ContainsKey(part.Name))
+                    {
+                        amounts[part.Name] = 0;
+                        order.Add(part.Name);
+                    }
+
+                    amounts[part.Name] += part.Amount;
+                }
+            }
+
+            var words = new List<string>(order.Count);
+            foreach (var name in order)
+            {
+                words.Add($"{amounts[name]} {name}");
+            }
+
+            return string.Join(", ", words.ToArray());
         }
 
         /// <summary>What is worth saying about one piece: a tilt, fields kept from the file, a scale, a problem.</summary>
@@ -236,7 +317,7 @@ namespace ValheimTomrer.Editor.Ui
 
         private static string Size(Vector3 size)
         {
-            return $"{size.x:0.##} × {size.z:0.##} × {size.y:0.##} m";
+            return $"W {size.x:0.##} · D {size.z:0.##} · H {size.y:0.##} m";
         }
 
         /// <summary>Yaw in 0..360, the way the file and Tomrer show it.</summary>
@@ -259,22 +340,32 @@ namespace ValheimTomrer.Editor.Ui
 
         public static void Build(RectTransform page)
         {
-            var scroll = Kit.Scroll(page, 14f, 14);
+            var scroll = Kit.Scroll(page, 12f, 16);
             UiBuild.Stretch((RectTransform)scroll.transform);
             _root = scroll.content;
 
-            // The selection: its name, its size, its kinds.
-            var head = Kit.Column(_root, 2f, 0, "Selection");
-            _title = Kit.Heading(head, "Nothing selected", out _size);
-            _sub = Kit.Text(head, "", Kit.CaptionSize, UiTheme.TextDim);
+            // The selection: its picture, name, size and kinds, and what is worth knowing about it.
+            var head = Kit.Section(_root, null, "Selection");
+            var top = Kit.Row(head, 10f, 44f);
+            _icon = UiBuild.Panel("Icon", top, null);
+            _icon.type = Image.Type.Simple;
+            _icon.preserveAspect = true;
+            _icon.raycastTarget = false;
+            Kit.Size(_icon, 40f, 40f);
+            var texts = Kit.Column(top, 2f);
+            Kit.Size(texts, -1f, -1f, 1f);
+            _title = Kit.Heading(texts, "Nothing selected", out _size);
+            _sub = Kit.Text(texts, "", Kit.CaptionSize, UiTheme.TextDim);
             Kit.Size(_sub, -1f, 16f);
+            _facts = Kit.Note(head, "", Kit.CaptionSize, UiTheme.TextDim);
+            _facts.gameObject.SetActive(false);
             _nothing = Kit.Note(_root, "Click a piece, drag a box round several, or press Tab to add one.");
             _empty = Kit.Column(_root, 6f, 0, "Empty");
             _paste = Kit.Solid(_empty, "Paste", () => EditorState.StartPaste());
             _showAll = Kit.Solid(_empty, "Show all", EditorState.ShowAll);
 
             // One piece: where it stands and how it turns.
-            _one = Kit.Column(_root, 6f, 0, "One");
+            _one = Kit.Section(_root, null, "One");
             Caption(_one, "Position");
             var position = Kit.Row(_one, 6f);
             Numbers[0] = Number(position, "X", PositionDecimals, (id, v) => Move(id, 0, v));
@@ -291,7 +382,7 @@ namespace ValheimTomrer.Editor.Ui
             _notes = Kit.Note(_one, "");
 
             // Several pieces: where the group stands. Typing moves all of them by the difference.
-            _many = Kit.Column(_root, 6f, 0, "Many");
+            _many = Kit.Section(_root, null, "Many");
             Caption(_many, "Group position (bottom centre)");
             var group = Kit.Row(_many, 6f);
             Numbers[4] = Number(group, "X", PositionDecimals, (id, v) => EditorState.MoveSelectionTo(0, v));
@@ -315,7 +406,7 @@ namespace ValheimTomrer.Editor.Ui
             });
 
             // Two or more: line them up or spread them, along one axis.
-            _align = Kit.Column(_root, 6f, 0, "Align");
+            _align = Kit.Section(_root, null, "Align");
             Caption(_align, "Align and spread");
             var axisRow = Kit.Row(_align, 6f);
             _axis = Kit.Segmented(axisRow, new[] { "X", "Y", "Z" }, SetAxis);
@@ -333,8 +424,12 @@ namespace ValheimTomrer.Editor.Ui
             });
 
             // Arrange and view.
-            _arrange = Kit.Column(_root, 6f, 0, "Arrange");
+            _arrange = Kit.Section(_root, null, "Arrange");
             Caption(_arrange, "Arrange");
+            Buttons(_arrange, new[] { "Drop to floor" }, new UnityEngine.Events.UnityAction[]
+            {
+                () => EditorState.DropToFloor(),
+            });
             Buttons(_arrange, new[] { "Mirror X", "Mirror Z", "Row copy" }, new UnityEngine.Events.UnityAction[]
             {
                 () => EditorState.MirrorSelection(0),
@@ -369,7 +464,7 @@ namespace ValheimTomrer.Editor.Ui
 
         private static RectTransform Group(string name, out TextMeshProUGUI caption, string[] labels, UnityEngine.Events.UnityAction[] actions)
         {
-            var column = Kit.Column(_root, 6f, 0, name);
+            var column = Kit.Section(_root, null, name);
             caption = Caption(column, name);
             Buttons(column, labels, actions);
             return column;

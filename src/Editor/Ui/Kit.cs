@@ -98,6 +98,35 @@ namespace ValheimTomrer.Editor.Ui
             return rect;
         }
 
+        /// <summary>
+        /// A group of related controls on a card of its own: a sunken fill, a thin border, air round the
+        /// content and a small title. The inspector's pages are a stack of these, so a page reads as
+        /// parts, not as one long list. Returns the column to add to.
+        /// </summary>
+        public static RectTransform Section(Transform parent, string title, string name = "Section")
+        {
+            var back = UiBuild.Panel(name, parent, null, UiTheme.Inset);
+            back.type = Image.Type.Simple;
+            UiBuild.Rounded(back);
+            UiBuild.Border(back);
+            var layout = back.gameObject.AddComponent<VerticalLayoutGroup>();
+            layout.spacing = 8f;
+            layout.padding = new RectOffset(12, 12, 10, 12);
+            layout.childAlignment = TextAnchor.UpperLeft;
+            layout.childControlWidth = true;
+            layout.childControlHeight = true;
+            layout.childForceExpandWidth = true;
+            layout.childForceExpandHeight = false;
+            if (!string.IsNullOrEmpty(title))
+            {
+                var label = Text(back.transform, title, CaptionSize, UiTheme.TextDim);
+                label.fontStyle = FontStyles.Bold;
+                Size(label, -1f, 16f);
+            }
+
+            return back.rectTransform;
+        }
+
         /// <summary>Lets a column or a row take the size its children want.</summary>
         public static void Fit(RectTransform rect, bool horizontal, bool vertical)
         {

@@ -227,6 +227,8 @@ layout and has no setting.
 | I | Show only the selection, to work inside a room. Again brings back only what it hid. |
 | Ctrl + C, Ctrl + V | Copy the selection, and paste it into hand, in this blueprint or another one. Copies keep coming until Esc. |
 | Ctrl + G, Ctrl + Shift + G | Group the selection (a click on one piece picks the whole group), and break the group up. Groups are not saved in the file. |
+| Alt + W | Drop the selection onto the floor (its lowest point to height 0) |
+| Alt + P | Select the pieces of the next problem from the Checks list and look at them |
 | Alt + Q | Close the gap: move the selection along the align axis until it touches the nearest piece beside it |
 | Alt + Z | Show or hide the selection's size along its edges and the gaps to the pieces beside it (orange) |
 | M | Ruler: click two points in the view (a corner of a piece pulls the point to it). The distance and the three differences show. Esc stops. |
@@ -313,7 +315,7 @@ they open: the D-pad moves, × picks, ○ closes. In Save as the name box is sel
 so down and × saves with the name shown. Press × on the box to type a new one.
 
 Copy, paste, group, close the gap, the sizes switch and saving a view have no button combo: the pad
-reaches them as buttons in the Inspector (Copy, Paste, Group, Ungroup, Close gap), the Sizes and Ruler
+reaches them as buttons in the Inspector (Copy, Paste, Group, Ungroup, Close gap, Drop to floor, Next problem), the Sizes and Ruler
 buttons of the toolbar, and the command search (the Commands button).
 
 The rows in the Layers list and the Checks tab can't be picked with the pad. Use Quick add (×) to

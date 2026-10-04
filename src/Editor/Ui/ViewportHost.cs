@@ -1254,7 +1254,7 @@ namespace ValheimTomrer.Editor.Ui
                 if (box.HasValue)
                 {
                     // How big it is: the selection's box, in metres.
-                    line += $", {box.Value.size.x:0.##} × {box.Value.size.y:0.##} × {box.Value.size.z:0.##} m";
+                    line += $", W {box.Value.size.x:0.##} · D {box.Value.size.z:0.##} · H {box.Value.size.y:0.##} m";
                 }
             }
 

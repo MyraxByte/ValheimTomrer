@@ -243,7 +243,7 @@ namespace ValheimTomrer.Dev
             EditorState.Select(new[] { document.Pieces[0].Id });
             yield return Frames(2);
             var size = EditorWindow.StatusText.text;
-            Check(size.Contains("selected,") && size.Contains("×") && size.EndsWith(" m"),
+            Check(size.Contains("selected,") && size.Contains("W ") && size.Contains("H ") && size.EndsWith(" m"),
                 $"the status shows how big the selection is: '{size}'");
 
             Bindings.Press(KeyCode.Alpha3, KeyMods.None);
@@ -435,6 +435,20 @@ namespace ValheimTomrer.Dev
             Check(Mathf.Abs(document.Find(ids[0]).Position.x - (start + 1f)) < 0.02f,
                 $"a 100 pixel drag on the X caption moves the piece 1 m: {document.Find(ids[0]).Position.x - start:0.000}");
             EditorState.Undo();
+
+            // Drop to the floor: lift a piece 3 m, Alt+W puts its lowest point back on 0.
+            EditorState.Select(ids[0]);
+            EditorState.SetPosition(ids[0], document.Find(ids[0]).Position + new Vector3(0f, 3f, 0f));
+            Bindings.Press(KeyCode.W, KeyMods.Alt);
+            Check(Mathf.Abs(EditorState.BoxOf(document.Find(ids[0])).min.y) < 0.01f, "Alt+W drops the selection onto the floor");
+            EditorState.Undo();
+            EditorState.Undo();
+
+            // The next problem: selects its pieces, or says there is none.
+            EditorState.ClearMessage();
+            Bindings.Press(KeyCode.P, KeyMods.Alt);
+            Check(EditorState.Message != null, $"Alt+P answers: '{EditorState.Message}'");
+            EditorState.Select(new int[0]);
 
             // A click on a hidden piece keeps the selection and says why.
             EditorState.Select(ids[1]);
