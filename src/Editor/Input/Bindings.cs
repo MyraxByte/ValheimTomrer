@@ -359,26 +359,11 @@ namespace ValheimTomrer.Editor.Input
                 case Act.NextProblem:
                     ChecksPage.SelectNext();
                     return true;
-                case Act.ToggleIso:
-                    ViewportHost.ToggleIso();
-                    return true;
-                case Act.TurnViewLeft:
-                    ViewportHost.TurnView(-1);
-                    return true;
-                case Act.TurnViewRight:
-                    ViewportHost.TurnView(1);
-                    return true;
-                case Act.FloorUp:
-                    EditorState.FloorUp();
-                    return true;
-                case Act.FloorDown:
-                    EditorState.FloorDown();
-                    return true;
-                case Act.ShowAllFloors:
-                    EditorState.ShowAllFloors();
-                    return true;
                 case Act.TimeOfDay:
                     EditorCommands.CycleTimeOfDay();
+                    return true;
+                case Act.ToggleGridLines:
+                    EditorCommands.ToggleGridLines();
                     return true;
                 case Act.ToggleSupportColours:
                     EditorCommands.ToggleSupportColours();

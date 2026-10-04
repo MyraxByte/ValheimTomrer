@@ -27,6 +27,7 @@ namespace ValheimTomrer.Editor.Ui
         private static Button _ruler;
         private static Button _light;
         private static Button _support;
+        private static Button _lines;
 
         /// <summary>The bar itself, for the pad walk.</summary>
         public static RectTransform Root => _root;
@@ -76,6 +77,7 @@ namespace ValheimTomrer.Editor.Ui
             Set(_ruler, "Ruler", ViewportHost.RulerOn);
             Kit.SetLabel(_light, "Light: " + SceneLook.Name(SceneLook.Now));
             Set(_support, "Support", EditorState.SupportColoursOn);
+            Set(_lines, "Lines", EditorState.GridShown);
 
             // Wider than the room between the cards: smaller, never under a card.
             var room = EditorWindow.Root.rect.width - EditorWindow.FreeLeft - EditorWindow.FreeRight;
@@ -121,6 +123,7 @@ namespace ValheimTomrer.Editor.Ui
             _ruler = Add(walk, Kit.Ghost(card.transform, "Ruler", ViewportHost.ToggleRuler, 30f));
             _light = Add(walk, Kit.Ghost(card.transform, "Light: Day", EditorCommands.CycleTimeOfDay, 30f));
             _support = Add(walk, Kit.Ghost(card.transform, "Support", EditorCommands.ToggleSupportColours, 30f));
+            _lines = Add(walk, Kit.Ghost(card.transform, "Lines", EditorCommands.ToggleGridLines, 30f));
             Kit.Divider(card.transform, true);
             Add(walk, Kit.Ghost(card.transform, "Hide panels", () => EditorWindow.SetUiHidden(true), 30f));
             UiBuild.LinkRow(walk, true);

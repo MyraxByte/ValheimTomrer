@@ -100,20 +100,17 @@ namespace ValheimTomrer.Editor.Placement
         /// </summary>
         public bool HasGround { get; set; } = true;
 
-        /// <summary>The height of that floor. 0, the editor's ground, unless a floor is being built on.</summary>
-        public float GroundY { get; set; }
-
         /// <summary>The nearest surface along the ray: a piece's collider, or the ground.</summary>
         public bool Raycast(Vector3 origin, Vector3 dir, out SceneHit hit)
         {
             hit = default(SceneHit);
             var found = false;
 
-            if (HasGround && origin.y > GroundY && dir.y < -1e-9f)
+            if (HasGround && origin.y > 0f && dir.y < -1e-9f)
             {
-                var t = -(origin.y - GroundY) / dir.y;
+                var t = -origin.y / dir.y;
                 var point = origin + (dir * t);
-                point.y = GroundY;
+                point.y = 0f;
                 hit = new SceneHit { T = t, Point = point, Normal = Vector3.up, Terrain = true, Piece = -1 };
                 found = true;
             }

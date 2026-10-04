@@ -55,6 +55,9 @@ namespace ValheimTomrer.Editor
         /// <summary>Draw the selection's size and the gaps beside it over the view. This session only.</summary>
         public static bool DimensionsOn { get; set; } = true;
 
+        /// <summary>The grid lines and axes are drawn on the ground (the setting). Placing still uses the grid step.</summary>
+        public static bool GridShown => EditorConfig.ShowGrid == null || EditorConfig.ShowGrid.Value;
+
         /// <summary>Colour every piece by how well it is held up (green strong, red about to break). This session only.</summary>
         public static bool SupportColoursOn { get; set; }
 
@@ -82,7 +85,6 @@ namespace ValheimTomrer.Editor
         private static SceneIndex _index;
         private static int _indexRevision = -1;
         private static int _indexMoving = -1;
-        private static int _indexCut = -1;
 
         private static SupportMap _stability;
         private static SceneIndex _stabilityIndex;
@@ -147,18 +149,14 @@ namespace ValheimTomrer.Editor
             get
             {
                 var moving = Action == PlaceAction.Move && Mode == EditMode.Place ? MovingIds.Count : 0;
-                EnsureLevels();
-                if (_index != null && Document != null && _indexRevision == Document.Revision && _indexMoving == moving
-                    && _indexCut == _cutKey)
+                if (_index != null && Document != null && _indexRevision == Document.Revision && _indexMoving == moving)
                 {
-                    _index.GroundY = PlaneY;
                     return _index;
                 }
 
                 _indexRevision = Document != null ? Document.Revision : -1;
                 _indexMoving = moving;
-                _indexCut = _cutKey;
-                _index = new SceneIndex(StandingPieces()) { GroundY = PlaneY };
+                _index = new SceneIndex(StandingPieces());
                 return _index;
             }
         }
@@ -197,10 +195,6 @@ namespace ValheimTomrer.Editor
             GroupOf.Clear();
             GroupMembers.Clear();
             Isolated.Clear();
-            Level = -1;
-            _cutKey = -1;
-            _cutRevision = -1;
-            Cut.Clear();
             MovingIds.Clear();
             Mode = EditMode.Idle;
             Moving = null;
@@ -375,144 +369,6 @@ namespace ValheimTomrer.Editor
             Version++;
         }
 
-        // ---------- floors ----------
-
-        /// <summary>The floor being worked on, 0 for the ground floor, or -1 for all of them at once.</summary>
-        public static int Level { get; private set; } = -1;
-
-        /// <summary>How tall a floor is (the setting), in metres.</summary>
-        public static float FloorHeight =>
-            EditorConfig.FloorHeight != null ? Mathf.Max(0.5f, EditorConfig.FloorHeight.Value) : 2f;
-
-        /// <summary>
-        /// The height of the ground new pieces are aimed at: the ground, or the bottom of the floor being built on.
-        /// </summary>
-        public static float PlaneY => Level > 0 ? Level * FloorHeight : 0f;
-
-        /// <summary>How many floors the pieces fill, at least one.</summary>
-        public static int LevelCount
-        {
-            get
-            {
-                EnsureLevels();
-                return _levelCount;
-            }
-        }
-
-        /// <summary>The floor a piece belongs to: the one its lowest point is on. A slab at 2.0 m is on floor 1.</summary>
-        public static int LevelOf(DocPiece piece)
-        {
-            return Mathf.Max(0, Mathf.FloorToInt((BoxOf(piece).min.y + 0.1f) / FloorHeight));
-        }
-
-        private static readonly HashSet<int> Cut = new HashSet<int>();
-        private static int _cutKey = -1;
-        private static int _cutRevision = -1;
-        private static int _cutLevel = -2;
-        private static float _cutHeight = -1f;
-        private static int _levelCount = 1;
-
-        private static bool IsCut(int id) => Cut.Count > 0 && Cut.Contains(id);
-
-        /// <summary>Works out which pieces are above the floor in view, again only when the pieces, the floor or the height changed.</summary>
-        private static void EnsureLevels()
-        {
-            var revision = Document != null ? Document.PiecesRevision : -1;
-            if (revision == _cutRevision && Level == _cutLevel && Mathf.Approximately(FloorHeight, _cutHeight))
-            {
-                return;
-            }
-
-            _cutRevision = revision;
-            _cutLevel = Level;
-            _cutHeight = FloorHeight;
-            Cut.Clear();
-            _levelCount = 1;
-            if (Document != null)
-            {
-                foreach (var piece in Document.Pieces)
-                {
-                    var level = LevelOf(piece);
-                    _levelCount = Mathf.Max(_levelCount, level + 1);
-                    if (Level >= 0 && level > Level)
-                    {
-                        Cut.Add(piece.Id);
-                    }
-                }
-            }
-
-            _cutKey++;
-        }
-
-        /// <summary>Shows the floors up to this one (-1 for all) and puts the ground for new pieces on its level.</summary>
-        public static void SetLevel(int level)
-        {
-            EnsureLevels();
-            Level = Mathf.Clamp(level, -1, _levelCount);
-            EnsureLevels();
-            var kept = Selected.Where(id => !IsCut(id)).ToList();
-            if (kept.Count != Selected.Count)
-            {
-                Selected.Clear();
-                foreach (var id in kept)
-                {
-                    Selected.Add(id);
-                }
-            }
-
-            Version++;
-            Say(Level < 0
-                ? "All floors shown."
-                : $"Floor {Level + 1} of {Mathf.Max(_levelCount, Level + 1)}: what is above it is hidden, new pieces go on its level.");
-        }
-
-        public static void FloorUp()
-        {
-            if (Level < 0)
-            {
-                Say("All floors are shown. Floor down picks the top floor.");
-                return;
-            }
-
-            SetLevel(Level + 1);
-        }
-
-        public static void FloorDown()
-        {
-            EnsureLevels();
-            SetLevel(Level < 0 ? _levelCount - 1 : Mathf.Max(0, Level - 1));
-        }
-
-        public static void ShowAllFloors()
-        {
-            SetLevel(-1);
-        }
-
-        /// <summary>A piece placed above the floor in view would vanish at once, so the view goes up to it.</summary>
-        private static void FollowLevel(IEnumerable<int> ids)
-        {
-            if (Level < 0 || Document == null)
-            {
-                return;
-            }
-
-            var top = Level;
-            foreach (var id in ids)
-            {
-                var piece = Document.Find(id);
-                if (piece != null)
-                {
-                    top = Mathf.Max(top, LevelOf(piece));
-                }
-            }
-
-            if (top > Level)
-            {
-                Level = top;
-                EnsureLevels();
-            }
-        }
-
         // ---------- groups ----------
 
         /// <summary>The piece and everyone in its group, or only the piece when it has none.</summary>
@@ -670,7 +526,7 @@ namespace ValheimTomrer.Editor
         /// reopened blueprint shows and unlocks everything. A hidden piece is not drawn and cannot be
         /// picked; a locked one is drawn but cannot be selected.
         /// </summary>
-        public static bool IsHidden(int id) => Hidden.Contains(id) || IsCut(id);
+        public static bool IsHidden(int id) => Hidden.Contains(id);
 
         public static bool IsLocked(int id) => Locked.Contains(id);
 
@@ -683,8 +539,7 @@ namespace ValheimTomrer.Editor
         {
             get
             {
-                EnsureLevels();
-                if (Hidden.Count == 0 && Cut.Count == 0)
+                if (Hidden.Count == 0)
                 {
                     return Carrying;
                 }
@@ -692,7 +547,6 @@ namespace ValheimTomrer.Editor
                 NotDrawnIds.Clear();
                 NotDrawnIds.AddRange(Carrying);
                 NotDrawnIds.AddRange(Hidden);
-                NotDrawnIds.AddRange(Cut);
                 return NotDrawnIds;
             }
         }
@@ -897,6 +751,21 @@ namespace ValheimTomrer.Editor
         /// moves to its mirrored spot and turns the mirrored way. The pieces themselves are not flipped
         /// (the game has no mirrored pieces), so a symmetric piece looks exactly mirrored. One undo step.
         /// </summary>
+        /// <summary>
+        /// The turn a piece needs to stand as the mirror image of how it stands: the way it faces and its up are
+        /// reflected across the plane. A piece cannot be flipped itself (the game has no negative scale), so it is
+        /// taken as left-right symmetrical, which nearly every piece is: a mirrored wall facing +Z across the Z
+        /// plane faces -Z, a stair that climbs toward +Z climbs toward -Z, and across the X plane they keep facing
+        /// the same way but a turn of 30 degrees becomes -30.
+        /// </summary>
+        public static Quaternion Mirrored(Quaternion rotation, int axis)
+        {
+            var plane = Matrix4x4.Scale(axis == 0 ? new Vector3(-1f, 1f, 1f) : new Vector3(1f, 1f, -1f));
+            var symmetry = Matrix4x4.Scale(new Vector3(-1f, 1f, 1f));
+            var turned = plane * Matrix4x4.Rotate(rotation) * symmetry;
+            return Quaternion.LookRotation(turned.MultiplyVector(Vector3.forward), turned.MultiplyVector(Vector3.up));
+        }
+
         public static bool MirrorSelection(int axis)
         {
             SettleHand();
@@ -913,9 +782,7 @@ namespace ValheimTomrer.Editor
             {
                 var position = piece.Position;
                 position[axis] = (2f * middle) - position[axis];
-                var q = piece.Rotation;
-                var turned = axis == 0 ? new Quaternion(q.x, -q.y, -q.z, q.w) : new Quaternion(-q.x, -q.y, q.z, q.w);
-                moves.Add(new PieceMove { Id = piece.Id, Position = position, Rotation = Clean(turned) });
+                moves.Add(new PieceMove { Id = piece.Id, Position = position, Rotation = Clean(Mirrored(piece.Rotation, axis)) });
             }
 
             Document.SetPieces(moves);
@@ -1280,7 +1147,6 @@ namespace ValheimTomrer.Editor
                 case PlaceAction.Add:
                 {
                     var id = Document.AddPiece(world[0].Prefab, world[0].Pos, Clean(world[0].Rot));
-                    FollowLevel(new[] { id });
                     Select(id);
                     break;
                 }
@@ -1312,7 +1178,6 @@ namespace ValheimTomrer.Editor
                     }
 
                     var made = Document.AddPieces(copies);
-                    FollowLevel(made);
                     Select(made);
                     break;
                 }
@@ -1641,7 +1506,7 @@ namespace ValheimTomrer.Editor
             var moving = Mode == EditMode.Place && Action == PlaceAction.Move;
             foreach (var piece in Document.Pieces)
             {
-                if ((moving && MovingIds.Contains(piece.Id)) || IsCut(piece.Id))
+                if (moving && MovingIds.Contains(piece.Id))
                 {
                     continue;
                 }

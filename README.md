@@ -224,9 +224,7 @@ layout and has no setting.
 | 1, 2, 3 | Look from the front, the right, the top. With Ctrl: the back, the left, the bottom. The camera keeps its distance and the point it looks at. |
 | 4 | Look from a corner, a bit above |
 | 5 | Perspective or orthographic (flat) view, where parallel lines stay parallel |
-| 6 | Isometric view: flat, at a fixed angle, for building without free 3D. WASD slide the view, the wheel zooms, a right drag pans. |
-| [ and ] | Turn the view a quarter to the left or the right round what it looks at (in isometric, corner to corner) |
-| Ctrl + Up, Ctrl + Down, Ctrl + 0 | Floor up, floor down (from all floors: the top one), all floors (also the All floors button under the axis marker). What is above the floor in view is hidden, new pieces are aimed at its level, and a piece placed higher takes the view up to it. The floor height is the `FloorHeight` setting (2 m). |
+| Alt + V | Show or hide the grid lines and axes on the ground (the Lines button of the toolbar). The placing grid, Alt + G, is not touched. |
 | Alt + K | Support colours: every piece coloured by how well it is held up (the ground's colour, then green to red, like the hammer's) |
 | Ctrl + Alt + S | Keep the selected pieces as a small blueprint of their own (a window, a porch) |
 | Ctrl + I | Insert a blueprint from the list: its pieces go in hand, in this blueprint |
@@ -256,7 +254,7 @@ layout and has no setting.
 | Alt + G | Placing grid: off, 0.25, 0.5, 1, 2, 4 m. A piece that snaps to nothing lands on the grid, and the arrow keys move one grid step. |
 | Alt + R | Turn step: 22.5° (the game's), 45°, 90°, 5°, 15° |
 | Alt + S | Snap points on or off. The grid still works. Shift held turns all snapping off for a moment. |
-| Tab | Quick add: the list of pieces over the view. Type to search, click a piece to place it, right click stars it. Tab or Esc closes it. |
+| Tab | Quick add: the pieces over the view, with the categories (All, Recent, Starred, Wall, Roof...) in a list on the left, each with how many pieces it holds. Type to search, click a piece to place it, right click stars it. Tab or Esc closes it. |
 | Alt + 1, Alt + 2 | Put the Layers card (left) or the Inspector card (right) away, or bring it back. A small tab on the edge brings it back with a click. |
 | Layers search box | A name, or a word with a colon: `:weak` (badly held up), `:hidden`, `:locked`, `:selected`, `:grouped`, `:floor2` (the second floor) |
 | Ctrl + \ | Hide the whole interface and keep the view. The same keys, or Esc, bring it back. |
@@ -295,8 +293,6 @@ The controller works from the crosshair in the middle of the 3D view.
 | L2 (LT) + D-pad left, right | Look from the next or the previous side: front, right, back, left, top, corner |
 | L2 (LT) + D-pad up | Perspective or orthographic view |
 | L2 (LT) + D-pad down | Show only the selection, again to bring back what it hid |
-| L2 (LT) + △ (Y) | Isometric view on and off |
-| In isometric: right stick | Left or right turns the view a quarter, up or down zooms. The left stick slides the view, D-pad up and down change the floor, L1 (LB) + D-pad up shows all floors. |
 | L2 (LT) + × (A) | Ruler on and off. R2 puts a point at the crosshair, ○ stops. |
 | L2 (LT) + R3 | Fly to the next saved view |
 | △ (Y) in Quick add | Star or unstar the lit piece |
@@ -325,7 +321,7 @@ they open: the D-pad moves, × picks, ○ closes. In Save as the name box is sel
 so down and × saves with the name shown. Press × on the box to type a new one.
 
 Copy, paste, group, close the gap, the sizes switch, saving and inserting a part and saving a view have no button combo: the pad
-reaches them as buttons in the Inspector (Copy, Paste, Group, Ungroup, Close gap, Drop to floor, Next problem), the Sizes, Ruler, Light and Support
+reaches them as buttons in the Inspector (Copy, Paste, Group, Ungroup, Close gap, Drop to floor, Next problem), the Sizes, Ruler, Light, Support and Lines
 buttons of the toolbar, and the command search (the Commands button).
 
 The rows in the Layers list and the Checks tab can't be picked with the pad. Use Quick add (×) to
@@ -356,7 +352,7 @@ you can change it in the game (F1).
 | Keys | `Preset` and one setting per action | `Tomrer` | Which keys the editor starts from (`Tomrer`, `Figma`, `Blender`). A setting per action replaces its keys: empty uses the preset's, `none` removes the key, or a list such as `Ctrl+Z, Ctrl+Y`. The Keys window writes these. |
 | Editor | `GridStep` | `0` | Placing grid in metres (0, 0.25, 0.5, 1, 2, 4). 0 is no grid. |
 | Editor | `AngleStep` | `22.5` | Degrees per turn step (5, 15, 22.5, 45, 90) |
-| Editor | `FloorHeight` | `2` | How tall one floor is, in metres: the step of the floor switch (Ctrl + Up and Down) |
+| Editor | `ShowGrid` | `true` | Draw the grid lines and the axes on the ground of the 3D view. Alt + V changes it. |
 | Editor | `TimeOfDay` | `Day` | The light of the 3D view: `Morning`, `Day`, `Evening`, `Night`. Alt + L changes it. |
 | Editor | `SnapPoints` | `true` | Snap to the pieces' snap points, like the game |
 | Editor | `LayersOpen` | `true` | The Layers panel on the left (the pieces of the blueprint). Alt + 1 folds it. |

@@ -39,7 +39,7 @@ namespace ValheimTomrer.Dev
             yield return RedesignIslands();
             yield return RedesignSpace(document);
             yield return RedesignTools(document);
-            yield return RedesignIso(document);
+            yield return RedesignLook(document);
             yield return RedesignQuickAdd();
             yield return RedesignWheel();
             RedesignKeymap();
@@ -492,6 +492,21 @@ namespace ValheimTomrer.Dev
 
             EditorState.Select(new int[0]);
 
+            // Mirror turns a piece the way a mirror does: across Z the way it faces flips, across X it does not.
+            EditorState.Select(ids[0]);
+            var faced = document.Find(ids[0]).Rotation * Vector3.forward;
+            EditorState.MirrorSelection(2);
+            var across = document.Find(ids[0]).Rotation * Vector3.forward;
+            Check((across - new Vector3(faced.x, faced.y, -faced.z)).magnitude < 0.01f,
+                $"mirror across Z turns the piece to face the other way: {faced} to {across}");
+            EditorState.Undo();
+            EditorState.Select(ids[0]);
+            EditorState.MirrorSelection(0);
+            var beside = document.Find(ids[0]).Rotation * Vector3.forward;
+            Check((beside - new Vector3(-faced.x, faced.y, faced.z)).magnitude < 0.01f, "and across X it keeps the way it faces and swaps the sides");
+            EditorState.Undo();
+            EditorState.Select(new int[0]);
+
             // A click on a hidden piece keeps the selection and says why.
             EditorState.Select(ids[1]);
             EditorState.SetHidden(new[] { ids[0] }, true);
@@ -502,79 +517,19 @@ namespace ValheimTomrer.Dev
             EditorState.Select(new int[0]);
         }
 
-        /// <summary>
-        /// The isometric view (6, quarter turns, sliding), the floors (cutaway, the ground for new pieces, the
-        /// switch in the gizmo), the four times of day, and the text cursor in a number box.
-        /// </summary>
-        private static IEnumerator RedesignIso(BlueprintDocument document)
+        /// <summary>The four times of day, the grid switch and the text cursor in a number box.</summary>
+        private static IEnumerator RedesignLook(BlueprintDocument document)
         {
-            var camera = ValheimTomrer.Editor.Ui.ViewportHost.Camera;
             var preview = ValheimTomrer.Editor.Ui.ViewportHost.Preview.Unity;
-            camera.SetOrthographic(false);
-            Bindings.Press(KeyCode.Alpha6, KeyMods.None);
-            yield return Frames(2);
-            Check(camera.Iso && camera.Orthographic && preview.orthographic && Mathf.Abs(camera.Pitch + 35.264f) < 0.05f,
-                $"6 turns isometric on: flat, pitch {camera.Pitch:0.000}");
-            var corner = Mathf.Repeat(camera.Yaw - 45f, 90f);
-            Check(corner < 0.01f || corner > 89.99f, $"and the view stands on a corner: yaw {camera.Yaw:0.0}");
-            Check(ViewGizmo.LabelText == "Isometric", $"the gizmo says so: '{ViewGizmo.LabelText}'");
 
-            var yaw = camera.Yaw;
-            Bindings.Press(KeyCode.RightBracket, KeyMods.None);
-            yield return Wait(0.7f);
-            Check(!camera.Turning && Mathf.Abs(Mathf.DeltaAngle(camera.Yaw, yaw + 90f)) < 0.5f && Mathf.Abs(camera.Pitch + 35.264f) < 0.05f,
-                $"] turns it a quarter to the right and the angle stays: {Mathf.DeltaAngle(yaw, camera.Yaw):0} degrees");
-            Bindings.Press(KeyCode.LeftBracket, KeyMods.None);
-            yield return Wait(0.7f);
-            Check(Mathf.Abs(Mathf.DeltaAngle(camera.Yaw, yaw)) < 0.5f, "[ turns it back");
-
-            var height = camera.Position.y;
-            camera.FlyKeys(new Vector3(0f, 0f, 1f), false, 0.3f);
-            Check(Mathf.Abs(camera.Position.y - height) < 0.001f, "W slides the view over the ground, not toward it");
-
-            // Floors.
-            var counts = document.Pieces.GroupBy(EditorState.LevelOf).ToDictionary(g => g.Key, g => g.Count());
-            var levels = EditorState.LevelCount;
-            Check(levels >= 1, $"the kit fills {levels} floor(s)");
-            Bindings.Press(KeyCode.DownArrow, KeyMods.Ctrl);
+            // The grid lines can be switched off and on.
+            var scene = ValheimTomrer.Editor.Ui.ViewportHost.Scene;
+            Bindings.Press(KeyCode.V, KeyMods.Alt);
             yield return Frames(2);
-            Check(EditorState.Level == levels - 1, $"Ctrl+Down from all floors goes to the top one: {EditorState.Level + 1}");
-            while (EditorState.Level > 0)
-            {
-                EditorState.FloorDown();
-            }
-
+            Check(!EditorState.GridShown && !scene.GridVisible, "Alt+V hides the grid lines");
+            Bindings.Press(KeyCode.V, KeyMods.Alt);
             yield return Frames(2);
-            var above = document.Pieces.Count(p => EditorState.LevelOf(p) > 0);
-            Check(EditorState.NotDrawn.Count == above, $"floor 1 hides what is above it: {EditorState.NotDrawn.Count} of {document.Pieces.Count} (expected {above})");
-            Check(ViewGizmo.FloorText.StartsWith("Floor 1"), $"the gizmo shows the floor: '{ViewGizmo.FloorText}'");
-            EditorState.SelectAll();
-            Check(EditorState.SelectionCount == document.Pieces.Count - above, "select all leaves out what is hidden by the floor");
-            EditorState.Select(new int[0]);
-            Check(Mathf.Approximately(EditorState.PlaneY, 0f), "on floor 1 the ground is at 0");
-            EditorState.FloorUp();
-            Check(Mathf.Approximately(EditorState.PlaneY, EditorState.FloorHeight) && Mathf.Approximately(EditorState.Index.GroundY, EditorState.PlaneY),
-                $"on floor 2 new pieces are aimed at {EditorState.PlaneY:0.##} m");
-            ViewGizmo.AllFloorsButton.onClick.Invoke();
-            yield return Frames(2);
-            Check(EditorState.Level < 0 && EditorState.NotDrawn.Count == 0, "the All floors button shows every floor again");
-            EditorState.FloorDown();
-            Bindings.Press(KeyCode.Alpha0, KeyMods.Ctrl);
-            yield return Frames(2);
-            Check(EditorState.Level < 0 && EditorState.NotDrawn.Count == 0, "and so does Ctrl+0");
-
-            // The pad: L2 + triangle leaves isometric.
-            _pad = new PadState();
-            PadReader.Fake = _pad;
-            yield return Frames(3);
-            yield return Tap(PadButton.L2, PadButton.Triangle);
-            Check(!camera.Iso, "L2 + triangle on the pad turns isometric off");
-            yield return Tap(PadButton.L2, PadButton.Triangle);
-            Check(camera.Iso, "and on again");
-            PadReader.Fake = null;
-            _pad = null;
-            Bindings.Press(KeyCode.Alpha6, KeyMods.None);
-            camera.SetOrthographic(false);
+            Check(EditorState.GridShown && scene.GridVisible, "and shows them again");
 
             // Times of day: four different skies, Alt+L cycles, the view takes them.
             var first = EditorConfig.TimeOfDay.Value;
@@ -589,6 +544,15 @@ namespace ValheimTomrer.Dev
             }
 
             Check(skies.Count == 4 && EditorConfig.TimeOfDay.Value == first, $"Alt+L goes through four lights and back: {skies.Count} skies");
+
+            // A torch in the blueprint shines: its light is kept and lights the editor's layer only.
+            if (document.Pieces.Any(p => p.PrefabName.IndexOf("torch", System.StringComparison.OrdinalIgnoreCase) >= 0))
+            {
+                var lights = ValheimTomrer.Editor.Ui.ViewportHost.Scene.Root.GetComponentsInChildren<Light>(true)
+                    .Where(l => l.type != LightType.Directional).ToList();
+                Check(lights.Count > 0 && lights.All(l => l.cullingMask == 1 << ValheimTomrer.Editor.Ui.ViewportHost.Scene.Layer),
+                    $"the torch's light is there: {lights.Count} light(s), on the editor's layer only");
+            }
 
             // The text cursor is drawn in a focused number box.
             Inspector.SetTab(Inspector.DesignTab);

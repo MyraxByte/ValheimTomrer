@@ -394,6 +394,18 @@ namespace ValheimTomrer.Editor
                 : "Support colours off.");
         }
 
+        /// <summary>The grid lines and axes on the ground, shown or not. The placing grid is a separate thing and stays.</summary>
+        public static void ToggleGridLines()
+        {
+            if (EditorConfig.ShowGrid == null)
+            {
+                return;
+            }
+
+            EditorConfig.ShowGrid.Value = !EditorConfig.ShowGrid.Value;
+            Toasts.Info(EditorConfig.ShowGrid.Value ? "Grid lines shown." : "Grid lines hidden. Placing still uses the grid step.");
+        }
+
         /// <summary>The next light for the 3D view: morning, day, evening, night, round.</summary>
         public static void CycleTimeOfDay()
         {

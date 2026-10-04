@@ -63,6 +63,9 @@ screen, stable positioning, better work in 3D.
   the status line, Isolate (I). Pad twins: L2 + D-pad.
 - Not done on purpose: a ruler tool and lens shift for the free room (the crosshair stays at the screen's middle).
 
+- Isometric view and floors were added and then removed again at the owner's request (they did not work well
+  for him). The grid can be switched off (Alt + V), Quick add has a category list, and piece lights shine.
+
 ## Left for the first run in the game
 
 - `npm run build`, then `npm run autotest -- editor_ui`, then `editor_all`.

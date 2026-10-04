@@ -208,7 +208,7 @@ namespace ValheimTomrer.Editor.Ui
 
         /// <summary>
         /// A piece passes the search when every word is in its name and every token holds: :weak (badly held up or
-        /// about to fall), :hidden, :locked, :selected, :grouped, :floor2 (on the second floor).
+        /// about to fall), :hidden, :locked, :selected, :grouped.
         /// </summary>
         private static bool Matches(DocPiece piece, string name, List<string> words, List<string> tokens)
         {
@@ -263,14 +263,6 @@ namespace ValheimTomrer.Editor.Ui
 
                         break;
                     default:
-                        // :floor2, the second floor
-                        if (token.StartsWith(":floor", StringComparison.Ordinal)
-                            && int.TryParse(token.Substring(6), out var floor)
-                            && EditorState.LevelOf(piece) != floor - 1)
-                        {
-                            return false;
-                        }
-
                         break;
                 }
             }
@@ -389,7 +381,7 @@ namespace ValheimTomrer.Editor.Ui
             hide.anchoredPosition = new Vector2(-8f, 0f);
             hide.sizeDelta = new Vector2(46f, 26f);
 
-            _search = Kit.Field(_root, "", "Name, :weak, :hidden, :floor2");
+            _search = Kit.Field(_root, "", "Name, :weak, :hidden, :locked");
             var search = (RectTransform)_search.transform;
             Top(search, HeadHeight, Kit.ControlHeight);
             search.offsetMin = new Vector2(12f, search.offsetMin.y);

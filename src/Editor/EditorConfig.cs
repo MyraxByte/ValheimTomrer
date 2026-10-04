@@ -26,8 +26,8 @@ namespace ValheimTomrer.Editor
         /// <summary>The light of the 3D view.</summary>
         public static ConfigEntry<View.TimeOfDay> TimeOfDay;
 
-        /// <summary>How tall one floor is, in metres: the step of the floor switch.</summary>
-        public static ConfigEntry<float> FloorHeight;
+        /// <summary>Draw the grid lines and the two axes on the ground of the 3D view.</summary>
+        public static ConfigEntry<bool> ShowGrid;
 
         /// <summary>Off: the palette only lists what this character has unlocked.</summary>
         public static ConfigEntry<bool> ShowAllPieces;
@@ -95,14 +95,11 @@ namespace ValheimTomrer.Editor
                 false,
                 "Draw pieces as plain boxes instead of models. Easier to see through a full blueprint.");
 
-            FloorHeight = config.Bind(
+            ShowGrid = config.Bind(
                 "Editor",
-                "FloorHeight",
-                2f,
-                new ConfigDescription(
-                    "How tall one floor is in metres. The floor switch (Ctrl + Up and Down) shows the pieces up to a floor "
-                    + "and puts the ground for new pieces on its level. 2 is the height of a wood wall.",
-                    new AcceptableValueRange<float>(0.5f, 10f)));
+                "ShowGrid",
+                true,
+                "Draw the grid lines and the two axes on the ground of the 3D view. The placing grid (Alt + G) works either way.");
 
             TimeOfDay = config.Bind(
                 "Editor",

@@ -27,10 +27,11 @@ namespace ValheimTomrer.Editor.Ui
         public const string RecentKey = "@recent";
         public const string FavouriteKey = "@favourite";
 
-        private const int Columns = 6;
+        private const int Columns = 5;
+        private const float SideWidth = 176f;
         private const float Spacing = 8f;
         private const float SearchHeight = 46f;
-        private const float ChipHeight = 26f;
+        private const float ChipHeight = 30f;
         private const float FootHeight = 30f;
 
         private static GameObject _host;
@@ -253,6 +254,8 @@ namespace ValheimTomrer.Editor.Ui
                 tile.Refresh(false);
             }
 
+            RefreshCounts();
+
             if (_tag == FavouriteKey)
             {
                 Filter();
@@ -275,6 +278,8 @@ namespace ValheimTomrer.Editor.Ui
             {
                 return;
             }
+
+            RefreshCounts();
 
             var words = (Search ?? "").ToLowerInvariant().Split(new[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries);
             Shown.Clear();
@@ -418,10 +423,10 @@ namespace ValheimTomrer.Editor.Ui
                 return;
             }
 
-            var width = Mathf.Clamp(root.rect.width - 80f, 420f, 760f);
+            var width = Mathf.Clamp(root.rect.width - 80f, 560f, 900f);
             var height = Mathf.Clamp(root.rect.height - 180f, 320f, 580f);
             _card.sizeDelta = new Vector2(width, height);
-            var inner = width - 28f;
+            var inner = width - 28f - SideWidth - 10f;
             var cell = Mathf.Floor((inner - ((Columns - 1) * Spacing)) / Columns);
             _grid.cellSize = new Vector2(cell, cell + 18f);
             _scroll.GetComponent<WheelScroll>().Step = 2f * (_grid.cellSize.y + Spacing);
@@ -440,7 +445,7 @@ namespace ValheimTomrer.Editor.Ui
             _card.anchorMin = _card.anchorMax = new Vector2(0.5f, 1f);
             _card.pivot = new Vector2(0.5f, 1f);
             _card.anchoredPosition = new Vector2(0f, -(EditorWindow.TopBand + 36f));
-            _card.sizeDelta = new Vector2(760f, 560f);
+            _card.sizeDelta = new Vector2(900f, 560f);
             card.gameObject.AddComponent<ClickEvents>();   // a click on the card itself stays inside
 
             _search = UiBuild.InputField("Search", _card, "Search pieces: wall, roof, door…", SearchHeight);
@@ -469,24 +474,31 @@ namespace ValheimTomrer.Editor.Ui
             var line = Kit.Divider(_card);
             Top(line.rectTransform, SearchHeight, 1f);
 
-            _chipRow = UiBuild.Rect("Chips", _card);
-            Top(_chipRow, SearchHeight + 10f, ChipHeight);
-            _chipRow.offsetMin = new Vector2(14f, _chipRow.offsetMin.y);
-            _chipRow.offsetMax = new Vector2(-14f, _chipRow.offsetMax.y);
-            _chipRow.gameObject.AddComponent<RectMask2D>();
-            var chips = _chipRow.gameObject.AddComponent<HorizontalLayoutGroup>();
-            chips.spacing = 6f;
-            chips.childControlWidth = true;
-            chips.childControlHeight = true;
-            chips.childForceExpandWidth = false;
-            chips.childForceExpandHeight = true;
+            // The categories: a list down the left side, each with how many pieces it holds.
+            var categories = UiBuild.Scroll("Categories", _card, 2f);
+            var side = (RectTransform)categories.transform;
+            side.anchorMin = new Vector2(0f, 0f);
+            side.anchorMax = new Vector2(0f, 1f);
+            side.pivot = new Vector2(0f, 0.5f);
+            side.offsetMin = new Vector2(14f, FootHeight + 6f);
+            side.offsetMax = new Vector2(14f + SideWidth, -(SearchHeight + 10f));
+            categories.GetComponent<WheelScroll>().Step = 3f * ChipHeight;
+            _chipRow = categories.content;
+            var divider = Kit.Divider(_card, true);
+            var dividerRect = divider.rectTransform;
+            dividerRect.anchorMin = new Vector2(0f, 0f);
+            dividerRect.anchorMax = new Vector2(0f, 1f);
+            dividerRect.pivot = new Vector2(0f, 0.5f);
+            dividerRect.offsetMin = new Vector2(14f + SideWidth + 4f, FootHeight + 6f);
+            dividerRect.offsetMax = new Vector2(14f + SideWidth + 5f, -(SearchHeight + 10f));
+            UnityEngine.Object.Destroy(divider.GetComponent<LayoutElement>());
 
             _scroll = UiBuild.Scroll("Grid", _card, 0f);
             var grid = (RectTransform)_scroll.transform;
             grid.anchorMin = Vector2.zero;
             grid.anchorMax = Vector2.one;
-            grid.offsetMin = new Vector2(14f, FootHeight + 6f);
-            grid.offsetMax = new Vector2(-14f, -(SearchHeight + ChipHeight + 20f));
+            grid.offsetMin = new Vector2(14f + SideWidth + 12f, FootHeight + 6f);
+            grid.offsetMax = new Vector2(-14f, -(SearchHeight + 10f));
             var content = _scroll.content;
             UnityEngine.Object.DestroyImmediate(content.GetComponent<VerticalLayoutGroup>());
             _grid = content.gameObject.AddComponent<GridLayoutGroup>();
@@ -569,6 +581,7 @@ namespace ValheimTomrer.Editor.Ui
                 _tag = null;
             }
 
+            RefreshCounts();
             _catalogGeneration = PieceCatalog.Generation;
             _catalogCount = entries.Count;
         }
@@ -650,15 +663,38 @@ namespace ValheimTomrer.Editor.Ui
 
         private static Chip NewChip(string key, string text)
         {
-            var back = UiBuild.Panel("Chip " + text, _chipRow, null, UiTheme.Surface);
+            var back = UiBuild.Panel("Category " + text, _chipRow, null, UiTheme.Surface);
             back.type = Image.Type.Simple;
-            var label = Kit.Text(back.transform, text, Kit.CaptionSize, UiTheme.TextDim, TextAlignmentOptions.Center);
-            UiBuild.Stretch(label.rectTransform, 10f, 0f, 10f, 0f);
-            Kit.Size(back, label.GetPreferredValues(text, 4000f, 0f).x + 22f, ChipHeight);
+            UiBuild.Rounded(back);
+            Kit.Size(back, -1f, ChipHeight);
+            var label = Kit.Text(back.transform, text, Kit.BodySize, UiTheme.TextDim, TextAlignmentOptions.MidlineLeft);
+            UiBuild.Stretch(label.rectTransform, 12f, 0f, 44f, 0f);
+            var count = Kit.Text(back.transform, "", Kit.CaptionSize, UiTheme.TextDim, TextAlignmentOptions.MidlineRight);
+            UiBuild.Stretch(count.rectTransform, 80f, 0f, 10f, 0f);
             back.gameObject.AddComponent<ClickEvents>().Clicked = _ => SetTag(key);
-            var chip = new Chip { Key = key, Back = back, Label = label };
+            var chip = new Chip { Key = key, Back = back, Label = label, Count = count };
             chip.Set(key == _tag);
             return chip;
+        }
+
+        /// <summary>How many pieces each category holds (All, Recent and Starred too), read again when pieces are starred or used.</summary>
+        private static void RefreshCounts()
+        {
+            foreach (var chip in Chips)
+            {
+                var n = 0;
+                foreach (var tile in Tiles)
+                {
+                    var entry = tile.Entry;
+                    var holds = chip.Key == null
+                        || (chip.Key == RecentKey ? PieceMemory.RecentIndex(entry.PrefabName) >= 0
+                            : chip.Key == FavouriteKey ? PieceMemory.IsFavourite(entry.PrefabName)
+                            : entry.UsageTags != null && Array.IndexOf(entry.UsageTags, chip.Key) >= 0);
+                    n += holds ? 1 : 0;
+                }
+
+                chip.Count.text = n.ToString();
+            }
         }
 
         private sealed class Tile
@@ -695,11 +731,16 @@ namespace ValheimTomrer.Editor.Ui
             public string Key;
             public Image Back;
             public TextMeshProUGUI Label;
+            public TextMeshProUGUI Count;
 
             public void Set(bool on)
             {
-                Back.color = on ? UiTheme.Accent : UiTheme.Surface;
-                Label.color = on ? UiTheme.TextOnAccent : UiTheme.TextDim;
+                var fill = UiTheme.Accent;
+                fill.a = on ? 0.28f : 0f;
+                Back.color = fill;
+                Label.color = on ? UiTheme.Text : UiTheme.TextDim;
+                Label.fontStyle = on ? FontStyles.Bold : FontStyles.Normal;
+                Count.color = on ? UiTheme.Text : UiTheme.TextDim;
             }
         }
     }

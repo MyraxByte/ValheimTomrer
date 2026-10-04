@@ -471,6 +471,43 @@ namespace ValheimTomrer.Blueprints
             return copy;
         }
 
+        /// <summary>
+        /// Makes the copy's lights work in the editor: on, lighting only the editor's layer, with no shadows (a
+        /// point light's shadows are six renders), and switched on through their parents. A fire the game lights by
+        /// its own script (Fireplace, which needs the network) gets its flame objects on. A light the game flickers flickers here.
+        /// </summary>
+        private static void LightUp(GameObject copy, int layer, List<Light> flickering)
+        {
+            // The flame objects are found by name, not by a field of the game's class: they differ between pieces.
+            foreach (var fire in copy.GetComponentsInChildren<Fireplace>(true))
+            {
+                foreach (var field in fire.GetType().GetFields(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance))
+                {
+                    if (field.FieldType == typeof(GameObject) && (field.Name == "m_enabledObject" || field.Name == "m_enabledObjectHigh")
+                        && field.GetValue(fire) is GameObject flame)
+                    {
+                        flame.SetActive(true);
+                    }
+                }
+            }
+
+            foreach (var light in copy.GetComponentsInChildren<Light>(true))
+            {
+                light.cullingMask = 1 << layer;
+                light.shadows = LightShadows.None;
+                light.enabled = true;
+                for (var t = light.transform; t != null && t != copy.transform.parent; t = t.parent)
+                {
+                    t.gameObject.SetActive(true);
+                }
+
+                if (flickering.Contains(light))
+                {
+                    light.gameObject.AddComponent<EditorFlicker>();
+                }
+            }
+        }
+
         private static void StripToVisuals(GameObject copy, PreviewStyle style)
         {
             DestroyAll<Joint>(copy);
@@ -479,9 +516,30 @@ namespace ValheimTomrer.Blueprints
             DestroyAll<Demister>(copy);
             DestroyAll<TerrainModifier>(copy);
             DestroyAll<GuidePoint>(copy);
+            // The editor shows a torch, a lantern or a fire as they shine: their lights stay (only for the
+            // editor's own layer, no shadows) and flicker the way the game's do. LightLod is the game's switch by
+            // distance to its own camera, 8000 m away from here, so it always goes. The aim preview has no lights.
+            var shining = style.Look == PreviewLook.Solid;
+            var flickering = new List<Light>();
+            if (shining)
+            {
+                foreach (var flicker in copy.GetComponentsInChildren<LightFlicker>(true))
+                {
+                    var light = flicker.GetComponent<Light>();
+                    if (light != null)
+                    {
+                        flickering.Add(light);
+                    }
+                }
+            }
+
             DestroyAll<LightLod>(copy);
             DestroyAll<LightFlicker>(copy);
-            DestroyAll<Light>(copy);
+            if (!shining)
+            {
+                DestroyAll<Light>(copy);
+            }
+
             DestroyAll<WispSpawner>(copy);
 
             // A workbench draws its build area with a CircleProjector, which spawns its 80 ring
@@ -523,9 +581,12 @@ namespace ValheimTomrer.Blueprints
                 }
             }
 
-            foreach (var particles in copy.GetComponentsInChildren<ParticleSystem>(true))
+            if (!shining)
             {
-                particles.gameObject.SetActive(false);
+                foreach (var particles in copy.GetComponentsInChildren<ParticleSystem>(true))
+                {
+                    particles.gameObject.SetActive(false);
+                }
             }
 
             // Vanilla only runs these for its own preview (Player.IsPlacementGhost), so do it here.
@@ -551,6 +612,11 @@ namespace ValheimTomrer.Blueprints
             foreach (var transform in copy.GetComponentsInChildren<Transform>(true))
             {
                 transform.gameObject.layer = style.Layer;
+            }
+
+            if (shining)
+            {
+                LightUp(copy, style.Layer, flickering);
             }
 
             if (style.Look == PreviewLook.Ghost)
@@ -681,6 +747,29 @@ namespace ValheimTomrer.Blueprints
             None,
             Red,
             Blue,
+        }
+    }
+
+    /// <summary>A light that wavers a little, like a flame: the intensity moves by a few percent, never in step with its neighbour.</summary>
+    internal sealed class EditorFlicker : MonoBehaviour
+    {
+        private Light _light;
+        private float _base;
+        private float _seed;
+
+        private void Awake()
+        {
+            _light = GetComponent<Light>();
+            _base = _light != null ? _light.intensity : 0f;
+            _seed = Random.value * 100f;
+        }
+
+        private void Update()
+        {
+            if (_light != null)
+            {
+                _light.intensity = _base * (0.88f + (0.24f * Mathf.PerlinNoise(Time.time * 6f, _seed)));
+            }
         }
     }
 }

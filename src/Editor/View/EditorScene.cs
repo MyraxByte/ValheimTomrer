@@ -64,12 +64,11 @@ namespace ValheimTomrer.Editor.View
 
             // A 1 m grid with every fifth line brighter, so distances can be counted, and the two ground
             // axes in the gizmo's colours (X red, Z blue).
-            // These lift with the floor being built on (SetPlane); the dark ground quad under them stays.
-            _plane.Add(Add("Grid", Grid(GridCells, 5, true), _gridMaterial, GridY));
-            _plane.Add(Add("GridMajor", Grid(GridCells, 5, false), _majorMaterial, GridY + 0.001f));
-            _plane.Add(Add("AxisX", Axis(true), Paint(unlit, AxisXColor), GridY + 0.002f));
-            _plane.Add(Add("AxisZ", Axis(false), Paint(unlit, AxisZColor), GridY + 0.002f));
-            _plane.Add(Add("Origin", Ring(0.12f, 0.2f, 32), _ringMaterial, RingY));
+            _lines.Add(Add("Grid", Grid(GridCells, 5, true), _gridMaterial, GridY));
+            _lines.Add(Add("GridMajor", Grid(GridCells, 5, false), _majorMaterial, GridY + 0.001f));
+            _lines.Add(Add("AxisX", Axis(true), Paint(unlit, AxisXColor), GridY + 0.002f));
+            _lines.Add(Add("AxisZ", Axis(false), Paint(unlit, AxisZColor), GridY + 0.002f));
+            Add("Origin", Ring(0.12f, 0.2f, 32), _ringMaterial, RingY);
 
             _front = new GameObject("Front") { layer = layer };
             _front.transform.SetParent(_root.transform, false);
@@ -85,33 +84,25 @@ namespace ValheimTomrer.Editor.View
 
         public Transform Root => _root != null ? _root.transform : null;
 
-        private readonly List<Transform> _plane = new List<Transform>();
-        private readonly List<float> _planeBase = new List<float>();
-        private float _planeY;
+        private readonly List<Transform> _lines = new List<Transform>();
 
-        /// <summary>Puts the grid, the axes and the origin ring at the height of the floor being built on.</summary>
-        public void SetPlane(float y)
+        /// <summary>The grid lines and the axes are drawn (the ground and the origin ring always are).</summary>
+        public bool GridVisible { get; private set; } = true;
+
+        /// <summary>Shows or hides the grid lines and the axes.</summary>
+        public void SetGridVisible(bool on)
         {
-            if (_planeBase.Count == 0)
-            {
-                foreach (var part in _plane)
-                {
-                    _planeBase.Add(part != null ? part.localPosition.y : 0f);
-                }
-            }
-
-            if (Mathf.Approximately(y, _planeY))
+            if (on == GridVisible)
             {
                 return;
             }
 
-            _planeY = y;
-            for (var i = 0; i < _plane.Count; i++)
+            GridVisible = on;
+            foreach (var part in _lines)
             {
-                if (_plane[i] != null)
+                if (part != null)
                 {
-                    var at = _plane[i].localPosition;
-                    _plane[i].localPosition = new Vector3(at.x, _planeBase[i] + y, at.z);
+                    part.gameObject.SetActive(on);
                 }
             }
         }
