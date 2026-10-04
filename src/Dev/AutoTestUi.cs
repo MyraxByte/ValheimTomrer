@@ -134,6 +134,9 @@ namespace ValheimTomrer.Dev
                 $"the menu is all on the screen: x {menuBox.xMin:0} to {menuBox.xMax:0} of {Screen.width}, y {menuBox.yMin:0} to {menuBox.yMax:0} of {Screen.height}");
             Check(Bindings.Cancel() && !Header.MenuOpen && ModUi.Open, "Esc closes the menu first");
 
+            Inspector.SetTab(Inspector.DesignTab);
+            yield return null;
+            Check(Inspector.GapUnderTabs > 1f, $"the open page starts under the tabs, not over them ({Inspector.GapUnderTabs:0} px gap)");
             Inspector.SetTab(Inspector.BlueprintTab);
             yield return null;
             Check(Inspector.Tab == Inspector.BlueprintTab && BlueprintPage.NameField != null && BlueprintPage.ChoiceCount > 1,

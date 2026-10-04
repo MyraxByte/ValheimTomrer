@@ -17,6 +17,7 @@ namespace ValheimTomrer.Editor.Ui
         public const int BlueprintTab = 1;
         public const int ChecksTab = 2;
         private const float TabsHeight = 44f;
+        private const float PageTop = TabsHeight + 6f;
         private const float Away = 6000f;
 
         private static readonly string[] Names = { "Design", "Blueprint", "Checks" };
@@ -33,6 +34,24 @@ namespace ValheimTomrer.Editor.Ui
 
         /// <summary>The Hide button beside the tabs, for the pad walk and the tests.</summary>
         public static Button HideButton => _hide;
+
+        /// <summary>How far the open page's top is below the tab strip's bottom, in screen pixels. For the tests.</summary>
+        public static float GapUnderTabs
+        {
+            get
+            {
+                if (_tabs == null)
+                {
+                    return 0f;
+                }
+
+                var strip = new Vector3[4];
+                var page = new Vector3[4];
+                _tabs.Root.GetWorldCorners(strip);
+                Pages[Tab].GetWorldCorners(page);
+                return strip[0].y - page[1].y;
+            }
+        }
 
         public static void Ensure(RectTransform host)
         {
@@ -85,7 +104,10 @@ namespace ValheimTomrer.Editor.Ui
             _tabs.Set(Tab);
             for (var i = 0; i < Pages.Length; i++)
             {
-                Pages[i].anchoredPosition = i == Tab ? Vector2.zero : new Vector2(Away, 0f);
+                // Offsets, never anchoredPosition: on a stretched page that call moves it by half its top gap.
+                var away = i == Tab ? 0f : Away;
+                Pages[i].offsetMin = new Vector2(away, 0f);
+                Pages[i].offsetMax = new Vector2(away, -PageTop);
             }
         }
 
@@ -117,7 +139,7 @@ namespace ValheimTomrer.Editor.Ui
             for (var i = 0; i < Pages.Length; i++)
             {
                 var page = UiBuild.Rect(Names[i] + "Page", _root);
-                UiBuild.Stretch(page, 0f, 0f, 0f, TabsHeight + 12f);
+                UiBuild.Stretch(page, 0f, 0f, 0f, PageTop);
                 Pages[i] = page;
             }
 
