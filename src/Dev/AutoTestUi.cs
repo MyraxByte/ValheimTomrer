@@ -13,8 +13,9 @@ using UnityEngine.UI;
 namespace ValheimTomrer.Dev
 {
     /// <summary>
-    /// Scenario "editor_ui": the new screen (header and its menu, the docked Layers and Inspector, the
-    /// toolbar, the view between them), Quick add, the wheel, the themes, the keymap, the Keys window
+    /// Scenario "editor_ui": the new screen (the header islands and the menu, the floating Layers and
+    /// Inspector cards, the toolbar, the full-screen view under them), the 3D tools (views, orbit,
+    /// orthographic, gizmo, isolate), Quick add, the wheel, the themes, the keymap, the Keys window
     /// and the command search, hide and lock, the Figma-like edits (align, spread, mirror, copy in a
     /// row, Shift + arrow) and the snapping settings. Keyboard and pad where both exist.
     /// </summary>
@@ -34,6 +35,8 @@ namespace ValheimTomrer.Dev
             }
 
             yield return RedesignLayout();
+            yield return RedesignIslands();
+            yield return RedesignSpace(document);
             yield return RedesignQuickAdd();
             yield return RedesignWheel();
             yield return RedesignTheme(document);
@@ -46,9 +49,9 @@ namespace ValheimTomrer.Dev
         }
 
         /// <summary>
-        /// The window is the screen; the view sits between the two docked panels and grows when they fold
-        /// (Alt+1, Alt+2); Ctrl+\ and L2 + L3 hide everything but the view; the header's menu opens and
-        /// Esc closes it; the Inspector's tabs switch; the toolbar shows the settings.
+        /// The window is the screen and the view is all of it, whatever the islands do (Alt+1, Alt+2 put
+        /// the cards away); Ctrl+\ and L2 + L3 hide everything but the view; the header's menu opens
+        /// and Esc closes it; the Inspector's tabs switch; the toolbar shows the settings.
         /// </summary>
         private static IEnumerator RedesignLayout()
         {
@@ -59,17 +62,28 @@ namespace ValheimTomrer.Dev
             var view = EditorWindow.ViewportHost.rect;
             Check(Mathf.Abs(root.width - Screen.width / EditorWindow.Root.lossyScale.x) < 2f,
                 $"the window is exactly the screen: {root.width:0} units, screen {Screen.width} px");
-            Check(Mathf.Abs(view.width - (root.width - EditorWindow.LeftWidth - EditorWindow.RightWidth)) < 1f
-                && Mathf.Abs(view.height - (root.height - EditorWindow.HeaderHeight)) < 1f,
-                $"the view fills the room between the panels and under the header: {view.width:0}x{view.height:0}");
+            Check(Mathf.Abs(view.width - root.width) < 1f && Mathf.Abs(view.height - root.height) < 1f,
+                $"the view is the whole screen, islands or not: {view.width:0}x{view.height:0}");
 
             Bindings.Press(KeyCode.Alpha1, KeyMods.Alt);
             Bindings.Press(KeyCode.Alpha2, KeyMods.Alt);
             yield return null;
             Check(!EditorWindow.LayersOpen && !EditorWindow.InspectorOpen
                 && EditorWindow.LeftDock.anchoredPosition.x < -1000f && EditorWindow.RightDock.anchoredPosition.x > 1000f
-                && Mathf.Abs(EditorWindow.ViewportHost.rect.width - root.width) < 1f,
-                $"Alt+1 and Alt+2 fold both panels away and the view takes the whole width ({EditorWindow.ViewportHost.rect.width:0})");
+                && Mathf.Abs(EditorWindow.ViewportHost.rect.width - root.width) < 1f
+                && Mathf.Abs(EditorWindow.ViewportHost.rect.height - root.height) < 1f,
+                $"Alt+1 and Alt+2 put both cards away and the view stays the whole screen ({EditorWindow.ViewportHost.rect.width:0}x{EditorWindow.ViewportHost.rect.height:0})");
+            Check(EditorWindow.LayersTab.gameObject.activeSelf && EditorWindow.InspectorTab.gameObject.activeSelf,
+                "a small tab on each edge stands where a card was");
+            EditorWindow.LayersTab.GetComponentInChildren<Button>().onClick.Invoke();
+            EditorWindow.InspectorTab.GetComponentInChildren<Button>().onClick.Invoke();
+            yield return null;
+            Check(EditorWindow.LayersOpen && EditorWindow.InspectorOpen && !EditorWindow.LayersTab.gameObject.activeSelf,
+                "a click on a tab brings its card back");
+            LayersPanel.HideButton.onClick.Invoke();
+            Inspector.HideButton.onClick.Invoke();
+            yield return null;
+            Check(!EditorWindow.LayersOpen && !EditorWindow.InspectorOpen, "the Hide button of each card puts it away");
             Bindings.Press(KeyCode.Alpha1, KeyMods.Alt);
             Bindings.Press(KeyCode.Alpha2, KeyMods.Alt);
             yield return null;
@@ -77,10 +91,11 @@ namespace ValheimTomrer.Dev
 
             EditorState.Select(new int[0]);
             Bindings.Press(KeyCode.Backslash, KeyMods.Ctrl);
-            yield return null;
+            yield return Frames(2);
             Check(EditorWindow.UiHidden && EditorWindow.Header.anchoredPosition.y > 1000f && !EditorWindow.LeftShown
-                && !EditorWindow.RightShown && Mathf.Abs(EditorWindow.ViewportHost.rect.height - root.height) < 1f,
-                "Ctrl+\\ hides the header, both panels and the toolbar, and the view takes the whole screen");
+                && !EditorWindow.RightShown && ViewGizmo.Root.anchoredPosition.y > 1000f
+                && Mathf.Abs(EditorWindow.ViewportHost.rect.height - root.height) < 1f,
+                "Ctrl+\\ hides the header, both cards, the toolbar and the gizmo, and the view stays the whole screen");
             Check(Bindings.Cancel() && !EditorWindow.UiHidden && ModUi.Open, "Esc brings the interface back and keeps the window open");
 
             _pad = new PadState();
@@ -126,6 +141,199 @@ namespace ValheimTomrer.Dev
                 $"Layers groups the pieces: {LayersPanel.GroupCount} groups, {LayersPanel.RowCount} rows");
             Check(Toolbar.GridText.StartsWith("Grid"), $"the toolbar shows the grid: '{Toolbar.GridText}'");
             yield return Screenshot("editor-ui-1-window");
+        }
+
+        /// <summary>
+        /// The islands: opaque, inside the screen, none over another, every word fits its button, the
+        /// lines over the view stay inside the room the islands leave, and the toolbar was not under the picture.
+        /// </summary>
+        private static IEnumerator RedesignIslands()
+        {
+            EditorWindow.SetLayers(true);
+            EditorWindow.SetInspector(true);
+            yield return Frames(3);
+
+            var screen = new Rect(0f, 0f, Screen.width, Screen.height);
+            var islands = EditorWindow.Header.GetComponentsInChildren<RectTransform>(false)
+                .Where(r => r.name == "File" || r.name == "Modes" || r.name == "Actions")
+                .Concat(new[] { EditorWindow.LeftDock, EditorWindow.RightDock })
+                .ToList();
+            Check(islands.Count == 5, $"the header has three islands and there are two cards: {islands.Count} found");
+
+            var outside = islands.Where(r => !Contains(screen, ScreenBox(r))).Select(r => r.name).ToList();
+            Check(outside.Count == 0, $"every island is inside the screen: {(outside.Count == 0 ? "yes" : string.Join(", ", outside))}");
+
+            var overlaps = new System.Collections.Generic.List<string>();
+            for (var a = 0; a < islands.Count; a++)
+            {
+                for (var b = a + 1; b < islands.Count; b++)
+                {
+                    if (ScreenBox(islands[a]).Overlaps(ScreenBox(islands[b])))
+                    {
+                        overlaps.Add(islands[a].name + "/" + islands[b].name);
+                    }
+                }
+            }
+
+            Check(overlaps.Count == 0, $"no island is over another: {(overlaps.Count == 0 ? "none" : string.Join(", ", overlaps))}");
+
+            var clear = islands.Select(r => r.GetComponent<Image>()).Where(i => i != null && i.color.a < 0.999f).Select(i => i.name).ToList();
+            Check(clear.Count == 0, $"the islands are opaque: {(clear.Count == 0 ? "all" : string.Join(", ", clear))}");
+
+            var toolbar = ScreenBox(Toolbar.Root);
+            Check(!islands.Any(r => ScreenBox(r).Overlaps(toolbar)) && Contains(screen, toolbar),
+                "the toolbar is on the screen and clear of every island");
+            Check(Toolbar.Root.GetComponentInParent<Canvas>() != null && Toolbar.Root.parent.parent == EditorWindow.Root
+                && Toolbar.Root.parent.GetSiblingIndex() > EditorWindow.ViewportHost.GetSiblingIndex(),
+                "the toolbar is drawn over the picture, not under it");
+
+            var cut = new System.Collections.Generic.List<string>();
+            foreach (var host in new[] { EditorWindow.Header, Toolbar.Root })
+            {
+                foreach (var label in host.GetComponentsInChildren<TMPro.TextMeshProUGUI>(false))
+                {
+                    if (label.preferredWidth > label.rectTransform.rect.width + 1.5f)
+                    {
+                        cut.Add($"'{label.text}' {label.preferredWidth:0}>{label.rectTransform.rect.width:0}");
+                    }
+                }
+            }
+
+            Check(cut.Count == 0, $"every word in the header and the toolbar fits: {(cut.Count == 0 ? "yes" : string.Join("; ", cut))}");
+
+            var view = ScreenBox(EditorWindow.ViewportHost);
+            Check(Mathf.Abs(view.width - Screen.width) < 2f && Mathf.Abs(view.height - Screen.height) < 2f,
+                "the view box is the screen box");
+
+            // What is drawn over the view stays in the room between the cards.
+            var status = ScreenBox(EditorWindow.StatusText.rectTransform);
+            Check(status.xMax <= ScreenBox(EditorWindow.RightDock).xMin + 1f || status.yMax < ScreenBox(EditorWindow.RightDock).yMin,
+                "the status line does not run under the Inspector");
+
+            var again = ScreenBox(EditorWindow.LeftDock);
+            EditorWindow.ApplyLayout();
+            EditorWindow.ApplyLayout();
+            Check(ScreenBox(EditorWindow.LeftDock) == again, "laying out twice moves nothing");
+            yield return Screenshot("editor-ui-islands");
+        }
+
+        private static bool Contains(Rect outer, Rect inner)
+        {
+            return inner.xMin >= outer.xMin - 1f && inner.yMin >= outer.yMin - 1f
+                && inner.xMax <= outer.xMax + 1f && inner.yMax <= outer.yMax + 1f;
+        }
+
+        /// <summary>
+        /// Working in the 3D space: the number keys and the gizmo snap to a side, 5 switches to the flat
+        /// view, an orbit keeps its point where it is, the selection's size shows, Isolate hides the rest.
+        /// The same on the pad: L2 + D-pad, L1 + the right stick.
+        /// </summary>
+        private static IEnumerator RedesignSpace(BlueprintDocument document)
+        {
+            var camera = ValheimTomrer.Editor.Ui.ViewportHost.Camera;
+            Check(camera != null, "the view has a camera");
+            if (camera == null)
+            {
+                yield break;
+            }
+
+            EditorState.Select(new[] { document.Pieces[0].Id });
+            yield return Frames(2);
+            var size = EditorWindow.StatusText.text;
+            Check(size.Contains("selected,") && size.Contains("×") && size.EndsWith(" m"),
+                $"the status shows how big the selection is: '{size}'");
+
+            Bindings.Press(KeyCode.Alpha3, KeyMods.None);
+            yield return Frames(2);
+            Check(camera.CurrentView == ValheimTomrer.Editor.View.ViewPreset.Top && camera.Forward.y < -0.999f,
+                $"3 looks straight down: {camera.CurrentView}, forward y {camera.Forward.y:0.000}");
+            Bindings.Press(KeyCode.Alpha1, KeyMods.None);
+            yield return Frames(2);
+            Check(camera.CurrentView == ValheimTomrer.Editor.View.ViewPreset.Front && camera.Forward.z < -0.999f,
+                $"1 looks from the front, along -Z: forward z {camera.Forward.z:0.000}");
+            Check(ViewGizmo.LabelText == "Front", $"the gizmo names the side: '{ViewGizmo.LabelText}'");
+            Bindings.Press(KeyCode.Alpha2, KeyMods.None);
+            yield return Frames(2);
+            Check(camera.CurrentView == ValheimTomrer.Editor.View.ViewPreset.Right && camera.Forward.x < -0.999f,
+                $"2 looks from the right, along -X: forward x {camera.Forward.x:0.000}");
+            Bindings.Press(KeyCode.Alpha1, KeyMods.Ctrl);
+            yield return Frames(2);
+            Check(camera.CurrentView == ValheimTomrer.Editor.View.ViewPreset.Back && camera.Forward.z > 0.999f, "Ctrl+1 looks from the back");
+
+            ViewGizmo.Click(4);
+            yield return Frames(2);
+            Check(camera.CurrentView == ValheimTomrer.Editor.View.ViewPreset.Front, "a click on the gizmo's Z disc looks from the front");
+            Check(ViewGizmo.DiscCount == 6, "the gizmo has six discs");
+
+            var before = camera.Pivot;
+            Bindings.Press(KeyCode.Alpha5, KeyMods.None);
+            yield return Frames(2);
+            var preview = ValheimTomrer.Editor.Ui.ViewportHost.Preview.Unity;
+            Check(camera.Orthographic && preview.orthographic && ViewGizmo.ModeText == "Orthographic",
+                $"5 switches to the flat view: ortho {preview.orthographic}, button '{ViewGizmo.ModeText}'");
+            Check((camera.Pivot - before).magnitude < 0.01f, "and the camera keeps looking at the same point");
+            var seen = preview.orthographicSize;
+            camera.Zoom(-300f, new Vector2(0.5f, 0.5f));
+            Check(preview.orthographicSize < seen && (camera.Pivot - before).magnitude < 0.01f,
+                $"the wheel zooms the flat view by its size: {seen:0.00} to {preview.orthographicSize:0.00}");
+            Bindings.Press(KeyCode.Alpha5, KeyMods.None);
+            yield return Frames(2);
+            Check(!camera.Orthographic && !preview.orthographic, "5 again is perspective");
+
+            // An orbit turns round a point and leaves it where it shows.
+            var point = ValheimTomrer.Editor.Ui.ViewportHost.OrbitPoint();
+            var distance = (camera.Position - point).magnitude;
+            var yaw = camera.Yaw;
+            camera.Orbit(point, 35f, 10f);
+            Check(Mathf.Abs((camera.Position - point).magnitude - distance) < 0.01f && Mathf.Abs(Mathf.DeltaAngle(camera.Yaw, yaw) + 35f) < 0.01f,
+                $"an orbit keeps the distance to its point ({distance:0.00} m) and turns by 35 degrees");
+            camera.OrbitDrag(point, new Vector2(40f, 0f), 800f);
+            Check(Mathf.Abs((camera.Position - point).magnitude - distance) < 0.01f, "a drag with Alt held orbits the same way");
+
+            // Isolate: only the selection stays.
+            var count = document.Pieces.Count;
+            EditorState.Select(new[] { document.Pieces[0].Id });
+            Bindings.Press(KeyCode.I, KeyMods.None);
+            yield return Frames(2);
+            Check(EditorState.HiddenCount == count - 1 && EditorState.SelectionCount == 1,
+                $"I shows only the selection: {EditorState.HiddenCount} hidden of {count}");
+            Bindings.Press(KeyCode.I, KeyMods.None);
+            yield return Frames(2);
+            Check(EditorState.HiddenCount == 0, "I again brings everything back");
+
+            // The pad: L2 + D-pad cycles the sides, up is the flat view, L1 + the right stick orbits.
+            _pad = new PadState();
+            PadReader.Fake = _pad;
+            yield return Frames(3);
+            EditorState.CancelMode();
+            var canUndo = document.CanUndo;
+            var canRedo = document.CanRedo;
+            ValheimTomrer.Editor.Ui.ViewportHost.ShowView(ValheimTomrer.Editor.View.ViewPreset.Front);
+            yield return Tap(PadButton.L2, PadButton.Right);
+            Check(camera.CurrentView == ValheimTomrer.Editor.View.ViewPreset.Right, $"L2 + D-pad right: the next side, {camera.CurrentView}");
+            yield return Tap(PadButton.L2, PadButton.Left);
+            Check(camera.CurrentView == ValheimTomrer.Editor.View.ViewPreset.Front, $"L2 + D-pad left: back, {camera.CurrentView}");
+            yield return Tap(PadButton.L2, PadButton.Up);
+            Check(camera.Orthographic, "L2 + D-pad up: the flat view");
+            yield return Tap(PadButton.L2, PadButton.Up);
+            Check(!camera.Orthographic, "and back to perspective");
+            Check(document.CanUndo == canUndo && document.CanRedo == canRedo, "L2 + D-pad is not undo or redo");
+
+            var pad = camera.Yaw;
+            var aim = ValheimTomrer.Editor.Ui.ViewportHost.OrbitPoint();
+            var reach = (camera.Position - aim).magnitude;
+            _pad.Down.Add(PadButton.L1);
+            _pad.Rs = new Vector2(1f, 0f);
+            yield return Wait(0.4f);
+            _pad.Rs = Vector2.zero;
+            _pad.Down.Remove(PadButton.L1);
+            yield return Frames(2);
+            Check(Mathf.Abs(Mathf.DeltaAngle(camera.Yaw, pad)) > 5f && Mathf.Abs((camera.Position - aim).magnitude - reach) < 0.05f,
+                $"L1 + the right stick orbits round the selection: turned {Mathf.DeltaAngle(camera.Yaw, pad):0} degrees, distance kept");
+            PadReader.Fake = null;
+            _pad = null;
+            yield return Frames(2);
+            yield return Screenshot("editor-ui-space");
         }
 
         /// <summary>Tab opens Quick add with the search box typing; a pick goes in hand, closes it and heads Recent; stars filter.</summary>

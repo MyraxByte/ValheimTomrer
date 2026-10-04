@@ -31,7 +31,7 @@ namespace ValheimTomrer.Editor.Ui
     /// </summary>
     internal static class ViewportHost
     {
-        private const float Inset = 6f;          // lets the sunken frame show around the picture
+        private const float Inset = 0f;          // the picture fills the screen; the islands float over it
         private const float BoxSelectThreshold = 4f;
         private const float MessageSeconds = 6f;
 
@@ -60,6 +60,14 @@ namespace ValheimTomrer.Editor.Ui
         private static SelectionBoxes _boxes;
         private static IEnumerator _fill;
         private static float _panDepth = 10f;
+        private static int _boxVersion = -1;
+        private static int _boxRevision = -1;
+        private static Bounds? _selectionBox;
+
+        private static readonly ViewPreset[] ViewCycle =
+        {
+            ViewPreset.Front, ViewPreset.Right, ViewPreset.Back, ViewPreset.Left, ViewPreset.Top, ViewPreset.Iso,
+        };
 
         private static MovingSet _ghostSet;
         private static Vector2 _aimAt = new Vector2(0.5f, 0.5f);
@@ -364,6 +372,61 @@ namespace ValheimTomrer.Editor.Ui
             _preview.Render();
         }
 
+        /// <summary>The box round the selection, or null. Kept until the selection or the blueprint changes.</summary>
+        public static Bounds? SelectionBox()
+        {
+            var document = EditorState.Document;
+            var revision = document != null ? document.Revision : -1;
+            if (_boxVersion != EditorState.Version || _boxRevision != revision)
+            {
+                _boxVersion = EditorState.Version;
+                _boxRevision = revision;
+                var selected = EditorState.SelectedPieces();
+                _selectionBox = selected.Count > 0 ? EditorState.BoxOf(selected) : null;
+            }
+
+            return _selectionBox;
+        }
+
+        /// <summary>What an orbit turns round: the middle of the selection, else the point the camera looks at.</summary>
+        public static Vector3 OrbitPoint()
+        {
+            var box = SelectionBox();
+            return box.HasValue ? box.Value.center : _camera.Pivot;
+        }
+
+        /// <summary>Snaps the view to a side of the blueprint (1 to 5 and the gizmo's discs).</summary>
+        public static void ShowView(ViewPreset view)
+        {
+            if (_camera != null)
+            {
+                _camera.SetView(view);
+            }
+        }
+
+        /// <summary>The next (1) or the previous (-1) look in the pad's cycle: Front, Right, Back, Left, Top, Corner.</summary>
+        public static void CycleView(int direction)
+        {
+            if (_camera == null)
+            {
+                return;
+            }
+
+            var now = _camera.CurrentView;
+            var at = now.HasValue ? System.Array.IndexOf(ViewCycle, now.Value) : -1;
+            var next = at < 0 ? (direction > 0 ? 0 : ViewCycle.Length - 1) : (at + direction + ViewCycle.Length) % ViewCycle.Length;
+            _camera.SetView(ViewCycle[next]);
+        }
+
+        /// <summary>Perspective and orthographic, back and forth.</summary>
+        public static void ToggleOrtho()
+        {
+            if (_camera != null)
+            {
+                _camera.SetOrthographic(!_camera.Orthographic);
+            }
+        }
+
         /// <summary>F: looks at the selection, or at the whole blueprint when nothing is selected.</summary>
         public static void Frame()
         {
@@ -444,6 +507,7 @@ namespace ValheimTomrer.Editor.Ui
             _scene = null;
             _preview = null;
             _raycast = null;
+            _boxVersion = -1;
             _camera = null;
             HideSelectRect();
             if (_image != null)
@@ -656,7 +720,7 @@ namespace ValheimTomrer.Editor.Ui
                         : "   (support: " + SupportWords(held, entry) + ")";
                 }
                 _aimName.rectTransform.anchoredPosition =
-                    new Vector2(0f, Captured || PadAim ? -18f : -80f);
+                    new Vector2(EditorWindow.FreeShift, Captured || PadAim ? -18f : -80f);
             }
 
             if (_fill == null)
@@ -843,6 +907,12 @@ namespace ValheimTomrer.Editor.Ui
             if (EditorState.SelectionCount > 0)
             {
                 line += $"   |   {EditorState.SelectionCount} selected";
+                var box = SelectionBox();
+                if (box.HasValue)
+                {
+                    // How big it is: the selection's box, in metres.
+                    line += $", {box.Value.size.x:0.##} × {box.Value.size.y:0.##} × {box.Value.size.z:0.##} m";
+                }
             }
 
             if (EditorState.Message != null && Time.unscaledTime - EditorState.MessageAt < MessageSeconds)
@@ -1132,6 +1202,13 @@ namespace ValheimTomrer.Editor.Ui
                 return;
             }
 
+            // Alt and the right or middle button: round the selection (or the pivot), not in place.
+            if (Key(KeyCode.LeftAlt) + Key(KeyCode.RightAlt) > 0f)
+            {
+                _camera.OrbitDrag(OrbitPoint(), data.delta, PaneHeight());
+                return;
+            }
+
             var pan = data.button == PointerEventData.InputButton.Middle
                 || Key(KeyCode.LeftShift) + Key(KeyCode.RightShift) > 0f;
             var height = PaneHeight();
@@ -1215,16 +1292,12 @@ namespace ValheimTomrer.Editor.Ui
             Centre(_aimName.rectTransform, new Vector2(0f, -80f), new Vector2(420f, 22f));
 
             _hints = HintBar.Create("Hints", _image.rectTransform);
-            // Above the floating toolbar, which has the bottom edge.
-            Strip(_hints.Rect, false, EditorWindow.BottomInset, HintBar.Height);
 
             _placeLine = UiBuild.OverPicture(
                 UiBuild.Label("Placing", _image.rectTransform, "", 17f, TextAlignmentOptions.TopLeft, UiTheme.Accent));
-            Strip(_placeLine.rectTransform, true, EditorWindow.TopInset + 4f, 24f);
 
             _stateLine = UiBuild.OverPicture(
                 UiBuild.Label("PlaceState", _image.rectTransform, "", 14f, TextAlignmentOptions.TopLeft, UiTheme.TextDim));
-            Strip(_stateLine.rectTransform, true, EditorWindow.TopInset + 30f, 20f);
             _placeLine.gameObject.SetActive(false);
             _stateLine.gameObject.SetActive(false);
 
@@ -1234,6 +1307,28 @@ namespace ValheimTomrer.Editor.Ui
             _selectRect.rectTransform.anchorMin = _selectRect.rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
             _selectRect.rectTransform.pivot = Vector2.zero;
             _selectRect.gameObject.SetActive(false);
+            Relayout();
+        }
+
+        /// <summary>
+        /// Puts the lines drawn over the picture inside the room the islands leave: the hints above the
+        /// toolbar, the placing lines under the header, the aimed piece's name in the middle of that
+        /// room. The picture itself never moves or changes size. Called when an island moves.
+        /// </summary>
+        public static void Relayout()
+        {
+            if (_image == null || _hints == null)
+            {
+                return;
+            }
+
+            var left = EditorWindow.FreeLeft;
+            var right = EditorWindow.FreeRight;
+            Strip(_hints.Rect, false, EditorWindow.FreeBottom, HintBar.Height, left, right);
+            var tab = EditorWindow.TabRoom(false);
+            Strip(_placeLine.rectTransform, true, EditorWindow.FreeTop + 2f + tab, 24f, left, right);
+            Strip(_stateLine.rectTransform, true, EditorWindow.FreeTop + 28f + tab, 20f, left, right);
+            _aimName.rectTransform.anchoredPosition = new Vector2(EditorWindow.FreeShift, -80f);
         }
 
         /// <summary>A label pinned to the middle of the pane.</summary>
@@ -1246,7 +1341,7 @@ namespace ValheimTomrer.Editor.Ui
         }
 
         /// <summary>A line of text across the pane, a set distance from its top or its bottom.</summary>
-        private static void Strip(RectTransform rect, bool fromTop, float distance, float height)
+        private static void Strip(RectTransform rect, bool fromTop, float distance, float height, float left, float right)
         {
             var y = fromTop ? 1f : 0f;
             rect.anchorMin = new Vector2(0f, y);
@@ -1254,13 +1349,13 @@ namespace ValheimTomrer.Editor.Ui
             rect.pivot = new Vector2(0.5f, y);
             if (fromTop)
             {
-                rect.offsetMin = new Vector2(12f, -distance - height);
-                rect.offsetMax = new Vector2(-12f, -distance);
+                rect.offsetMin = new Vector2(left, -distance - height);
+                rect.offsetMax = new Vector2(-right, -distance);
             }
             else
             {
-                rect.offsetMin = new Vector2(12f, distance);
-                rect.offsetMax = new Vector2(-12f, distance + height);
+                rect.offsetMin = new Vector2(left, distance);
+                rect.offsetMax = new Vector2(-right, distance + height);
             }
         }
 

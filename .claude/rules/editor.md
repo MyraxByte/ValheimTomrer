@@ -62,10 +62,22 @@ F7 opens a window with a 3D view, the piece list and the game's snapping.
 - **The materials list** in the editor: `MaterialSources.Around` at most once a second while the
   window is open, never while it is closed.
 - **The screen** (`EditorWindow`): a root canvas of its own, never a child of the HUD (the HUD's
-  canvas is larger than the screen and cut the old window off). Header on top, Layers docked left,
-  the Inspector docked right, the view between them. A folded panel is slid off screen
-  (`EditorWindow.ApplyLayout`), never switched off: panels measure text while they build and tick,
-  and TextMeshPro measures nothing in an inactive object. The walk skips a folded panel.
+  canvas is larger than the screen and cut the old window off). The 3D view is the whole screen and
+  never changes size; the interface is islands over it (opaque rounded cards with a margin and a
+  shadow, `UiBuild.Card`): three header islands, the Layers card, the Inspector card, the toolbar.
+  A card that is put away slides off screen (`EditorWindow.ApplyLayout`, from offsets only, so it
+  can run twice) and an edge tab brings it back; it is never switched off, because panels measure
+  text while they build and tick and TextMeshPro measures nothing in an inactive object. The same
+  reason: the root is switched on before it is built. The walk skips a put-away card.
+- **Text over the view goes in the free room** (`EditorWindow.FreeLeft/FreeRight/FreeTop/FreeBottom`),
+  set by `ViewportHost.Relayout`, never against the screen's edge. Anything that sits over the picture
+  hangs on the root after the view, never inside it: the view's picture draws over its own children.
+- **Button widths come from the words at layout time** (`LabelWidth`), never from a
+  `GetPreferredValues` call while building: that measures 0 in an inactive object and the label clips.
+- **The 3D tools**: view presets (`EditorCamera.SetView`, keys 1 to 5, the gizmo `ViewGizmo`), orbit
+  (`EditorCamera.Orbit`, Alt + right drag, pad L1 + right stick), orthographic (`ToggleOrtho`), Isolate
+  (`EditorState.IsolateSelection`). The pad twins are L2 + D-pad. A new camera tool needs all three:
+  a keymap act, a pad twin and a line in the help.
 - **Inspector tabs** slide too (`Inspector.SetTab`); only Quick add switches its popup off, and it
   builds its tiles and chips in `Open`, after switching on.
 - **Quick add** (`QuickAdd`) is the only piece picker: Tab, the pad's cross and the Add mode open it.

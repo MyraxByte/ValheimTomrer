@@ -2,6 +2,18 @@ using UnityEngine;
 
 namespace ValheimTomrer.Editor.View
 {
+    /// <summary>The looks the view can snap to: the six sides of the blueprint and a corner.</summary>
+    internal enum ViewPreset
+    {
+        Front,
+        Back,
+        Right,
+        Left,
+        Top,
+        Bottom,
+        Iso,
+    }
+
     /// <summary>
     /// Where the pane looks from. One camera: it always flies free, like a player in fly mode.
     /// Which region has the mouse is not a camera setting, it is <see cref="Ui.ViewportHost.Captured"/>.
@@ -29,6 +41,7 @@ namespace ValheimTomrer.Editor.View
         private float _pitch;    // up is positive
         private float _dist = 10f;
         private float _near = 0.05f;
+        private bool _ortho;
 
         public EditorCamera(PreviewCamera camera)
         {
@@ -44,6 +57,9 @@ namespace ValheimTomrer.Editor.View
         public float Yaw => _yaw;
 
         public float FieldOfView => _camera.Unity.fieldOfView;
+
+        /// <summary>No perspective: parallel lines stay parallel, so a side view can be measured by eye.</summary>
+        public bool Orthographic => _ortho;
 
         /// <summary>How far ahead the point the camera turns, pans and zooms around sits.</summary>
         public float Distance => _dist;
@@ -93,6 +109,7 @@ namespace ValheimTomrer.Editor.View
             _pitch = from._pitch;
             _dist = from._dist;
             _near = from._near;
+            _ortho = from._ortho;
             _camera.SetNearPlane(_near);
             Apply();
         }
@@ -113,6 +130,147 @@ namespace ValheimTomrer.Editor.View
             }
 
             Apply();
+        }
+
+        /// <summary>Perspective or orthographic, keeping the pivot and how much of the scene is seen.</summary>
+        public void SetOrthographic(bool on)
+        {
+            _ortho = on;
+            Apply();
+        }
+
+        /// <summary>
+        /// Looks at the pivot from one side of the blueprint, keeping the distance and the pivot, like the
+        /// number keys of a 3D tool do. Top and Bottom keep the way the view is turned, rounded to a
+        /// quarter, so the grid stays square on the screen.
+        /// </summary>
+        public void SetView(ViewPreset view)
+        {
+            var pivot = Pivot;
+            switch (view)
+            {
+                case ViewPreset.Front:
+                    _yaw = 180f;
+                    _pitch = 0f;
+                    break;
+                case ViewPreset.Back:
+                    _yaw = 0f;
+                    _pitch = 0f;
+                    break;
+                case ViewPreset.Right:
+                    _yaw = -90f;
+                    _pitch = 0f;
+                    break;
+                case ViewPreset.Left:
+                    _yaw = 90f;
+                    _pitch = 0f;
+                    break;
+                case ViewPreset.Top:
+                    _yaw = Mathf.Round(_yaw / 90f) * 90f;
+                    _pitch = -90f;
+                    break;
+                case ViewPreset.Bottom:
+                    _yaw = Mathf.Round(_yaw / 90f) * 90f;
+                    _pitch = 90f;
+                    break;
+                default:
+                    // The corner the Frame key looks from.
+                    var corner = -new Vector3(0.28f, 0.5f, 1f).normalized;
+                    _yaw = Mathf.Atan2(corner.x, corner.z) * Mathf.Rad2Deg;
+                    _pitch = Mathf.Asin(corner.y) * Mathf.Rad2Deg;
+                    break;
+            }
+
+            _pos = pivot - (Forward * _dist);
+            Apply();
+        }
+
+        /// <summary>
+        /// The side the view looks from now, or null when it is not square on to one. The gizmo and the
+        /// status show it.
+        /// </summary>
+        public ViewPreset? CurrentView
+        {
+            get
+            {
+                const float Tolerance = 0.6f;
+                if (_pitch <= -90f + Tolerance)
+                {
+                    return ViewPreset.Top;
+                }
+
+                if (_pitch >= 90f - Tolerance)
+                {
+                    return ViewPreset.Bottom;
+                }
+
+                if (Mathf.Abs(_pitch) > Tolerance)
+                {
+                    return null;
+                }
+
+                var yaw = Mathf.Repeat(_yaw, 360f);
+                if (Mathf.Abs(Mathf.DeltaAngle(yaw, 180f)) < Tolerance)
+                {
+                    return ViewPreset.Front;
+                }
+
+                if (Mathf.Abs(Mathf.DeltaAngle(yaw, 0f)) < Tolerance)
+                {
+                    return ViewPreset.Back;
+                }
+
+                if (Mathf.Abs(Mathf.DeltaAngle(yaw, 270f)) < Tolerance)
+                {
+                    return ViewPreset.Right;
+                }
+
+                return Mathf.Abs(Mathf.DeltaAngle(yaw, 90f)) < Tolerance ? ViewPreset.Left : (ViewPreset?)null;
+            }
+        }
+
+        /// <summary>
+        /// Turns the camera round a point (the selection's middle, or the pivot), keeping that point
+        /// where it shows on the screen. Right and up are in degrees, like <see cref="Turn"/>: dragging
+        /// right turns the scene to the right.
+        /// </summary>
+        public void Orbit(Vector3 point, float right, float up)
+        {
+            var nextPitch = Limit(_pitch, up, PitchMin, PitchMax);
+            var yawRot = Quaternion.AngleAxis(right, Vector3.up);
+            var pitchRot = Quaternion.AngleAxis(-(nextPitch - _pitch), yawRot * Right);
+            _pos = point + (pitchRot * (yawRot * (_pos - point)));
+            _yaw += right;
+            _pitch = nextPitch;
+            if (!_ortho)
+            {
+                // In perspective the point is what the camera turns round and zooms toward. Without it
+                // the distance is only the size of the box seen, which must not jump.
+                _dist = Mathf.Max(0.05f, Vector3.Dot(point - _pos, Forward));
+            }
+
+            Apply();
+        }
+
+        /// <summary>A mouse drag with Alt held orbits: a drag over the pane's whole height is a full circle.</summary>
+        public void OrbitDrag(Vector3 point, Vector2 pixels, float viewHeight)
+        {
+            var k = 360f / Mathf.Max(1f, viewHeight);
+            Orbit(point, pixels.x * k, pixels.y * k);
+        }
+
+        /// <summary>The pad's right stick with L1 held: the same turn speed as looking, but round a point.</summary>
+        public void OrbitPad(Vector3 point, Vector2 stick, float dt)
+        {
+            if (stick == Vector2.zero)
+            {
+                return;
+            }
+
+            var step = PadTurn * PlayerController.m_gamepadSens * dt;
+            Orbit(point,
+                stick.x * step * (PlayerController.m_invertCameraX ? -1f : 1f),
+                stick.y * step * (PlayerController.m_invertCameraY ? -1f : 1f));
         }
 
         /// <summary>Turns in place. Right and up are positive, in degrees.</summary>
@@ -150,7 +308,8 @@ namespace ValheimTomrer.Editor.View
         /// <summary>Moves in the view plane by pane pixels, so the point <paramref name="depth"/> away follows the mouse.</summary>
         public void Pan(Vector2 pixels, float depth, float viewHeight)
         {
-            var k = 2f * depth * Mathf.Tan(_camera.Unity.fieldOfView * 0.5f * Mathf.Deg2Rad) / Mathf.Max(1f, viewHeight);
+            // Without perspective every depth scales the same: the pivot's.
+            var k = 2f * (_ortho ? _dist : depth) * Mathf.Tan(_camera.Unity.fieldOfView * 0.5f * Mathf.Deg2Rad) / Mathf.Max(1f, viewHeight);
             _pos += Right * (-pixels.x * k) + Up * (-pixels.y * k);
             Apply();
         }
@@ -171,6 +330,16 @@ namespace ValheimTomrer.Editor.View
 
             var scale = Mathf.Pow(0.95f, Mathf.Abs(delta) * 0.01f);
             var next = delta < 0f ? _dist * scale : _dist / scale;
+            if (_ortho)
+            {
+                // Zooming is the size of the box the camera sees: the camera stays on its pivot's line.
+                var pivot = Pivot;
+                _dist = next;
+                _pos = pivot - (Forward * _dist);
+                Apply();
+                return;
+            }
+
             _pos += LocalDirection(viewport) * (_dist - next);
             _dist = next;
             Apply();
@@ -230,6 +399,15 @@ namespace ValheimTomrer.Editor.View
             {
                 transform.localPosition = _pos;
                 transform.localRotation = Quaternion.Euler(-_pitch, _yaw, 0f);
+            }
+
+            var unity = _camera.Unity;
+            if (unity != null)
+            {
+                unity.orthographic = _ortho;
+
+                // The box the camera sees is the one the perspective camera shows at the pivot.
+                unity.orthographicSize = Mathf.Max(0.05f, _dist * Mathf.Tan(unity.fieldOfView * 0.5f * Mathf.Deg2Rad));
             }
         }
 

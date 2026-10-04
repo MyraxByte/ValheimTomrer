@@ -439,7 +439,7 @@ namespace ValheimTomrer.Editor.Ui
             _card = card.rectTransform;
             _card.anchorMin = _card.anchorMax = new Vector2(0.5f, 1f);
             _card.pivot = new Vector2(0.5f, 1f);
-            _card.anchoredPosition = new Vector2(0f, -(EditorWindow.HeaderHeight + 56f));
+            _card.anchoredPosition = new Vector2(0f, -(EditorWindow.TopBand + 36f));
             _card.sizeDelta = new Vector2(760f, 560f);
             card.gameObject.AddComponent<ClickEvents>();   // a click on the card itself stays inside
 

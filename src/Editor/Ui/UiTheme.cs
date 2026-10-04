@@ -70,7 +70,10 @@ namespace ValheimTomrer.Editor.Ui
         public static Color Backdrop => InGame ? new Color(0f, 0f, 0f, 0.65f) : new Color(0f, 0f, 0f, Dark ? 0.55f : 0.35f);
 
         /// <summary>A floating card: the Layers and Inspector cards, the top bar, dialogs, popups, toasts.</summary>
-        public static Color PanelFloat => Dark ? Alpha(Hex(0x1C1D21), 0.97f) : Alpha(Hex(0xFFFFFF), 0.97f);
+        public static Color PanelFloat => Dark ? Hex(0x1C1D21) : Hex(0xFFFFFF);
+
+        /// <summary>The soft shadow under an island, so it reads as floating over the view.</summary>
+        public static Color IslandShadow => new Color(0f, 0f, 0f, Dark ? 0.45f : 0.22f);
 
         /// <summary>The same as <see cref="PanelFloat"/>. Kept for the code that still says interior.</summary>
         public static Color PanelInterior => PanelFloat;
@@ -165,6 +168,12 @@ namespace ValheimTomrer.Editor.Ui
         public static Sprite ItemBackground { get; private set; }
         public static Sprite Sunken { get; private set; }
 
+        /// <summary>A white rounded square for the islands (radius 12), drawn sliced. Made at runtime, never written to disk.</summary>
+        public static Sprite Round { get; private set; }
+
+        /// <summary>The same with a small radius (6): buttons, fields, chips.</summary>
+        public static Sprite RoundSmall { get; private set; }
+
         /// <summary>Goes up on every rebuild, so anything built from the theme can notice.</summary>
         public static int Generation { get; private set; }
 
@@ -178,6 +187,7 @@ namespace ValheimTomrer.Editor.Ui
 
         private static Hud _builtFrom;
         private static readonly List<Sprite> Copies = new List<Sprite>();
+        private static readonly List<Object> Made = new List<Object>();
 
         /// <summary>True once the font and sprites are cached for the current world.</summary>
         public static bool Ensure()
@@ -232,6 +242,9 @@ namespace ValheimTomrer.Editor.Ui
             ItemBackground = Take(atlas, "item_background");
             Sunken = Take(atlas, "sunken");
 
+            Round = MakeRound("ValheimTomrerRound", 12);
+            RoundSmall = MakeRound("ValheimTomrerRoundSmall", 6);
+
             _builtFrom = hud;
             Generation++;
             ValheimTomrerPlugin.Log.LogInfo(
@@ -250,6 +263,16 @@ namespace ValheimTomrer.Editor.Ui
             }
 
             Copies.Clear();
+            foreach (var made in Made)
+            {
+                if (made != null)
+                {
+                    Object.Destroy(made);
+                }
+            }
+
+            Made.Clear();
+            Round = RoundSmall = null;
             PadGlyphs.Clear();
             foreach (var material in new[] { _fontMaterial, _fontOutlined, _gameMaterial, _gameOutlined })
             {
@@ -364,6 +387,48 @@ namespace ValheimTomrer.Editor.Ui
             {
                 material.SetColor(id, value);
             }
+        }
+
+        /// <summary>
+        /// A white square with rounded corners, a few pixels big, in memory only: sliced by an Image it
+        /// gives any size a round corner of the same radius (50 pixels per unit, so one pixel is one
+        /// canvas unit). The art rule: it is made from code at runtime, nothing is saved.
+        /// </summary>
+        private static Sprite MakeRound(string name, int radius)
+        {
+            var size = (radius * 2) + 2;
+            var texture = new Texture2D(size, size, TextureFormat.RGBA32, false)
+            {
+                name = name,
+                filterMode = FilterMode.Bilinear,
+                wrapMode = TextureWrapMode.Clamp,
+            };
+            var pixels = new Color32[size * size];
+            for (var y = 0; y < size; y++)
+            {
+                for (var x = 0; x < size; x++)
+                {
+                    var dx = Mathf.Max(radius - (x + 0.5f), (x + 0.5f) - (size - radius), 0f);
+                    var dy = Mathf.Max(radius - (y + 0.5f), (y + 0.5f) - (size - radius), 0f);
+                    var edge = Mathf.Clamp01(radius - Mathf.Sqrt((dx * dx) + (dy * dy)) + 0.5f);
+                    pixels[(y * size) + x] = new Color32(255, 255, 255, (byte)Mathf.RoundToInt(edge * 255f));
+                }
+            }
+
+            texture.SetPixels32(pixels);
+            texture.Apply(false, true);
+            var sprite = Sprite.Create(
+                texture,
+                new Rect(0f, 0f, size, size),
+                new Vector2(0.5f, 0.5f),
+                50f,
+                0,
+                SpriteMeshType.FullRect,
+                new Vector4(radius, radius, radius, radius));
+            sprite.name = name;
+            Made.Add(texture);
+            Made.Add(sprite);
+            return sprite;
         }
 
         private static Sprite Take(SpriteAtlas atlas, string name)

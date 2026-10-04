@@ -420,6 +420,29 @@ namespace ValheimTomrer.Editor
             Say($"Hid {Count(count)}. Hide again with nothing selected, or the Show all key, brings back everything.");
         }
 
+        /// <summary>
+        /// Shows only the selection: every other piece is hidden, so a room can be worked on from inside.
+        /// Again, or with nothing selected, it shows everything. The same hide as the Layers card's: not saved.
+        /// </summary>
+        public static void IsolateSelection()
+        {
+            if (Document == null || Selected.Count == 0)
+            {
+                ShowAll();
+                return;
+            }
+
+            var others = Document.Pieces.Where(p => !Selected.Contains(p.Id)).Select(p => p.Id).ToList();
+            if (others.Count == 0 || others.All(IsHidden))
+            {
+                ShowAll();
+                return;
+            }
+
+            SetHidden(others, true);
+            Say($"Showing only the selection ({Count(Selected.Count)}). Isolate again, or the Show all key, brings back the rest.");
+        }
+
         /// <summary>Locks the selection, so a click or a box can no longer pick it.</summary>
         public static void LockSelection()
         {

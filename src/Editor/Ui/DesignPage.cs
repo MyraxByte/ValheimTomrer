@@ -276,11 +276,18 @@ namespace ValheimTomrer.Editor.Ui
                 () => EditorState.CopyInRow(Bindings.CameraRight()),
             });
             Caption(_arrange, "View");
-            Buttons(_arrange, new[] { "Hide", "Lock", "Show all" }, new UnityEngine.Events.UnityAction[]
+            Buttons(_arrange, new[] { "Hide", "Lock", "Isolate", "Show all" }, new UnityEngine.Events.UnityAction[]
             {
                 EditorState.HideSelection,
                 EditorState.LockSelection,
+                EditorState.IsolateSelection,
                 EditorState.ShowAll,
+            });
+            Buttons(_arrange, new[] { "Look at it", "Top", "Corner" }, new UnityEngine.Events.UnityAction[]
+            {
+                ViewportHost.Frame,
+                () => ViewportHost.ShowView(ValheimTomrer.Editor.View.ViewPreset.Top),
+                () => ViewportHost.ShowView(ValheimTomrer.Editor.View.ViewPreset.Iso),
             });
 
             Refresh();
@@ -325,6 +332,13 @@ namespace ValheimTomrer.Editor.Ui
             element.flexibleWidth = flexible;
             element.minWidth = width > 0f ? width : 20f;
             element.preferredWidth = width > 0f ? width : 20f;
+
+            // A button that shares the row with others gets what is left: the words shrink a little to fit.
+            var label = Kit.LabelOf(button);
+            label.enableAutoSizing = true;
+            label.fontSizeMin = 9f;
+            label.fontSizeMax = Kit.BodySize;
+            UiBuild.Stretch(label.rectTransform, 2f, 0f, 2f, 0f);
         }
 
         private static NumberField Number(Transform row, string caption, int decimals, Action<int, float> commit)

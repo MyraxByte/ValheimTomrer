@@ -25,10 +25,14 @@ namespace ValheimTomrer.Editor.Ui
         private static RectTransform _root;
         private static int _generation = -1;
         private static TabStrip _tabs;
+        private static Button _hide;
         private static readonly RectTransform[] Pages = new RectTransform[3];
 
         /// <summary>The tab open now. Kept across a rebuild and a close.</summary>
         public static int Tab { get; private set; }
+
+        /// <summary>The Hide button beside the tabs, for the pad walk and the tests.</summary>
+        public static Button HideButton => _hide;
 
         public static void Ensure(RectTransform host)
         {
@@ -97,6 +101,12 @@ namespace ValheimTomrer.Editor.Ui
             tabs.pivot = new Vector2(0.5f, 1f);
             tabs.offsetMin = new Vector2(0f, -TabsHeight);
             tabs.offsetMax = Vector2.zero;
+            _hide = Kit.Ghost(_root, "Hide", () => EditorWindow.SetInspector(false), 26f, Kit.CaptionSize);
+            var hide = (RectTransform)_hide.transform;
+            hide.anchorMin = hide.anchorMax = new Vector2(1f, 1f);
+            hide.pivot = new Vector2(1f, 1f);
+            hide.anchoredPosition = new Vector2(-8f, -5f);
+            hide.sizeDelta = new Vector2(46f, 26f);
             var line = Kit.Divider(_root);
             line.rectTransform.anchorMin = new Vector2(0f, 1f);
             line.rectTransform.anchorMax = new Vector2(1f, 1f);

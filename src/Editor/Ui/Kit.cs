@@ -190,6 +190,7 @@ namespace ValheimTomrer.Editor.Ui
         {
             var image = UiBuild.Panel(text, parent, null, Color.white);
             image.type = Image.Type.Simple;
+            UiBuild.Rounded(image);
             var button = image.gameObject.AddComponent<Button>();
             button.targetGraphic = image;
             button.transition = Selectable.Transition.ColorTint;
@@ -199,11 +200,15 @@ namespace ValheimTomrer.Editor.Ui
             }
 
             var label = Text(image.transform, text, size, UiTheme.Text, TextAlignmentOptions.Center);
+            label.overflowMode = TextOverflowModes.Overflow;
             UiBuild.Stretch(label.rectTransform, 8f, 0f, 8f, 0f);
 
-            // Measured, not guessed: the font is the game's and the words differ in length a lot.
-            var wide = label.GetPreferredValues(text, 4000f, 0f).x;
-            Size(image, Mathf.Max(height, (wide > 1f ? wide : text.Length * 7f) + 18f), height);
+            // The width follows the words while the layout runs (LabelWidth), never a guess made while
+            // the window was still switched off, when TextMeshPro measures nothing.
+            Size(image, -1f, height).minWidth = height;
+            var fit = image.gameObject.AddComponent<LabelWidth>();
+            fit.Label = label;
+            fit.Pad = 18f;
             return button;
         }
 
@@ -222,12 +227,6 @@ namespace ValheimTomrer.Editor.Ui
             }
 
             label.text = text;
-            var element = button.GetComponent<LayoutElement>();
-            if (element != null)
-            {
-                var wide = label.GetPreferredValues(text, 4000f, 0f).x;
-                element.minWidth = element.preferredWidth = Mathf.Max(element.minHeight, wide + 18f);
-            }
         }
 
         /// <summary>Takes a button out of the pad walk's own navigation: the walk steps by screen position.</summary>
@@ -289,7 +288,8 @@ namespace ValheimTomrer.Editor.Ui
                 var label = LabelOf(button);
                 label.fontStyle = FontStyles.Bold;
                 UiBuild.Stretch(label.rectTransform, 0f, 0f, 0f, 0f);
-                Size(button, label.GetPreferredValues(names[i], 4000f, 0f).x + 2f, 36f);
+                button.GetComponent<LabelWidth>().Pad = 2f;
+                button.GetComponent<LayoutElement>().minWidth = 0f;
                 var line = UiBuild.Panel("Line", button.transform, null, UiTheme.Accent);
                 line.type = Image.Type.Simple;
                 line.raycastTarget = false;
@@ -311,6 +311,7 @@ namespace ValheimTomrer.Editor.Ui
         {
             var back = UiBuild.Panel("Segmented", parent, null, UiTheme.Surface);
             back.type = Image.Type.Simple;
+            UiBuild.Rounded(back);
             var layout = back.gameObject.AddComponent<HorizontalLayoutGroup>();
             layout.spacing = 2f;
             layout.padding = new RectOffset(2, 2, 2, 2);
@@ -346,10 +347,15 @@ namespace ValheimTomrer.Editor.Ui
         {
             back = UiBuild.Panel("Chip", parent, null, UiTheme.Surface);
             back.type = Image.Type.Simple;
+            UiBuild.Rounded(back);
             back.raycastTarget = false;
             var label = Text(back.transform, text, 11f, UiTheme.TextDim, TextAlignmentOptions.Center);
+            label.overflowMode = TextOverflowModes.Overflow;
             UiBuild.Stretch(label.rectTransform, 6f, 0f, 6f, 0f);
-            Size(back, label.GetPreferredValues(text, 4000f, 0f).x + 14f, 18f);
+            Size(back, -1f, 18f);
+            var fit = back.gameObject.AddComponent<LabelWidth>();
+            fit.Label = label;
+            fit.Pad = 14f;
             return label;
         }
 
@@ -359,6 +365,47 @@ namespace ValheimTomrer.Editor.Ui
             var scroll = UiBuild.Scroll("Scroll", parent, spacing);
             scroll.content.GetComponent<VerticalLayoutGroup>().padding = new RectOffset(padding, padding, padding, padding);
             return scroll;
+        }
+    }
+
+    /// <summary>
+    /// Makes a widget as wide as its label while the layout runs: the words' width plus a pad, or at
+    /// most <see cref="Max"/>. The label's own width is read at layout time, when the object is on, so
+    /// a bold word, a changed word or a late font cannot leave the widget too narrow.
+    /// </summary>
+    internal sealed class LabelWidth : UIBehaviour, ILayoutElement
+    {
+        public TMP_Text Label;
+        public float Pad = 18f;
+        public float Max = 0f;
+
+        /// <summary>2 beats a TextMeshPro label's own width and a LayoutElement, for a label that must be capped.</summary>
+        public int Priority = 0;
+
+        private float _width;
+
+        public float minWidth => _width;
+
+        public float preferredWidth => _width;
+
+        public float flexibleWidth => -1f;
+
+        public float minHeight => -1f;
+
+        public float preferredHeight => -1f;
+
+        public float flexibleHeight => -1f;
+
+        public int layoutPriority => Priority;
+
+        public void CalculateLayoutInputHorizontal()
+        {
+            var wide = Label != null ? Label.preferredWidth + Pad : 0f;
+            _width = Max > 0f ? Mathf.Min(Max, wide) : wide;
+        }
+
+        public void CalculateLayoutInputVertical()
+        {
         }
     }
 

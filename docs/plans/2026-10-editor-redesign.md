@@ -47,6 +47,22 @@ instead of desktop menus (the owner's note: it runs inside a game).
   PiecePicker. Their scenarios (editor_palette, editor_panels, editor_focus) were removed; editor_ui
   covers the new screen.
 
+## Phase 8: islands, a full-screen view, 3D tools (owner's feedback on phase 7)
+
+The owner's four points: opaque panels as islands that can be put away, the space on the whole
+screen, stable positioning, better work in 3D.
+
+- Found while reading the code: the toolbar and the status line were children of the view, drawn under
+  its picture; button widths were measured while the window was switched off (TextMeshPro measures 0,
+  so labels clipped); the docks mixed `anchoredPosition` and offsets. All three fixed.
+- The view is the whole screen and never resizes. Islands: three header islands (file, modes,
+  actions), the Layers and Inspector cards (Hide button, edge tab to bring one back), the toolbar.
+  Opaque, rounded (runtime sprite, never saved), shadowed. Text over the view stays in the free room.
+- 3D: views 1 to 5 and the gizmo (front, right, top, back, left, bottom, corner; perspective or
+  orthographic), orbit round the selection (Alt + right drag, L1 + right stick), the selection's size in
+  the status line, Isolate (I). Pad twins: L2 + D-pad.
+- Not done on purpose: a ruler tool and lens shift for the free room (the crosshair stays at the screen's middle).
+
 ## Left for the first run in the game
 
 - `npm run build`, then `npm run autotest -- editor_ui`, then `editor_all`.

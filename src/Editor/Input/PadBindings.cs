@@ -159,7 +159,15 @@ namespace ValheimTomrer.Editor.Input
             var camera = ViewportHost.Camera;
             if (!l2 && camera != null)
             {
-                camera.TurnPad(pad.Rs, dt);
+                // L1 held: round the selection (Alt and a drag on the keyboard), else look around.
+                if (alt)
+                {
+                    camera.OrbitPad(ViewportHost.OrbitPoint(), pad.Rs, dt);
+                }
+                else
+                {
+                    camera.TurnPad(pad.Rs, dt);
+                }
             }
 
             // 8. R2: copy the aimed kind, drop what is in hand, or take the aimed piece.
@@ -232,15 +240,41 @@ namespace ValheimTomrer.Editor.Input
                 }
             }
 
-            // 14. The D-pad left and right: undo and redo.
-            if (pad.Pressed(PadButton.Left))
+            // 14. The D-pad left and right: undo and redo. With L2: the view, one side on, or back; up is
+            //     perspective and orthographic, down shows only the selection (the number keys, 5 and I).
+            if (l2)
             {
-                EditorState.Undo();
-            }
+                if (pad.Pressed(PadButton.Left))
+                {
+                    ViewportHost.CycleView(-1);
+                }
 
-            if (pad.Pressed(PadButton.Right))
+                if (pad.Pressed(PadButton.Right))
+                {
+                    ViewportHost.CycleView(1);
+                }
+
+                if (pad.Pressed(PadButton.Up))
+                {
+                    ViewportHost.ToggleOrtho();
+                }
+
+                if (pad.Pressed(PadButton.Down))
+                {
+                    EditorState.IsolateSelection();
+                }
+            }
+            else
             {
-                EditorState.Redo();
+                if (pad.Pressed(PadButton.Left))
+                {
+                    EditorState.Undo();
+                }
+
+                if (pad.Pressed(PadButton.Right))
+                {
+                    EditorState.Redo();
+                }
             }
 
             // 15. The left stick flies, L1 three times faster, the D-pad up and down.
@@ -363,7 +397,8 @@ namespace ValheimTomrer.Editor.Input
             }
 
             var stick = pad.Ls * pad.Ls.magnitude;
-            var up = (pad.Held(PadButton.Up) ? 1f : 0f) - (pad.Held(PadButton.Down) ? 1f : 0f);
+            // With L2 the D-pad picks views instead.
+            var up = pad.Held(PadButton.L2) ? 0f : (pad.Held(PadButton.Up) ? 1f : 0f) - (pad.Held(PadButton.Down) ? 1f : 0f);
             camera.FlyPad(new Vector3(stick.x, up, stick.y), pad.Held(PadButton.L1), dt);
         }
 
@@ -467,6 +502,7 @@ namespace ValheimTomrer.Editor.Input
                 new HelpRow(g.Ls, "Fly forward (where the camera looks), back, left, right"),
                 new HelpRow($"{l1} + {g.Ls}", "Fly 3 times faster, like Shift on the keyboard"),
                 new HelpRow(g.Rs, "Look around"),
+                new HelpRow($"{l1} + {g.Rs}", "Turn the view round the selection (Alt and a drag on the keyboard)"),
                 new HelpRow(g.Dpad + " up, down", "Fly up, down"),
                 new HelpRow(r2, "Place (while placing), else select the piece in the middle of the view"),
                 new HelpRow($"{l1} + {r2}", "Add that piece to the selection, or take it out"),
@@ -497,6 +533,9 @@ namespace ValheimTomrer.Editor.Input
                     + "on its own when the crosshair is on nothing"),
                 new HelpRow($"{l2} + {r2}", "Place another piece of the kind in the middle of the view, like the game's copy"),
                 new HelpRow(g.Dpad + " left, right", "Undo, redo"),
+                new HelpRow($"{l2} + {g.Dpad} left, right", "View from the next side: front, right, back, left, top, corner"),
+                new HelpRow($"{l2} + {g.Dpad} up, down",
+                    "Perspective or orthographic view, show only the selection (like 5 and I)"),
                 new HelpRow($"{g.Of(WorldPad.ModifierButton)} + {g.Of(PadButton.Square)}",
                     "Close the editor, like F7. The same two buttons open it from the world."),
                 new HelpRow(g.Of(PadButton.Options), "This help"),

@@ -82,12 +82,36 @@ namespace ValheimTomrer.Editor.Ui
             return label;
         }
 
-        /// <summary>A flat card colour with a one-pixel border, the editor's panels and popups.</summary>
-        public static Image Card(string name, Transform parent, Color? colour = null)
+        /// <summary>
+        /// An island: an opaque card with rounded corners, a one-pixel border and a soft shadow. The
+        /// editor's panels, bars and popups are all this.
+        /// </summary>
+        public static Image Card(string name, Transform parent, Color? colour = null, bool shadow = true)
         {
-            var image = Panel(name, parent, null, colour ?? UiTheme.PanelFloat);
-            image.type = Image.Type.Simple;
+            var image = Panel(name, parent, UiTheme.Round, colour ?? UiTheme.PanelFloat);
+            image.type = UiTheme.Round != null ? Image.Type.Sliced : Image.Type.Simple;
             Border(image);
+            if (shadow)
+            {
+                var drop = image.gameObject.AddComponent<Shadow>();
+                drop.effectColor = UiTheme.IslandShadow;
+                drop.effectDistance = new Vector2(0f, -3f);
+                drop.useGraphicAlpha = false;
+            }
+
+            return image;
+        }
+
+        /// <summary>Gives a flat image the small round corner of a button or a field.</summary>
+        public static Image Rounded(Image image)
+        {
+            if (image != null && UiTheme.RoundSmall != null)
+            {
+                image.sprite = UiTheme.RoundSmall;
+                image.type = Image.Type.Sliced;
+                image.pixelsPerUnitMultiplier = 1f;
+            }
+
             return image;
         }
 
@@ -147,6 +171,7 @@ namespace ValheimTomrer.Editor.Ui
         {
             var background = Panel(name, parent, null, UiTheme.Field);
             background.type = Image.Type.Simple;
+            Rounded(background);
             Border(background);
             var element = background.gameObject.AddComponent<LayoutElement>();
             element.minHeight = height;

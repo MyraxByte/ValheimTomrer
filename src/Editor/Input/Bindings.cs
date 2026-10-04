@@ -304,6 +304,33 @@ namespace ValheimTomrer.Editor.Input
                 case Act.Frame:
                     ViewportHost.Frame();
                     return true;
+                case Act.ViewFront:
+                    ViewportHost.ShowView(ViewPreset.Front);
+                    return true;
+                case Act.ViewBack:
+                    ViewportHost.ShowView(ViewPreset.Back);
+                    return true;
+                case Act.ViewRight:
+                    ViewportHost.ShowView(ViewPreset.Right);
+                    return true;
+                case Act.ViewLeft:
+                    ViewportHost.ShowView(ViewPreset.Left);
+                    return true;
+                case Act.ViewTop:
+                    ViewportHost.ShowView(ViewPreset.Top);
+                    return true;
+                case Act.ViewBottom:
+                    ViewportHost.ShowView(ViewPreset.Bottom);
+                    return true;
+                case Act.ViewIso:
+                    ViewportHost.ShowView(ViewPreset.Iso);
+                    return true;
+                case Act.ToggleOrtho:
+                    ViewportHost.ToggleOrtho();
+                    return true;
+                case Act.Isolate:
+                    EditorState.IsolateSelection();
+                    return true;
                 case Act.MouseLook:
                     // Hand the mouse to the pane, so it looks around instead of pointing. Esc
                     // gives it back. A click never does this: it selects.

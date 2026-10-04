@@ -2,7 +2,7 @@
 
 Nothing here is a guess. Use it instead of searching. Every file outside `bin/`, `obj/` and `.devtest/`. Add or remove a file, update this list in the same commit.
 
-Nothing here is a guess. Use this instead of searching. All 87 source files, and every other
+Nothing here is a guess. Use this instead of searching. All 88 source files, and every other
 **Build, scripts, data**
 
 ```
@@ -190,16 +190,17 @@ Placement/Support.cs              the game's support rule in plain C#: how well 
                                   held, which ones would fall, and the hammer's colours. The
                                   ground is y = 0, or the terrain through a callback
 
-Ui/EditorWindow.cs                the screen: a root canvas of its own (exactly the screen), the
-                                  header, Layers docked left, the Inspector docked right, the 3D view
-                                  between them with the status line and the toolbar host. Folding a
-                                  panel slides it away and widens the view; Ctrl+\ hides all
+Ui/EditorWindow.cs                the screen: a root canvas of its own (exactly the screen) with the 3D
+                                  view over all of it and the interface as opaque islands over the
+                                  view: header islands, the Layers and Inspector cards, the toolbar,
+                                  edge tabs for a card that is put away. The free room (FreeLeft,
+                                  FreeRight...) is where text over the view goes. Ctrl+\ hides all
 Ui/Kit.cs                         the widget kit every panel uses: text, ghost, solid and primary
                                   buttons, rows, columns, dividers, inline fields, tabs, segmented
                                   switches, chips, HoverEvents and ClickEvents
-Ui/Header.cs                      the top bar: the menu button and its menu, the blueprint name and
-                                  state, the modes (Select, Add, Move, Copy), undo, redo, commands,
-                                  theme, help and Build in world
+Ui/Header.cs                      the three top islands: the menu button and its menu, the blueprint
+                                  name and state; the modes (Select, Add, Move, Copy); undo, redo,
+                                  commands, theme, help and Build in world
 Ui/LayersPanel.cs                 the left panel: the blueprint's pieces grouped by kind, folding
                                   groups, search, Hide and Lock on hover. Virtual rows
 Ui/Inspector.cs                   the right panel: the Design, Blueprint and Checks tabs
@@ -210,6 +211,8 @@ Ui/BlueprintPage.cs               the Blueprint tab: name, description, icon, th
 Ui/ChecksPage.cs                  the Checks tab: the problem list, a click selects its pieces
 Ui/Toolbar.cs                     the floating bar at the bottom of the view: grid, turn step, snap
                                   points, dots, boxes, hide panels
+Ui/ViewGizmo.cs                   the axis marker in the view's corner: six discs that follow the
+                                  camera and click to a side, the side's name, perspective switch
 Ui/QuickAdd.cs                    Tab, cross or the Add mode: the piece search over the view. Typing
                                   filters, Enter places, arrows and the D-pad move, L1 R1 change tags,
                                   Recent and Starred
@@ -239,7 +242,8 @@ Ui/Toasts.cs                      short messages over the bottom middle of the v
 View/EditorScene.cs               the little world: ground, grid, origin ring, front marker, two
                                   lights. 8000 m under the player, all on layer 30
 View/PreviewCamera.cs             the switched-off camera that renders the pane into a texture
-View/EditorCamera.cs              one camera: fly, look, pan, zoom. No modes.
+View/EditorCamera.cs              one camera: fly, look, pan, zoom, orbit round a point, the seven
+                                  view presets, perspective or orthographic. No modes.
 View/SceneModel.cs                one copy per piece, kept in step with the document, and the
                                   support tint on the piece under the aim
 View/GhostRenderer.cs             the see-through copy of what is in hand, in the support colours,

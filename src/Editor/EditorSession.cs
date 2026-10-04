@@ -97,6 +97,7 @@ namespace ValheimTomrer.Editor
             Inspector.Tick();
             Header.Tick();
             Toolbar.Tick();
+            ViewGizmo.Tick();
             Dialogs.Tick();
             Toasts.Tick();
             SyncSelection();
@@ -288,6 +289,7 @@ namespace ValheimTomrer.Editor
             Inspector.Ensure(EditorWindow.RightDock);
             Inspector.Show(Document);
             Toolbar.Ensure(EditorWindow.Toolbar);
+            ViewGizmo.Ensure(EditorWindow.Root);
             QuickAdd.Ensure(EditorWindow.Root);
             QuickAdd.PieceChosen = StartAdd;
             Dialogs.Ensure(EditorWindow.Root);

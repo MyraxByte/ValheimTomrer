@@ -5,38 +5,50 @@ using UnityEngine.UI;
 namespace ValheimTomrer.Editor.Ui
 {
     /// <summary>
-    /// The editor's screen, laid out like a design tool:
+    /// The editor's screen: the 3D view fills the whole screen, and the interface floats over it as
+    /// islands, opaque rounded cards with a margin round them:
     /// <code>
-    ///   header (menu, blueprint name, modes, actions, Build)
-    ///   Layers | 3D view (status, hints, the floating toolbar) | Inspector
+    ///   [menu, name]      [Select Add Move Copy]      [undo, redo, ... Build]
+    ///   [Layers]                                      [Inspector]
+    ///                     [grid, turn, snap ...]
     /// </code>
-    /// The two side panels are docked to the screen's edges and fold away (Alt+1, Alt+2); the view
-    /// takes the room they leave. Ctrl+\ hides everything but the view.
+    /// Every island can be put away: the Layers and Inspector cards with their Hide button, Alt+1 and
+    /// Alt+2 (a small tab on the edge brings one back), all of them with Ctrl+\ (the view stays). The
+    /// view never changes size when an island moves, so the picture does not jump.
     ///
     /// The canvas is a root canvas of its own, not a child of the game's HUD: the HUD's canvas can be
     /// larger than the screen, which cut the old window's edges off. A root overlay canvas is always
     /// exactly the screen. Built the first time the editor opens and again after a world load or a
     /// theme change.
     ///
-    /// A folded panel is slid off the screen, never switched off: the panels measure text while they
-    /// build and tick, and TextMeshPro measures nothing in an inactive object. The panel walk leaves
-    /// a folded panel out (<see cref="LeftShown"/>, <see cref="RightShown"/>).
+    /// Draw order, bottom to top: the view, the toolbar and the status line, the two cards, the header
+    /// islands, the edge tabs. A put-away island is slid off the screen, never switched off: the
+    /// panels measure text while they build and tick, and TextMeshPro measures nothing in an inactive
+    /// object. The panel walk leaves a put-away island out (<see cref="LeftShown"/>, <see cref="RightShown"/>).
     /// </summary>
     internal static class EditorWindow
     {
         public const int SortOrder = 950;
         public const int GroupPriority = 5;
 
-        public const float HeaderHeight = 44f;
-        public const float LeftWidth = 248f;
-        public const float RightWidth = 292f;
+        /// <summary>The gap between an island and the screen's edge, and between two islands.</summary>
+        public const float Margin = 10f;
+
+        /// <summary>The height of a header island.</summary>
+        public const float HeaderHeight = 40f;
+
+        /// <summary>The top band the header islands sit in.</summary>
+        public const float TopBand = Margin + HeaderHeight;
+
+        /// <summary>Where the cards start, from the top.</summary>
+        public const float DockTop = TopBand + Margin;
+
+        public const float LeftWidth = 256f;
+        public const float RightWidth = 300f;
         private const float Away = 6000f;
 
-        /// <summary>How far below the view's top edge text drawn over the view starts.</summary>
-        public const float TopInset = 12f;
-
-        /// <summary>Room for the hints and the toolbar along the bottom of the view.</summary>
-        public const float BottomInset = 64f;
+        /// <summary>The height of the floating toolbar's host.</summary>
+        public const float ToolbarHeight = 40f;
 
         private static GameObject _root;
         private static int _generation = -1;
@@ -51,7 +63,7 @@ namespace ValheimTomrer.Editor.Ui
 
         public static RectTransform RightDock { get; private set; }
 
-        /// <summary>The 3D view's region: the space between the docks, under the header.</summary>
+        /// <summary>The 3D view's region: the whole screen, always.</summary>
         public static RectTransform ViewportHost { get; private set; }
 
         /// <summary>The floating toolbar along the bottom of the view.</summary>
@@ -59,6 +71,12 @@ namespace ValheimTomrer.Editor.Ui
 
         /// <summary>The line in the view's top right corner: the blueprint, its pieces, the selection.</summary>
         public static TextMeshProUGUI StatusText { get; private set; }
+
+        /// <summary>The small tab on the left edge that brings the Layers card back.</summary>
+        public static RectTransform LayersTab { get; private set; }
+
+        /// <summary>The small tab on the right edge that brings the Inspector back.</summary>
+        public static RectTransform InspectorTab { get; private set; }
 
         public static bool Visible => _root != null && _root.activeSelf;
 
@@ -74,6 +92,32 @@ namespace ValheimTomrer.Editor.Ui
 
         /// <summary>The Inspector is on screen.</summary>
         public static bool RightShown => !_uiHidden && InspectorOpen;
+
+        /// <summary>
+        /// The room the islands leave for what is drawn over the view, in canvas units from each edge.
+        /// Hints, the toolbar and the status line sit inside it, so they never hide under a card.
+        /// </summary>
+        public static float FreeLeft => LeftShown ? Margin + LeftWidth + Margin : Margin;
+
+        public static float FreeRight => RightShown ? Margin + RightWidth + Margin : Margin;
+
+        public static float FreeTop => _uiHidden ? Margin : DockTop;
+
+        /// <summary>Room for the hints and the toolbar along the bottom.</summary>
+        public static float FreeBottom => _uiHidden ? Margin : Margin + ToolbarHeight + 14f;
+
+        /// <summary>
+        /// Room an edge tab takes at the top of that side (the Layers tab on the left, the Inspector's
+        /// on the right), so the lines drawn there start under it. Zero while the card itself is out.
+        /// </summary>
+        public static float TabRoom(bool right)
+        {
+            var folded = right ? !InspectorOpen : !LayersOpen;
+            return folded && !_uiHidden ? 40f : 0f;
+        }
+
+        /// <summary>How far the middle of the free room is right of the screen's middle.</summary>
+        public static float FreeShift => (FreeLeft - FreeRight) * 0.5f;
 
         /// <summary>Builds the window if it is missing. False when the game is not ready for it.</summary>
         public static bool Ensure()
@@ -92,6 +136,10 @@ namespace ValheimTomrer.Editor.Ui
             _root = CreateRoot("ValheimTomrerEditor", SortOrder);
             Root = (RectTransform)_root.transform;
             _generation = UiTheme.Generation;
+
+            // Built switched on: TextMeshPro measures nothing in an inactive object, and every button
+            // takes its width from its words. The caller shows the window in the same frame.
+            _root.SetActive(true);
             Build(Root);
             ValheimTomrerPlugin.Log.LogInfo("editor window built");
             return true;
@@ -113,7 +161,7 @@ namespace ValheimTomrer.Editor.Ui
             }
 
             _root = null;
-            Root = Header = LeftDock = RightDock = ViewportHost = Toolbar = null;
+            Root = Header = LeftDock = RightDock = ViewportHost = Toolbar = LayersTab = InspectorTab = null;
             StatusText = null;
             _generation = -1;
         }
@@ -153,8 +201,10 @@ namespace ValheimTomrer.Editor.Ui
         }
 
         /// <summary>
-        /// Puts every region where the switches say: a folded panel off screen, the view stretched over
-        /// the room it left, the header and the toolbar away while the interface is hidden.
+        /// Puts every island where the switches say: a put-away one off screen, the header and the
+        /// toolbar away while the interface is hidden, the lines drawn over the view inside the room
+        /// that is left. Every position is set from offsets or anchors alone, the same way every
+        /// time, so calling it twice changes nothing.
         /// </summary>
         public static void ApplyLayout()
         {
@@ -163,22 +213,16 @@ namespace ValheimTomrer.Editor.Ui
                 return;
             }
 
-            var top = _uiHidden ? 0f : HeaderHeight;
-            var left = LeftShown ? LeftWidth : 0f;
-            var right = RightShown ? RightWidth : 0f;
-
-            Header.anchoredPosition = _uiHidden ? new Vector2(0f, Away) : Vector2.zero;
-            LeftDock.anchoredPosition = LeftShown ? Vector2.zero : new Vector2(-Away, 0f);
-            RightDock.anchoredPosition = RightShown ? Vector2.zero : new Vector2(Away, 0f);
-            LeftDock.offsetMax = new Vector2(LeftDock.offsetMax.x, -HeaderHeight);
-            RightDock.offsetMax = new Vector2(RightDock.offsetMax.x, -HeaderHeight);
-
-            ViewportHost.offsetMin = new Vector2(left, 0f);
-            ViewportHost.offsetMax = new Vector2(-right, -top);
-            if (Toolbar != null)
-            {
-                Toolbar.anchoredPosition = _uiHidden ? new Vector2(0f, -Away) : new Vector2(0f, 14f);
-            }
+            var lift = _uiHidden ? Away : 0f;
+            Header.offsetMin = new Vector2(0f, -TopBand + lift);
+            Header.offsetMax = new Vector2(0f, lift);
+            Dock(LeftDock, true, LeftShown);
+            Dock(RightDock, false, RightShown);
+            Toolbar.anchoredPosition = _uiHidden ? new Vector2(0f, -Away) : new Vector2(FreeShift, Margin);
+            StatusText.rectTransform.anchoredPosition = new Vector2(-FreeRight, -(FreeTop - 4f + TabRoom(true)));
+            LayersTab.gameObject.SetActive(!_uiHidden && !LayersOpen);
+            InspectorTab.gameObject.SetActive(!_uiHidden && !InspectorOpen);
+            Ui.ViewportHost.Relayout();
         }
 
         /// <summary>
@@ -211,64 +255,84 @@ namespace ValheimTomrer.Editor.Ui
 
         private static void Build(RectTransform root)
         {
-            // The view first, so everything else draws over it.
+            // The view first, so everything else draws over it: the whole screen.
             var view = UiBuild.Panel("ViewportHost", root, null, UiTheme.Viewport);
             view.type = Image.Type.Simple;
             ViewportHost = view.rectTransform;
             UiBuild.Stretch(ViewportHost);
 
-            StatusText = Kit.Text(ViewportHost, "", Kit.CaptionSize, UiTheme.TextOnPicture, TextAlignmentOptions.TopRight);
+            // Over the view, under the islands. They hang on the root, never on the view: the view's
+            // own picture is drawn after anything built into it.
+            StatusText = Kit.Text(root, "", Kit.CaptionSize, UiTheme.TextOnPicture, TextAlignmentOptions.TopRight);
+            UiBuild.OverPicture(StatusText);
             var status = StatusText.rectTransform;
             status.anchorMin = status.anchorMax = new Vector2(1f, 1f);
             status.pivot = new Vector2(1f, 1f);
-            status.anchoredPosition = new Vector2(-14f, -TopInset);
             status.sizeDelta = new Vector2(640f, 18f);
 
-            Toolbar = UiBuild.Rect("ToolbarHost", ViewportHost);
+            Toolbar = UiBuild.Rect("ToolbarHost", root);
             Toolbar.anchorMin = Toolbar.anchorMax = new Vector2(0.5f, 0f);
             Toolbar.pivot = new Vector2(0.5f, 0f);
-            Toolbar.sizeDelta = new Vector2(10f, 40f);
+            Toolbar.sizeDelta = new Vector2(10f, ToolbarHeight);
 
-            LeftDock = Dock("LeftDock", root, true);
-            RightDock = Dock("RightDock", root, false);
+            LeftDock = NewDock("LeftDock", root, true);
+            RightDock = NewDock("RightDock", root, false);
 
-            var header = UiBuild.Panel("Header", root, null, UiTheme.PanelFloat);
-            header.type = Image.Type.Simple;
-            Header = header.rectTransform;
+            // The header: only a frame for the islands that Header builds into it. It has no picture,
+            // so a click between the islands goes through to the view.
+            Header = UiBuild.Rect("Header", root);
             Header.anchorMin = new Vector2(0f, 1f);
             Header.anchorMax = new Vector2(1f, 1f);
             Header.pivot = new Vector2(0.5f, 1f);
-            Header.offsetMin = new Vector2(0f, -HeaderHeight);
-            Header.offsetMax = Vector2.zero;
-            var line = Kit.Divider(Header);
-            line.rectTransform.anchorMin = new Vector2(0f, 0f);
-            line.rectTransform.anchorMax = new Vector2(1f, 0f);
-            line.rectTransform.pivot = new Vector2(0.5f, 0f);
-            line.rectTransform.sizeDelta = new Vector2(0f, 1f);
+
+            LayersTab = Tab("LayersTab", root, "Layers", true, () => SetLayers(true));
+            InspectorTab = Tab("InspectorTab", root, "Inspector", false, () => SetInspector(true));
 
             ApplyLayout();
         }
 
-        /// <summary>A panel docked to the left or the right edge, from under the header to the bottom, with a line on its inner side.</summary>
-        private static RectTransform Dock(string name, RectTransform root, bool left)
+        /// <summary>A card for the left or the right edge: from under the header to the bottom, a margin round it.</summary>
+        private static RectTransform NewDock(string name, RectTransform root, bool left)
         {
-            var panel = UiBuild.Panel(name, root, null, UiTheme.PanelFloat);
-            panel.type = Image.Type.Simple;
-            var rect = panel.rectTransform;
+            var card = UiBuild.Card(name, root);
+            var rect = card.rectTransform;
             var side = left ? 0f : 1f;
             rect.anchorMin = new Vector2(side, 0f);
             rect.anchorMax = new Vector2(side, 1f);
             rect.pivot = new Vector2(side, 0.5f);
-            var width = left ? LeftWidth : RightWidth;
-            rect.offsetMin = new Vector2(left ? 0f : -width, 0f);
-            rect.offsetMax = new Vector2(left ? width : 0f, -HeaderHeight);
+            Dock(rect, left, true);
+            return rect;
+        }
 
-            var edge = Kit.Divider(rect, true);
-            edge.rectTransform.anchorMin = new Vector2(left ? 1f : 0f, 0f);
-            edge.rectTransform.anchorMax = new Vector2(left ? 1f : 0f, 1f);
-            edge.rectTransform.pivot = new Vector2(0.5f, 0.5f);
-            edge.rectTransform.sizeDelta = new Vector2(1f, 0f);
-            Object.Destroy(edge.GetComponent<LayoutElement>());
+        /// <summary>Sets a card's place: its margin from the edges, or far off screen when it is put away.</summary>
+        private static void Dock(RectTransform rect, bool left, bool shown)
+        {
+            var width = left ? LeftWidth : RightWidth;
+            var slide = shown ? 0f : left ? -Away : Away;
+            var near = left ? Margin : -(Margin + width);
+            var far = left ? Margin + width : -Margin;
+            rect.offsetMin = new Vector2(near + slide, Margin);
+            rect.offsetMax = new Vector2(far + slide, -DockTop);
+        }
+
+        /// <summary>The small tab that stands where a put-away card was: a click brings the card back.</summary>
+        private static RectTransform Tab(string name, RectTransform root, string text, bool left, UnityEngine.Events.UnityAction open)
+        {
+            var card = UiBuild.Card(name, root);
+            var rect = card.rectTransform;
+            var side = left ? 0f : 1f;
+            rect.anchorMin = rect.anchorMax = new Vector2(side, 1f);
+            rect.pivot = new Vector2(side, 1f);
+            rect.anchoredPosition = new Vector2(left ? Margin : -Margin, -DockTop);
+            rect.sizeDelta = new Vector2(10f, 32f);
+            var row = card.gameObject.AddComponent<HorizontalLayoutGroup>();
+            row.padding = new RectOffset(3, 3, 3, 3);
+            row.childControlWidth = true;
+            row.childControlHeight = true;
+            row.childForceExpandWidth = false;
+            row.childForceExpandHeight = true;
+            Kit.Fit(rect, true, false);
+            Kit.Ghost(card.transform, text, open, 26f);
             return rect;
         }
     }

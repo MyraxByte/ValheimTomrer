@@ -60,7 +60,7 @@ namespace ValheimTomrer.Editor.Ui
             _root.anchorMin = new Vector2(0.5f, 0f);
             _root.anchorMax = new Vector2(0.5f, 0f);
             _root.pivot = new Vector2(0.5f, 0f);
-            _root.anchoredPosition = new Vector2((EditorWindow.LeftWidth - EditorWindow.RightWidth) * 0.5f, 104f);
+            _root.anchoredPosition = new Vector2(EditorWindow.FreeShift, 104f);
             _root.sizeDelta = new Vector2(Width, 10f);
         }
 
@@ -96,6 +96,12 @@ namespace ValheimTomrer.Editor.Ui
         /// <summary>Drops the messages whose time is up. Called once a frame.</summary>
         public static void Tick()
         {
+            if (_root != null)
+            {
+                // Middle of the room the islands leave, wherever they are now.
+                _root.anchoredPosition = new Vector2(EditorWindow.FreeShift, 104f);
+            }
+
             var now = Time.unscaledTime;
             var changed = false;
             for (var i = Live.Count - 1; i >= 0; i--)

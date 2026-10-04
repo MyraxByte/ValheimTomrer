@@ -294,7 +294,15 @@ namespace ValheimTomrer.Editor.Ui
             title.fontStyle = FontStyles.Bold;
             UiBuild.Stretch(title.rectTransform, 14f, 0f, 14f, 0f);
             _count = Kit.Text(head, "", Kit.CaptionSize, UiTheme.TextDim, TextAlignmentOptions.MidlineRight);
-            UiBuild.Stretch(_count.rectTransform, 14f, 0f, 14f, 0f);
+            UiBuild.Stretch(_count.rectTransform, 14f, 0f, 62f, 0f);
+
+            // Puts the card away; a tab on the edge brings it back. The pad walks to it like any button.
+            _hide = Kit.Ghost(head, "Hide", () => EditorWindow.SetLayers(false), 26f, Kit.CaptionSize);
+            var hide = (RectTransform)_hide.transform;
+            hide.anchorMin = hide.anchorMax = new Vector2(1f, 0.5f);
+            hide.pivot = new Vector2(1f, 0.5f);
+            hide.anchoredPosition = new Vector2(-8f, 0f);
+            hide.sizeDelta = new Vector2(46f, 26f);
 
             _search = Kit.Field(_root, "", "Find a piece in this blueprint");
             var search = (RectTransform)_search.transform;
@@ -326,6 +334,11 @@ namespace ValheimTomrer.Editor.Ui
             _empty.alignment = TextAlignmentOptions.Top;
             UiBuild.Stretch(_empty.rectTransform, 12f, 0f, 12f, 16f);
         }
+
+        /// <summary>The Hide button in the card's head, for the pad walk and the tests.</summary>
+        public static Button HideButton => _hide;
+
+        private static Button _hide;
 
         private static void Top(RectTransform rect, float top, float height)
         {
@@ -481,6 +494,10 @@ namespace ValheimTomrer.Editor.Ui
                 Lock.color = locked ? UiTheme.Accent : UiTheme.TextDim;
                 Hide.gameObject.SetActive(Hovered || hidden);
                 Lock.gameObject.SetActive(Hovered || locked);
+
+                // The name has the whole row until the mouse is on it or a switch is set.
+                var tail = Hovered ? 92f : (hidden ? 52f : 0f) + (locked ? 46f : 0f);
+                Name.rectTransform.offsetMax = new Vector2(-(tail + 8f), 0f);
             }
 
             public void Clear()

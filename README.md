@@ -203,6 +203,7 @@ layout and has no setting.
 | Drag on a piece | Move it (and the rest of the selection) and drop it where you let go. With Alt held it drops a copy. |
 | Drag on empty space | Select everything in the box |
 | Right drag | Look around |
+| Alt + right drag | Turn the view round the selection (or round the point you look at) |
 | Middle drag, Shift + right drag | Move the view sideways |
 | Wheel | Zoom toward the cursor. While placing, it turns the piece 22.5°. |
 | W A S D | Fly |
@@ -220,6 +221,10 @@ layout and has no setting.
 | Ctrl + Z | Undo |
 | Ctrl + Y, Shift + Ctrl + Z | Redo |
 | F | Look at the selection, or at everything |
+| 1, 2, 3 | Look from the front, the right, the top. With Ctrl: the back, the left, the bottom. The camera keeps its distance and the point it looks at. |
+| 4 | Look from a corner, a bit above |
+| 5 | Perspective or orthographic (flat) view, where parallel lines stay parallel |
+| I | Show only the selection, to work inside a room. Again, or with nothing selected, shows everything. |
 | Ctrl + S | Save |
 | H, ? | Help, with these tables |
 | Ctrl + Shift + H | Hide the selection to see inside. With nothing selected it shows everything again. |
@@ -237,7 +242,7 @@ layout and has no setting.
 | Alt + R | Turn step: 22.5° (the game's), 45°, 90°, 5°, 15° |
 | Alt + S | Snap points on or off. The grid still works. Shift held turns all snapping off for a moment. |
 | Tab | Quick add: the list of pieces over the view. Type to search, click a piece to place it, right click stars it. Tab or Esc closes it. |
-| Alt + 1, Alt + 2 | Fold the Layers panel (left) or the Inspector (right) away, or bring it back |
+| Alt + 1, Alt + 2 | Put the Layers card (left) or the Inspector card (right) away, or bring it back. A small tab on the edge brings it back with a click. |
 | Ctrl + \ | Hide the whole interface and keep the view. The same keys, or Esc, bring it back. |
 | F6, Shift + F6 | Move between the buttons and cards without the mouse. Arrow keys step, Enter presses. |
 | Esc | Go back one step, for example stop typing, close a window or put away the piece in your hand. When there is nothing left, it closes the editor. |
@@ -256,6 +261,7 @@ The controller works from the crosshair in the middle of the 3D view.
 | Left stick | Fly |
 | L1 (LB) + left stick | Fly 3 times faster |
 | Right stick | Look around, at the game's own gamepad sensitivity |
+| L1 (LB) + right stick | Turn the view round the selection (or round the point you look at) |
 | D-pad up, down | Fly up, down |
 | R2 (RT) | Place the piece in your hand, or select the piece under the crosshair |
 | L1 (LB) + R2 (RT) | Add the piece under the crosshair to the selection, or take it out |
@@ -270,6 +276,9 @@ The controller works from the crosshair in the middle of the 3D view.
 | △ (Y) | Copy it. It keeps making copies until you press ○. |
 | R1 (RB) | Delete it |
 | D-pad left, right | Undo, redo |
+| L2 (LT) + D-pad left, right | Look from the next or the previous side: front, right, back, left, top, corner |
+| L2 (LT) + D-pad up | Perspective or orthographic view |
+| L2 (LT) + D-pad down | Show only the selection, again to show everything |
 | ○ (B) | Go back one step, like Esc. When there is nothing left, it closes the editor. |
 | L2 (LT) + □ (X) | Close the editor. The same buttons open it. |
 | Options (Menu) | Help |
@@ -283,7 +292,7 @@ Buttons and panels:
 |---|---|
 | L3 (LS), nothing in hand | Go to the buttons and panels. An orange ring shows where you are. |
 | D-pad, left stick | Move the ring |
-| L1 (LB), R1 (RB) | Next area: Layers, the header, the Inspector, the toolbar. A folded panel is skipped. |
+| L1 (LB), R1 (RB) | Next area: Layers, the header, the Inspector, the toolbar. A card that is put away is skipped. |
 | × (A) | Press what the ring is on. On a text box, start typing. |
 | Right stick up, down | Scroll the panel, for example a long materials list |
 | ○ (B) | Back to the 3D view. In a text box, stop typing first. |

@@ -9,10 +9,11 @@ using ValheimTomrer.Editor.Input;
 namespace ValheimTomrer.Editor.Ui
 {
     /// <summary>
-    /// The bar along the top of the screen. Left: the menu button (one menu instead of a desktop
-    /// app's File, Edit, View) and the blueprint's name with its state. Middle: the modes, Select,
-    /// Add, Move and Copy, the one that is on lit. Right: undo, redo, the command search, the theme,
-    /// the help, and the one primary button, Build in world.
+    /// The three islands along the top of the screen. Left: the menu button (one menu instead of a
+    /// desktop app's File, Edit, View) and the blueprint's name with its state. Middle: the modes,
+    /// Select, Add, Move and Copy, the one that is on lit. Right: undo, redo, the command search, the
+    /// theme, the help, and the one primary button, Build in world. Each island is as wide as what is
+    /// in it; between them the view shows.
     /// </summary>
     internal static class Header
     {
@@ -92,7 +93,6 @@ namespace ValheimTomrer.Editor.Ui
             if (_state.text != state)
             {
                 _state.text = state;
-                Kit.Size(_stateBack, _state.GetPreferredValues(state, 4000f, 0f).x + 14f, 18f);
             }
 
             _stateBack.gameObject.SetActive(state.Length > 0);
@@ -183,48 +183,54 @@ namespace ValheimTomrer.Editor.Ui
         {
             Walk.Clear();
             _root = UiBuild.Rect("HeaderContent", host);
-            UiBuild.Stretch(_root, 8f, 1f, 8f, 0f);
+            UiBuild.Stretch(_root);
 
             // Left: the menu button and the blueprint.
-            var left = Kit.Row(_root, 8f, 0f, "Left");
-            Pin(left, 0f);
+            var left = Island("File", 0f);
             _menuButton = Kit.Ghost(left, "Tømrer", ToggleMenu, 32f);
             var mark = UiBuild.Panel("Mark", _menuButton.transform, null, UiTheme.Accent);
             mark.type = Image.Type.Simple;
+            UiBuild.Rounded(mark);
             mark.raycastTarget = false;
             mark.rectTransform.anchorMin = mark.rectTransform.anchorMax = new Vector2(0f, 0.5f);
             mark.rectTransform.pivot = new Vector2(0f, 0.5f);
-            mark.rectTransform.anchoredPosition = new Vector2(8f, 0f);
+            mark.rectTransform.anchoredPosition = new Vector2(10f, 0f);
             mark.rectTransform.sizeDelta = new Vector2(10f, 10f);
             var menuLabel = Kit.LabelOf(_menuButton);
             menuLabel.fontStyle = FontStyles.Bold;
-            UiBuild.Stretch(menuLabel.rectTransform, 24f, 0f, 8f, 0f);
-            var element = _menuButton.GetComponent<LayoutElement>();
-            element.minWidth = element.preferredWidth += 16f;
+            UiBuild.Stretch(menuLabel.rectTransform, 26f, 0f, 8f, 0f);
+            _menuButton.GetComponent<LabelWidth>().Pad = 36f;
             Walk.Add(_menuButton);
 
             Kit.Divider(left, true);
             _name = Kit.Text(left, "", Kit.BodySize, UiTheme.Text);
             _name.fontStyle = FontStyles.Bold;
-            Kit.Size(_name, 180f, 24f);
+            _name.overflowMode = TextOverflowModes.Ellipsis;
+            Kit.Size(_name, -1f, 24f);
+            var nameWidth = _name.gameObject.AddComponent<LabelWidth>();
+            nameWidth.Label = _name;
+            nameWidth.Pad = 6f;
+            nameWidth.Max = 220f;
+            nameWidth.Priority = 2;
             _dirty = UiBuild.Panel("Dirty", left, null, UiTheme.Accent);
-            _dirty.type = Image.Type.Simple;
+            UiBuild.Rounded(_dirty);
+            _dirty.type = Image.Type.Sliced;
             _dirty.raycastTarget = false;
             Kit.Size(_dirty, 6f, 6f);
             _state = Kit.Chip(left, "", out _stateBack);
             _busy = Kit.Text(left, "", Kit.CaptionSize, UiTheme.Accent);
-            Kit.Size(_busy, 120f, 24f);
+            Kit.Size(_busy, -1f, 24f);
+            var busyWidth = _busy.gameObject.AddComponent<LabelWidth>();
+            busyWidth.Label = _busy;
+            busyWidth.Pad = 8f;
+            busyWidth.Max = 160f;
+            busyWidth.Priority = 2;
             _busy.gameObject.SetActive(false);
+            Pad(left, 6);
 
             // Middle: the modes.
-            var middle = UiBuild.Rect("Middle", _root);
-            middle.anchorMin = middle.anchorMax = new Vector2(0.5f, 0.5f);
-            middle.pivot = new Vector2(0.5f, 0.5f);
-            middle.sizeDelta = new Vector2(10f, 32f);
+            var middle = Island("Modes", 0.5f);
             _modes = Kit.Segmented(middle, ModeNames, PickMode, 32f);
-            _modes.Root.anchorMin = _modes.Root.anchorMax = new Vector2(0.5f, 0.5f);
-            _modes.Root.pivot = new Vector2(0.5f, 0.5f);
-            _modes.Root.anchoredPosition = Vector2.zero;
             for (var i = 0; i < _modes.Labels.Count; i++)
             {
                 Walk.Add(_modes.Buttons[i]);
@@ -233,16 +239,15 @@ namespace ValheimTomrer.Editor.Ui
             _modes.Set(0);
 
             // Right: the actions, and Build last.
-            var right = Kit.Row(_root, 2f, 0f, "Right");
-            right.GetComponent<HorizontalLayoutGroup>().childAlignment = TextAnchor.MiddleRight;
-            Pin(right, 1f);
+            var right = Island("Actions", 1f);
             _undo = Add(right, Kit.Ghost(right, "Undo", () => EditorState.Undo(), 32f));
             _redo = Add(right, Kit.Ghost(right, "Redo", () => EditorState.Redo(), 32f));
             Kit.Divider(right, true);
             Add(right, Kit.Ghost(right, "Commands", Dialogs.Commands, 32f));
             _theme = Add(right, Kit.Ghost(right, "Light", EditorCommands.ToggleTheme, 32f));
             Add(right, Kit.Ghost(right, "Help", EditorCommands.Help, 32f));
-            _build = Add(right, Kit.Primary(right, "Build in world", () => EditorCommands.BuildThis(), 30f));
+            _build = Add(right, Kit.Primary(right, "Build in world", () => EditorCommands.BuildThis(), 32f));
+            Pad(right, 2);
 
             BuildMenu();
 
@@ -256,17 +261,37 @@ namespace ValheimTomrer.Editor.Ui
             return button;
         }
 
-        /// <summary>A row pinned to the bar's left (0) or right (1) edge, as wide as what is in it.</summary>
-        private static void Pin(RectTransform row, float side)
+        /// <summary>
+        /// One island of the top band: an opaque card as wide as its children, <see cref="EditorWindow.HeaderHeight"/>
+        /// tall, a margin from the top and from its edge (0 left, 0.5 middle, 1 right).
+        /// </summary>
+        private static RectTransform Island(string name, float side)
         {
-            row.anchorMin = new Vector2(side, 0f);
-            row.anchorMax = new Vector2(side, 1f);
-            row.pivot = new Vector2(side, 0.5f);
-            row.anchoredPosition = Vector2.zero;
-            row.sizeDelta = new Vector2(10f, 0f);
-            row.GetComponent<HorizontalLayoutGroup>().childForceExpandHeight = false;
-            row.GetComponent<HorizontalLayoutGroup>().childAlignment = side > 0.5f ? TextAnchor.MiddleRight : TextAnchor.MiddleLeft;
-            Kit.Fit(row, true, false);
+            var card = UiBuild.Card(name, _root);
+            var rect = card.rectTransform;
+            rect.anchorMin = rect.anchorMax = new Vector2(side, 1f);
+            rect.pivot = new Vector2(side, 1f);
+            rect.anchoredPosition = new Vector2(
+                side < 0.25f ? EditorWindow.Margin : side > 0.75f ? -EditorWindow.Margin : 0f,
+                -EditorWindow.Margin);
+            rect.sizeDelta = new Vector2(10f, EditorWindow.HeaderHeight);
+            var row = card.gameObject.AddComponent<HorizontalLayoutGroup>();
+            row.spacing = 2f;
+            row.padding = new RectOffset(4, 4, 4, 4);
+            row.childAlignment = TextAnchor.MiddleLeft;
+            row.childControlWidth = true;
+            row.childControlHeight = true;
+            row.childForceExpandWidth = false;
+            row.childForceExpandHeight = true;
+            Kit.Fit(rect, true, false);
+            return rect;
+        }
+
+        /// <summary>A little air at the end of an island, so its last widget is not against the edge.</summary>
+        private static void Pad(RectTransform island, int right)
+        {
+            var row = island.GetComponent<HorizontalLayoutGroup>();
+            row.padding = new RectOffset(row.padding.left, row.padding.right + right, row.padding.top, row.padding.bottom);
         }
 
         /// <summary>
@@ -275,11 +300,12 @@ namespace ValheimTomrer.Editor.Ui
         /// </summary>
         private static void BuildMenu()
         {
+            // A child of the header frame, not of the island: an island's layout would take it over.
             _menu = UiBuild.Rect("Menu", _root);
-            _menu.anchorMin = _menu.anchorMax = new Vector2(0f, 0f);
+            _menu.anchorMin = _menu.anchorMax = new Vector2(0f, 1f);
             _menu.pivot = new Vector2(0f, 1f);
-            _menu.anchoredPosition = new Vector2(0f, -4f);
-            _menu.sizeDelta = new Vector2(260f, 10f);
+            _menu.anchoredPosition = new Vector2(EditorWindow.Margin, -(EditorWindow.TopBand + 6f));
+            _menu.sizeDelta = new Vector2(270f, 10f);
 
             var catcher = UiBuild.Panel("Beside", _menu, null, new Color(0f, 0f, 0f, 0f));
             catcher.type = Image.Type.Simple;
@@ -310,6 +336,13 @@ namespace ValheimTomrer.Editor.Ui
             Kit.Divider(card.transform);
             Item(card.transform, "Center the origin", "", EditorCommands.CenterOrigin);
             Item(card.transform, "Build in world", "", () => EditorCommands.BuildThis());
+            Kit.Divider(card.transform);
+            Item(card.transform, "Layers card", Keymap.Describe(Act.ToggleLayers), () => EditorWindow.SetLayers(!EditorWindow.LayersOpen));
+            Item(card.transform, "Inspector card", Keymap.Describe(Act.ToggleInspector), () => EditorWindow.SetInspector(!EditorWindow.InspectorOpen));
+            Item(card.transform, "Hide the interface", Keymap.Describe(Act.HideUi), () => EditorWindow.SetUiHidden(true));
+            Item(card.transform, "Look at the selection", Keymap.Describe(Act.Frame), ViewportHost.Frame);
+            Item(card.transform, "Perspective / orthographic", Keymap.Describe(Act.ToggleOrtho), ViewportHost.ToggleOrtho);
+            Item(card.transform, "Show only the selection", Keymap.Describe(Act.Isolate), EditorState.IsolateSelection);
             Kit.Divider(card.transform);
             Item(card.transform, "Keys…", "", Dialogs.Controls);
             Item(card.transform, "Search commands", Keymap.Describe(Act.Commands), Dialogs.Commands);

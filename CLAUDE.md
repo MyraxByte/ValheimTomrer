@@ -60,7 +60,7 @@ destroys the plugin and loads it again: what is left behind stacks up (`.claude/
 
 ## Map
 
-All 87 source files with one line each, and a "where to change what" table: `.claude/project-map.md`.
+All 88 source files with one line each, and a "where to change what" table: `.claude/project-map.md`.
 Go there instead of searching.
 
 | Folder | Holds |
