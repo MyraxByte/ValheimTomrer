@@ -90,6 +90,17 @@ F7 opens a window with a 3D view, the piece list and the game's snapping.
   and close code runs outside it. A new per-frame panel update goes in through `Safe`.
 - **Undo runs** of one tag (nudge, a typed number) end after 1.2 s, on a new selection and on save; an edit
   that changes nothing makes no step. Align, mirror and spread are one step each.
+- **Floors** (`EditorState.Level`, `LevelOf`, `PlaneY`): a piece is on the floor its lowest point is on
+  (height / `FloorHeight`). Pieces above the floor in view are "cut": not drawn, not picked, not in the placing
+  index (`IsHidden` says so too). The ground for new pieces is `SceneIndex.GroundY`; the grid follows it
+  (`EditorScene.SetPlane`). A piece placed higher takes the view up to it (`FollowLevel`).
+- **Isometric** (`EditorCamera.Iso`): orthographic, pitch fixed at 35.264, yaw on 45 + 90 k, quarter turns
+  eased in `EditorCamera.Step`. In it the look keys pan, the pad's right stick flicks a turn and its D-pad up
+  and down change the floor. A view preset or leaving orthographic leaves it.
+- **The light** is `View/SceneLook.cs`: four looks by time of day, all colours from code. A new colour of the
+  scene goes into the `Look`, never as a constant in `EditorScene`.
+- **Text boxes draw their own cursor and selection** (`FieldLook.DrawCaret`) because TextMeshPro's were not
+  visible in this window. Do not remove them without seeing the game's ones work.
 - **Inspector tabs** slide too (`Inspector.SetTab`); only Quick add switches its popup off, and it
   builds its tiles and chips in `Open`, after switching on.
 - **Quick add** (`QuickAdd`) is the only piece picker: Tab, the pad's cross and the Add mode open it.

@@ -380,6 +380,15 @@ namespace ValheimTomrer.Editor.Input
                 case Act.TimeOfDay:
                     EditorCommands.CycleTimeOfDay();
                     return true;
+                case Act.ToggleSupportColours:
+                    EditorCommands.ToggleSupportColours();
+                    return true;
+                case Act.SaveSelectionAs:
+                    EditorCommands.SaveSelectionDialog();
+                    return true;
+                case Act.InsertBlueprint:
+                    EditorCommands.InsertDialog();
+                    return true;
                 case Act.Ruler:
                     ViewportHost.ToggleRuler();
                     return true;

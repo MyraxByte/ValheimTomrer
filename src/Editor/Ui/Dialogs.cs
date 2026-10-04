@@ -59,6 +59,9 @@ namespace ValheimTomrer.Editor.Ui
 
         /// <summary>What cancelling the dialog goes back to, or null to just close it.</summary>
         private static Action _back;
+        private static Func<string, bool, bool> _saveCommit;
+        private static string _saveTitle = "Save as";
+        private static bool _insertMode;
         private static TextMeshProUGUI _note;
         private static TextMeshProUGUI _fileLine;
         private static Button _submit;
@@ -125,6 +128,12 @@ namespace ValheimTomrer.Editor.Ui
             if (entry.Error != null)
             {
                 Toasts.Error(entry.Error);
+                return;
+            }
+
+            if (_insertMode)
+            {
+                EditorCommands.InsertEntry(entry);
                 return;
             }
 
@@ -248,6 +257,8 @@ namespace ValheimTomrer.Editor.Ui
             Kind = "";
             _confirmRun = null;
             _back = null;
+            _saveCommit = null;
+            _insertMode = false;
             NameField = null;
             FocusStart = null;
             _note = null;
@@ -268,12 +279,14 @@ namespace ValheimTomrer.Editor.Ui
         /// puts the walk on the Delete button of that row (or the nearest one above), for the
         /// way back from the delete question.
         /// </summary>
-        public static void Open(int deleteAt = -1)
+        public static void Open(int deleteAt = -1, bool insert = false)
         {
-            if (!Begin("open", "Blueprints", 780f, 580f))
+            if (!Begin("open", insert ? "Insert a blueprint" : "Blueprints", 780f, 580f))
             {
                 return;
             }
+
+            _insertMode = insert;
 
             var scroll = UiBuild.Scroll("Files", _body, 2f);
             UiBuild.Stretch((RectTransform)scroll.transform);
@@ -287,7 +300,7 @@ namespace ValheimTomrer.Editor.Ui
                 Dim(scroll.content, "None yet. Save as writes one here.");
             }
 
-            AddRows(scroll.content, files, true);
+            AddRows(scroll.content, files, !insert);
             Foot("Close", () => Close(), null, null);
 
             // The rows need their places now, or the walk cannot scroll a row far down into sight.
@@ -306,10 +319,22 @@ namespace ValheimTomrer.Editor.Ui
         /// <summary>The name a blueprint is saved under. It becomes #Name: and, slugged, the file name.</summary>
         public static void SaveAs(string initial)
         {
-            if (!Begin("saveAs", "Save as", 580f, 320f))
+            SaveAs(initial, null, "Save as");
+        }
+
+        /// <summary>
+        /// The same box with another way to save: <paramref name="commit"/> gets the name and whether to overwrite.
+        /// The selection is saved as a blueprint of its own this way.
+        /// </summary>
+        public static void SaveAs(string initial, Func<string, bool, bool> commit, string title)
+        {
+            if (!Begin("saveAs", title, 580f, 320f))
             {
                 return;
             }
+
+            _saveCommit = commit;
+            _saveTitle = title;
 
             var label = UiBuild.Label("Label", _body, "Blueprint name", 16f, TextAlignmentOptions.TopLeft, UiTheme.TextDim);
             Line(label.rectTransform, 0f, 20f);
@@ -678,6 +703,9 @@ namespace ValheimTomrer.Editor.Ui
             // A question asked from the Blueprints list or from Save as goes back to it when cancelled.
             var before = Kind;
             var typed = NameField != null ? NameField.text : null;
+            var commitWas = _saveCommit;
+            var titleWas = _saveTitle;
+            var insertWas = _insertMode;
             if (!Begin("confirm", title, 560f, 240f))
             {
                 return;
@@ -685,11 +713,11 @@ namespace ValheimTomrer.Editor.Ui
 
             if (back == null && before == "open")
             {
-                back = () => Open();
+                back = () => Open(-1, insertWas);
             }
             else if (back == null && before == "saveAs" && typed != null)
             {
-                back = () => SaveAs(typed);
+                back = () => SaveAs(typed, commitWas, titleWas);
             }
 
             _confirmRun = run;
@@ -1005,16 +1033,17 @@ namespace ValheimTomrer.Editor.Ui
             var file = BlueprintFormat.FileNameFor(wanted);
             var target = Path.Combine(BlueprintLibrary.UserFolder, file);
             var document = EditorState.Document;
-            var same = document != null && !string.IsNullOrEmpty(document.SourcePath)
+            var commit = _saveCommit ?? EditorCommands.SaveAs;
+            var same = _saveCommit == null && document != null && !string.IsNullOrEmpty(document.SourcePath)
                 && string.Equals(document.SourcePath, target, StringComparison.OrdinalIgnoreCase);
             if (!same && File.Exists(target))
             {
                 Confirm("Replace the file?", $"{file} is already there. Saving writes over it.", "Replace",
-                    () => EditorCommands.SaveAs(wanted, true));
+                    () => commit(wanted, true));
                 return;
             }
 
-            EditorCommands.SaveAs(wanted, true);
+            commit(wanted, true);
         }
 
         // ---------- widgets ----------

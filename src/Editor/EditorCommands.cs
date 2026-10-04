@@ -44,6 +44,91 @@ namespace ValheimTomrer.Editor
             Dialogs.Open();
         }
 
+        /// <summary>Asks for a name and keeps the selected pieces as a small blueprint of their own.</summary>
+        public static void SaveSelectionDialog()
+        {
+            if (EditorState.SelectionCount == 0)
+            {
+                Toasts.Info("Select something to keep as a blueprint first.");
+                return;
+            }
+
+            Dialogs.SaveAs("New part", SaveSelectionAs, "Save the selection as");
+        }
+
+        /// <summary>
+        /// Writes the selection as a blueprint of its own, in the player's folder, its pieces placed round their
+        /// bottom centre so it lands where it is aimed when it is inserted.
+        /// </summary>
+        public static bool SaveSelectionAs(string name, bool overwrite)
+        {
+            var pieces = EditorState.SelectedPieces();
+            if (pieces.Count == 0)
+            {
+                return false;
+            }
+
+            var centre = EditorState.BottomCentre(pieces);
+            var part = DocumentStore.New(name);
+            part.AddPieces(pieces.Select(p => new NewPiece
+            {
+                PrefabName = p.PrefabName,
+                Position = p.Position - centre,
+                Rotation = p.Rotation,
+            }).ToList());
+            Begin("Saving");
+            var ok = DocumentStore.SaveAs(part, name, overwrite, out var error);
+            Done();
+            if (!ok)
+            {
+                Toasts.Error(error);
+                return false;
+            }
+
+            Dialogs.Close();
+            Toasts.Ok($"Kept {pieces.Count} piece{(pieces.Count == 1 ? "" : "s")} as {Path.GetFileName(part.SourcePath)}. Ctrl+I puts it in any blueprint.");
+            return true;
+        }
+
+        /// <summary>The list of blueprints, to pick one whose pieces go in hand.</summary>
+        public static void InsertDialog()
+        {
+            if (EditorState.Document == null)
+            {
+                return;
+            }
+
+            Dialogs.Open(-1, true);
+        }
+
+        /// <summary>A blueprint of the list goes in hand, a piece-by-piece copy that is dropped where it is aimed.</summary>
+        public static void InsertEntry(BlueprintEntry entry)
+        {
+            if (entry == null)
+            {
+                return;
+            }
+
+            Begin("Reading");
+            BlueprintDocument document;
+            string error;
+            var ok = entry.IsKit
+                ? DocumentStore.OpenKit(entry, out document, out error)
+                : DocumentStore.Open(entry.Path, out document, out error);
+            Done();
+            if (!ok)
+            {
+                Toasts.Error(error);
+                return;
+            }
+
+            Dialogs.Close();
+            if (EditorState.StartPasteFrom(document.Pieces.ToList()))
+            {
+                Toasts.Ok($"{document.Name}: {document.Pieces.Count} pieces in hand. Click to drop, Esc to stop.");
+            }
+        }
+
         /// <summary>Opens one row of that list, asking first when the open blueprint has changes.</summary>
         public static void OpenEntry(BlueprintEntry entry)
         {
@@ -298,6 +383,15 @@ namespace ValheimTomrer.Editor
         {
             EditorState.DimensionsOn = !EditorState.DimensionsOn;
             Toasts.Info(EditorState.DimensionsOn ? "Sizes and gaps shown." : "Sizes and gaps hidden.");
+        }
+
+        /// <summary>Colours every piece by its support, so the weak places show without pointing at each one.</summary>
+        public static void ToggleSupportColours()
+        {
+            EditorState.SupportColoursOn = !EditorState.SupportColoursOn;
+            Toasts.Info(EditorState.SupportColoursOn
+                ? "Support colours on: green is held well, red is about to break."
+                : "Support colours off.");
         }
 
         /// <summary>The next light for the 3D view: morning, day, evening, night, round.</summary>

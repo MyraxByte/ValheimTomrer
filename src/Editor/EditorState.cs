@@ -55,6 +55,9 @@ namespace ValheimTomrer.Editor
         /// <summary>Draw the selection's size and the gaps beside it over the view. This session only.</summary>
         public static bool DimensionsOn { get; set; } = true;
 
+        /// <summary>Colour every piece by how well it is held up (green strong, red about to break). This session only.</summary>
+        public static bool SupportColoursOn { get; set; }
+
         /// <summary>Show the snap points while placing. Snapping itself is always on.</summary>
         public static bool SnapDotsOn { get; set; } = true;
 
@@ -631,15 +634,26 @@ namespace ValheimTomrer.Editor
         /// </summary>
         public static bool StartPaste()
         {
-            if (Document == null || _clipboard.Count == 0)
+            if (_clipboard.Count == 0)
             {
                 Say("Nothing is copied yet.");
                 return false;
             }
 
+            return StartPasteFrom(_clipboard);
+        }
+
+        /// <summary>Puts these pieces in hand as copies, wherever they came from (another blueprint, a file).</summary>
+        public static bool StartPasteFrom(IList<DocPiece> pieces)
+        {
+            if (Document == null || pieces == null || pieces.Count == 0)
+            {
+                return false;
+            }
+
             MovingIds.Clear();
             Held = null;
-            Moving = MovingSet.Of(MovingPieces(_clipboard));
+            Moving = MovingSet.Of(MovingPieces(pieces));
             Action = PlaceAction.Duplicate;
             Mode = EditMode.Place;
             Steps = 0;

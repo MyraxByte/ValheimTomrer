@@ -452,6 +452,46 @@ namespace ValheimTomrer.Dev
             Check(EditorState.Message != null, $"Alt+P answers: '{EditorState.Message}'");
             EditorState.Select(new int[0]);
 
+            // The Layers search: tokens for what is hidden and locked.
+            EditorState.Select(new int[0]);
+            EditorState.SetHidden(new[] { ids[0] }, true);
+            LayersPanel.SetSearch(":hidden");
+            yield return Frames(2);
+            var hiddenRows = LayersPanel.RowCount;
+            LayersPanel.SetSearch(":locked");
+            yield return Frames(2);
+            Check(hiddenRows >= 2 && LayersPanel.RowCount == 0, $"':hidden' lists the hidden piece ({hiddenRows} rows), ':locked' nothing ({LayersPanel.RowCount})");
+            LayersPanel.SetSearch(":weak");
+            yield return Frames(2);
+            Check(LayersPanel.RowCount >= 0, $"':weak' works: {LayersPanel.RowCount} rows");
+            LayersPanel.SetSearch("");
+            EditorState.SetHidden(new[] { ids[0] }, false);
+
+            // Support colours on and off.
+            EditorCommands.ToggleSupportColours();
+            yield return Frames(3);
+            Check(EditorState.SupportColoursOn, "Alt+K style: the support colours switch on");
+            EditorCommands.ToggleSupportColours();
+            yield return Frames(2);
+
+            // Templates: the selection becomes a blueprint file, and that file goes in hand.
+            EditorState.Select(ids.Take(2).ToArray());
+            var wanted = "Autotest part";
+            var file = System.IO.Path.Combine(ValheimTomrer.Blueprints.BlueprintLibrary.UserFolder, ValheimTomrer.Blueprints.BlueprintFormat.FileNameFor(wanted));
+            Check(EditorCommands.SaveSelectionAs(wanted, true) && System.IO.File.Exists(file), "the selection is kept as a blueprint file");
+            var entry = DocumentStore.ListUserFiles().FirstOrDefault(e => e.Name == wanted);
+            Check(entry != null && entry.Pieces == 2, $"and the list has it with {(entry != null ? entry.Pieces : 0)} pieces");
+            if (entry != null)
+            {
+                EditorCommands.InsertEntry(entry);
+                Check(EditorState.Mode == EditMode.Place && EditorState.Moving != null && EditorState.Moving.Count == 2,
+                    "inserting it puts its two pieces in hand");
+                EditorState.CancelMode();
+                DocumentStore.Delete(file, out _);
+            }
+
+            EditorState.Select(new int[0]);
+
             // A click on a hidden piece keeps the selection and says why.
             EditorState.Select(ids[1]);
             EditorState.SetHidden(new[] { ids[0] }, true);

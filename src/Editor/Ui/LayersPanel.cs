@@ -7,6 +7,7 @@ using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using ValheimTomrer.Editor.Catalog;
 using ValheimTomrer.Editor.Doc;
+using ValheimTomrer.Editor.Placement;
 
 namespace ValheimTomrer.Editor.Ui
 {
@@ -153,12 +154,18 @@ namespace ValheimTomrer.Editor.Ui
                 _revision = _document.PiecesRevision;
                 var groups = new Dictionary<string, List<DocPiece>>();
                 var order = new List<string>();
+                var words = new List<string>();
+                var tokens = new List<string>();
+                foreach (var word in _filter.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries))
+                {
+                    (word[0] == ':' ? tokens : words).Add(word);
+                }
+
                 foreach (var piece in _document.Pieces)
                 {
                     var entry = PieceCatalog.Find(piece.PrefabName);
                     var name = entry != null ? entry.DisplayName : piece.PrefabName;
-                    if (_filter.Length > 0 && name.ToLowerInvariant().IndexOf(_filter, StringComparison.Ordinal) < 0
-                        && piece.PrefabName.ToLowerInvariant().IndexOf(_filter, StringComparison.Ordinal) < 0)
+                    if (!Matches(piece, name, words, tokens))
                     {
                         continue;
                     }
@@ -197,6 +204,78 @@ namespace ValheimTomrer.Editor.Ui
             _content.sizeDelta = new Vector2(0f, Lines.Count * RowHeight + 8f);
             _first = -1;
             Fill();
+        }
+
+        /// <summary>
+        /// A piece passes the search when every word is in its name and every token holds: :weak (badly held up or
+        /// about to fall), :hidden, :locked, :selected, :grouped, :floor2 (on the second floor).
+        /// </summary>
+        private static bool Matches(DocPiece piece, string name, List<string> words, List<string> tokens)
+        {
+            var lower = name.ToLowerInvariant();
+            var prefab = piece.PrefabName.ToLowerInvariant();
+            foreach (var word in words)
+            {
+                if (lower.IndexOf(word, StringComparison.Ordinal) < 0 && prefab.IndexOf(word, StringComparison.Ordinal) < 0)
+                {
+                    return false;
+                }
+            }
+
+            foreach (var token in tokens)
+            {
+                switch (token)
+                {
+                    case ":weak":
+                        if (!(EditorState.Stability.Falls(piece.Id)
+                            || (EditorState.Stability.TryGet(piece.Id, out var held, out var info) && Support.Level(held, info) < 0.4f)))
+                        {
+                            return false;
+                        }
+
+                        break;
+                    case ":hidden":
+                        if (!EditorState.IsHidden(piece.Id))
+                        {
+                            return false;
+                        }
+
+                        break;
+                    case ":locked":
+                        if (!EditorState.IsLocked(piece.Id))
+                        {
+                            return false;
+                        }
+
+                        break;
+                    case ":selected":
+                        if (!EditorState.IsSelected(piece.Id))
+                        {
+                            return false;
+                        }
+
+                        break;
+                    case ":grouped":
+                        if (!EditorState.IsGrouped(piece.Id))
+                        {
+                            return false;
+                        }
+
+                        break;
+                    default:
+                        // :floor2, the second floor
+                        if (token.StartsWith(":floor", StringComparison.Ordinal)
+                            && int.TryParse(token.Substring(6), out var floor)
+                            && EditorState.LevelOf(piece) != floor - 1)
+                        {
+                            return false;
+                        }
+
+                        break;
+                }
+            }
+
+            return true;
         }
 
         /// <summary>The group a piece belongs to: its first building tag ("Wall", "Roof"), else "Other".</summary>
@@ -310,7 +389,7 @@ namespace ValheimTomrer.Editor.Ui
             hide.anchoredPosition = new Vector2(-8f, 0f);
             hide.sizeDelta = new Vector2(46f, 26f);
 
-            _search = Kit.Field(_root, "", "Find a piece in this blueprint");
+            _search = Kit.Field(_root, "", "Name, :weak, :hidden, :floor2");
             var search = (RectTransform)_search.transform;
             Top(search, HeadHeight, Kit.ControlHeight);
             search.offsetMin = new Vector2(12f, search.offsetMin.y);

@@ -380,6 +380,7 @@ namespace ValheimTomrer.Editor.Ui
             UpdateAim();
             UpdateBoxes();
             UpdateOverlays();
+            UpdateSupportColours();
 
             _dots.Show(EditorState.SnapDotsOn ? EditorState.Aimed : null);
             _preview.Render();
@@ -719,6 +720,8 @@ namespace ValheimTomrer.Editor.Ui
             _raycast = null;
             _boxVersion = -1;
             _gapVersion = -1;
+            _supportRevision = -1;
+            _supportShown = false;
             RulerOn = false;
             _rulerA = _rulerB = null;
             _camera = null;
@@ -901,6 +904,32 @@ namespace ValheimTomrer.Editor.Ui
             }
 
             _boxes.ShowAll(all);
+        }
+
+        private static bool _supportShown;
+        private static int _supportRevision = -1;
+        private static SupportMap _supportMap;
+
+        /// <summary>Paints the pieces by their support when that is on, and again when the blueprint or the support changed.</summary>
+        private static void UpdateSupportColours()
+        {
+            if (_pieces == null || EditorState.Document == null)
+            {
+                return;
+            }
+
+            var on = EditorState.SupportColoursOn;
+            var revision = EditorState.Document.Revision;
+            var map = on ? EditorState.Stability : null;
+            if (on == _supportShown && revision == _supportRevision && ReferenceEquals(map, _supportMap))
+            {
+                return;
+            }
+
+            _supportShown = on;
+            _supportRevision = revision;
+            _supportMap = map;
+            _pieces.ShowSupport(on ? (System.Func<int, Color>)(id => map.ColorOf(id)) : null);
         }
 
         /// <summary>The lines over the picture: the hint, the place HUD, the aimed piece, the status.</summary>

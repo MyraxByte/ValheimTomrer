@@ -227,6 +227,9 @@ layout and has no setting.
 | 6 | Isometric view: flat, at a fixed angle, for building without free 3D. WASD slide the view, the wheel zooms, a right drag pans. |
 | [ and ] | Turn the view a quarter to the left or the right round what it looks at (in isometric, corner to corner) |
 | Ctrl + Up, Ctrl + Down, Ctrl + 0 | Floor up, floor down (from all floors: the top one), all floors. What is above the floor in view is hidden, new pieces are aimed at its level, and a piece placed higher takes the view up to it. The floor height is the `FloorHeight` setting (2 m). |
+| Alt + K | Support colours: every piece coloured by how well it is held up (the ground's colour, then green to red, like the hammer's) |
+| Ctrl + Alt + S | Keep the selected pieces as a small blueprint of their own (a window, a porch) |
+| Ctrl + I | Insert a blueprint from the list: its pieces go in hand, in this blueprint |
 | Alt + L | The light of the view: morning, day, evening, night (the Light button of the toolbar does the same) |
 | I | Show only the selection, to work inside a room. Again brings back only what it hid. |
 | Ctrl + C, Ctrl + V | Copy the selection, and paste it into hand, in this blueprint or another one. Copies keep coming until Esc. |
@@ -255,6 +258,7 @@ layout and has no setting.
 | Alt + S | Snap points on or off. The grid still works. Shift held turns all snapping off for a moment. |
 | Tab | Quick add: the list of pieces over the view. Type to search, click a piece to place it, right click stars it. Tab or Esc closes it. |
 | Alt + 1, Alt + 2 | Put the Layers card (left) or the Inspector card (right) away, or bring it back. A small tab on the edge brings it back with a click. |
+| Layers search box | A name, or a word with a colon: `:weak` (badly held up), `:hidden`, `:locked`, `:selected`, `:grouped`, `:floor2` (the second floor) |
 | Ctrl + \ | Hide the whole interface and keep the view. The same keys, or Esc, bring it back. |
 | F6, Shift + F6 | Move between the buttons and cards without the mouse. Arrow keys step, Enter presses. |
 | Esc | Go back one step, for example stop typing, close a window or put away the piece in your hand. When there is nothing left, it closes the editor. |
@@ -320,8 +324,8 @@ Windows like Blueprints and Save as, and every question, put the ring on themsel
 they open: the D-pad moves, × picks, ○ closes. In Save as the name box is selected but not typing,
 so down and × saves with the name shown. Press × on the box to type a new one.
 
-Copy, paste, group, close the gap, the sizes switch and saving a view have no button combo: the pad
-reaches them as buttons in the Inspector (Copy, Paste, Group, Ungroup, Close gap, Drop to floor, Next problem), the Sizes and Ruler
+Copy, paste, group, close the gap, the sizes switch, saving and inserting a part and saving a view have no button combo: the pad
+reaches them as buttons in the Inspector (Copy, Paste, Group, Ungroup, Close gap, Drop to floor, Next problem), the Sizes, Ruler, Light and Support
 buttons of the toolbar, and the command search (the Commands button).
 
 The rows in the Layers list and the Checks tab can't be picked with the pad. Use Quick add (×) to

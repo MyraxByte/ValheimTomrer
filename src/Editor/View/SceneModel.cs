@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using ValheimTomrer.Blueprints;
@@ -27,6 +28,9 @@ namespace ValheimTomrer.Editor.View
         private int _revision = -1;
         private bool _boxes;
         private GameObject _tinted;
+        private int _tintedId = -1;
+        private readonly Dictionary<Color32, MaterialPropertyBlock> _supportBlocks = new Dictionary<Color32, MaterialPropertyBlock>();
+        private readonly Dictionary<int, MaterialPropertyBlock> _supportOf = new Dictionary<int, MaterialPropertyBlock>();
         private Color _tintColor;
 
         public SceneModel(Transform root, int layer)
@@ -180,8 +184,9 @@ namespace ValheimTomrer.Editor.View
                 return;
             }
 
-            Paint(_tinted, null);
+            Paint(_tinted, _supportOf.TryGetValue(_tintedId, out var base0) ? base0 : null);
             _tinted = copy;
+            _tintedId = copy != null ? id : -1;
             _tintColor = color;
             if (copy == null)
             {
@@ -192,6 +197,51 @@ namespace ValheimTomrer.Editor.View
             _tint.SetColor(ColorId, color);
             _tint.SetColor(EmissionId, color * 0.4f);
             Paint(copy, _tint);
+        }
+
+        /// <summary>
+        /// Paints every piece in the colour of how well it is held up, like the game's hammer does for the piece it
+        /// points at: ground colour, then green to red. Null puts the pieces back. The caller says again after the
+        /// pieces were rebuilt.
+        /// </summary>
+        public void ShowSupport(Func<int, Color> colorOf)
+        {
+            foreach (var pair in _supportOf)
+            {
+                if (_live.TryGetValue(pair.Key, out var standing) && standing.Object != null && standing.Object != _tinted)
+                {
+                    Paint(standing.Object, null);
+                }
+            }
+
+            _supportOf.Clear();
+            if (colorOf == null)
+            {
+                return;
+            }
+
+            foreach (var pair in _live)
+            {
+                if (pair.Value.Object == null)
+                {
+                    continue;
+                }
+
+                var color = (Color32)colorOf(pair.Key);
+                if (!_supportBlocks.TryGetValue(color, out var block))
+                {
+                    block = new MaterialPropertyBlock();
+                    block.SetColor(ColorId, color);
+                    block.SetColor(EmissionId, (Color)color * 0.25f);
+                    _supportBlocks[color] = block;
+                }
+
+                _supportOf[pair.Key] = block;
+                if (pair.Value.Object != _tinted)
+                {
+                    Paint(pair.Value.Object, block);
+                }
+            }
         }
 
         private static void Paint(GameObject copy, MaterialPropertyBlock block)
