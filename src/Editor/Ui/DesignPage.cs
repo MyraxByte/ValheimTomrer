@@ -346,7 +346,7 @@ namespace ValheimTomrer.Editor.Ui
             var field = Kit.Field(row, caption, "", caption.Length > 1 ? 26f : 10f);
             Kit.Size(field, -1f, Kit.ControlHeight, 1f);
             field.contentType = TMP_InputField.ContentType.Standard;
-            var number = new NumberField { Field = field, Decimals = decimals, Commit = commit };
+            var number = new NumberField { Field = field, Decimals = decimals, Commit = commit, Look = field.GetComponent<FieldLook>() };
             field.onEndEdit.AddListener(number.Finish);
             return number;
         }
@@ -371,6 +371,7 @@ namespace ValheimTomrer.Editor.Ui
             public TMP_InputField Field;
             public int Decimals;
             public Action<int, float> Commit;
+            public FieldLook Look;
 
             private string _shown = "";
             private int _id = -1;
@@ -402,6 +403,12 @@ namespace ValheimTomrer.Editor.Ui
                 {
                     Commit(_id, value);
                     return;
+                }
+
+                // Something typed that is not a number: the box goes red for a moment and shows the old value.
+                if (typed.Length > 0 && Look != null && !float.TryParse(typed, NumberStyles.Float, CultureInfo.InvariantCulture, out _))
+                {
+                    Look.Flash();
                 }
 
                 Field.SetTextWithoutNotify(_shown);

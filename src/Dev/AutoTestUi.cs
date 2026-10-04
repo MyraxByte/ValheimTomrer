@@ -403,7 +403,7 @@ namespace ValheimTomrer.Dev
             wheel.OnScroll(new PointerEventData(EventSystem.current) { scrollDelta = new Vector2(0f, -1f) });
             yield return Wait(0.6f);
             var one = grid.content.anchoredPosition.y;
-            var expected = Mathf.Min(wheel.Step, room - start);
+            var expected = Mathf.Min(Mathf.Max(wheel.Step, grid.viewport.rect.height * 0.22f), room - start);
             Check(Mathf.Abs((one - start) - expected) < 1f,
                 $"one notch down scrolls {one - start:0} units (step {wheel.Step:0}, room {room:0})");
 

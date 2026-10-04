@@ -449,6 +449,7 @@ namespace ValheimTomrer.Editor.Ui
             _search.pointSize = 16f;
             var search = (RectTransform)_search.transform;
             Top(search, 0f, SearchHeight);
+            _search.GetComponent<FieldLook>().Plain = true;
             ((Image)_search.targetGraphic).color = new Color(0f, 0f, 0f, 0f);
             var outline = _search.GetComponent<Outline>();
             if (outline != null)

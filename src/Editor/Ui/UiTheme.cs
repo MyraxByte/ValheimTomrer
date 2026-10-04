@@ -88,7 +88,13 @@ namespace ValheimTomrer.Editor.Ui
         public static Color SurfacePressed => Dark ? Hex(0x41454D) : Hex(0xD3D7DD);
 
         /// <summary>The inside of a text box.</summary>
-        public static Color Field => Dark ? Hex(0x131417) : Hex(0xFFFFFF);
+        public static Color Field => Dark ? Hex(0x0E0F12) : Hex(0xF3F5F8);
+
+        /// <summary>The outline of a text box at rest: strong enough that the box reads as one you can type in.</summary>
+        public static Color FieldBorder => Dark ? Hex(0x4A4F59) : Hex(0xB3BBC7);
+
+        /// <summary>The same under the mouse.</summary>
+        public static Color FieldBorderHover => Dark ? Hex(0x7A8190) : Hex(0x7D8797);
 
         /// <summary>The thin line round a card, a text box or a key cap.</summary>
         public static Color Border => Dark ? Hex(0x34373D) : Hex(0xD6DAE0);

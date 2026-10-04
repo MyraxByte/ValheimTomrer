@@ -173,6 +173,9 @@ namespace ValheimTomrer.Editor.Ui
             background.type = Image.Type.Simple;
             Rounded(background);
             Border(background);
+            var look = background.gameObject.AddComponent<FieldLook>();
+            look.Back = background;
+            look.Edge = background.GetComponent<Outline>();
             var element = background.gameObject.AddComponent<LayoutElement>();
             element.minHeight = height;
             element.preferredHeight = height;
@@ -198,6 +201,7 @@ namespace ValheimTomrer.Editor.Ui
             field.caretColor = UiTheme.Text;
             field.lineType = TMP_InputField.LineType.SingleLine;
             field.text = string.Empty;
+            look.Field = field;
             return field;
         }
 
@@ -311,6 +315,67 @@ namespace ValheimTomrer.Editor.Ui
     }
 
     /// <summary>
+    /// How a text box looks in each state, so it is plain which ones can be typed in: a clear outline at
+    /// rest, a stronger one under the mouse, the accent while it has the keyboard, red after a value it
+    /// could not take (<see cref="Flash"/>), and dim with no outline when it is switched off.
+    /// </summary>
+    internal sealed class FieldLook : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
+    {
+        public TMP_InputField Field;
+        public Image Back;
+        public Outline Edge;
+
+        /// <summary>A box that dresses itself (Quick add's search) turns this on and is left alone.</summary>
+        public bool Plain;
+
+        private bool _hover;
+        private float _invalidUntil;
+
+        public bool Invalid => Time.unscaledTime < _invalidUntil;
+
+        /// <summary>Marks the box red for a moment: the typed value was refused.</summary>
+        public void Flash()
+        {
+            _invalidUntil = Time.unscaledTime + 1.6f;
+        }
+
+        public void OnPointerEnter(PointerEventData eventData) => _hover = true;
+
+        public void OnPointerExit(PointerEventData eventData) => _hover = false;
+
+        private void OnDisable()
+        {
+            _hover = false;
+        }
+
+        private void Update()
+        {
+            if (Plain || Field == null || Back == null)
+            {
+                return;
+            }
+
+            var on = Field.interactable;
+            var focused = on && Field.isFocused;
+            Back.color = on ? UiTheme.Field : Color.Lerp(UiTheme.Field, UiTheme.PanelFloat, 0.7f);
+            if (Edge != null)
+            {
+                Edge.effectColor = !on ? UiTheme.Border
+                    : Invalid ? UiTheme.Warn
+                    : focused ? UiTheme.Accent
+                    : _hover ? UiTheme.FieldBorderHover
+                    : UiTheme.FieldBorder;
+                Edge.effectDistance = focused || Invalid ? new Vector2(1.5f, -1.5f) : new Vector2(1f, -1f);
+            }
+
+            if (Field.textComponent != null)
+            {
+                Field.textComponent.color = on ? UiTheme.Text : UiTheme.TextDim;
+            }
+        }
+    }
+
+    /// <summary>
     /// The editor's text box. A box being typed in is the one widget the EventSystem really
     /// selects, so the game's own UI module sends it the pad's buttons: cross as Submit (a plain
     /// box would fire onSubmit, and Save as saved its first name and closed), circle as Cancel
@@ -342,10 +407,20 @@ namespace ValheimTomrer.Editor.Ui
     /// </summary>
     internal sealed class WheelScroll : MonoBehaviour, IScrollHandler
     {
-        /// <summary>Canvas units per notch. A list that knows its row height sets a multiple of it.</summary>
+        /// <summary>The least canvas units per notch. A list that knows its row height sets a multiple of it.</summary>
         public float Step = 90f;
 
-        private const float Ease = 18f;
+        /// <summary>A notch is also at least this share of the list's height, so a tall list is never a crawl.</summary>
+        private const float OfView = 0.22f;
+
+        /// <summary>Notches closer together than this (seconds) build up speed, a fast spin crosses a long list.</summary>
+        private const float Chain = 0.14f;
+
+        private const float MostBoost = 4f;
+        private const float Ease = 26f;
+
+        private float _lastNotch = -10f;
+        private int _chain;
 
         private ScrollRect _scroll;
         private float _target;
@@ -376,8 +451,14 @@ namespace ValheimTomrer.Editor.Ui
                 return;
             }
 
+            var notches = Notches(eventData.scrollDelta.y);
+            var now = Time.unscaledTime;
+            _chain = now - _lastNotch < Chain ? _chain + 1 : 0;
+            _lastNotch = now;
+            var boost = Mathf.Min(MostBoost, 1f + (_chain * 0.5f));
+            var step = Mathf.Max(Step, _scroll.viewport.rect.height * OfView) * boost;
             var from = _moving ? _target : _scroll.content.anchoredPosition.y;
-            _target = Mathf.Clamp(from - Notches(eventData.scrollDelta.y) * Step, 0f, room);
+            _target = Mathf.Clamp(from - notches * step, 0f, room);
             _last = _scroll.content.anchoredPosition.y;
             _moving = true;
             eventData.Use();
