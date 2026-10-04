@@ -27,7 +27,8 @@ namespace ValheimTomrer.Editor.Ui
         public const string RecentKey = "@recent";
         public const string FavouriteKey = "@favourite";
 
-        private const int Columns = 5;
+        /// <summary>The tile width the grid aims for; the column count follows the card's width.</summary>
+        private const float TileTarget = 84f;
         private const float SideWidth = 176f;
         private const float Spacing = 8f;
         private const float SearchHeight = 46f;
@@ -47,6 +48,7 @@ namespace ValheimTomrer.Editor.Ui
         private static int _catalogGeneration = -1;
         private static int _catalogCount = -1;
 
+        private static int Columns = 7;
         private static readonly List<Tile> Tiles = new List<Tile>();
         private static readonly List<Tile> Shown = new List<Tile>();
         private static readonly List<Chip> Chips = new List<Chip>();
@@ -427,8 +429,10 @@ namespace ValheimTomrer.Editor.Ui
             var height = Mathf.Clamp(root.rect.height - 180f, 320f, 580f);
             _card.sizeDelta = new Vector2(width, height);
             var inner = width - 28f - SideWidth - 10f;
+            Columns = Mathf.Max(3, Mathf.FloorToInt((inner + Spacing) / (TileTarget + Spacing)));
+            _grid.constraintCount = Columns;
             var cell = Mathf.Floor((inner - ((Columns - 1) * Spacing)) / Columns);
-            _grid.cellSize = new Vector2(cell, cell + 18f);
+            _grid.cellSize = new Vector2(cell, cell + 16f);
             _scroll.GetComponent<WheelScroll>().Step = 2f * (_grid.cellSize.y + Spacing);
         }
 
@@ -599,17 +603,18 @@ namespace ValheimTomrer.Editor.Ui
             icon.enabled = entry.Icon != null;
             icon.rectTransform.anchorMin = new Vector2(0f, 0f);
             icon.rectTransform.anchorMax = new Vector2(1f, 1f);
-            icon.rectTransform.offsetMin = new Vector2(14f, 34f);
-            icon.rectTransform.offsetMax = new Vector2(-14f, -10f);
+            icon.rectTransform.offsetMin = new Vector2(8f, 32f);
+            icon.rectTransform.offsetMax = new Vector2(-8f, -8f);
 
-            var name = Kit.Note(back.transform, entry.DisplayName, 11f, UiTheme.Text);
+            var name = Kit.Note(back.transform, entry.DisplayName, 10f, UiTheme.Text);
             name.alignment = TextAlignmentOptions.Bottom;
             name.overflowMode = TextOverflowModes.Ellipsis;
+            name.enableWordWrapping = true;
             name.rectTransform.anchorMin = new Vector2(0f, 0f);
             name.rectTransform.anchorMax = new Vector2(1f, 0f);
             name.rectTransform.pivot = new Vector2(0.5f, 0f);
-            name.rectTransform.offsetMin = new Vector2(6f, 4f);
-            name.rectTransform.offsetMax = new Vector2(-6f, 32f);
+            name.rectTransform.offsetMin = new Vector2(4f, 3f);
+            name.rectTransform.offsetMax = new Vector2(-4f, 30f);
             tile.Name = name;
 
             var star = UiBuild.Panel("Star", back.transform, null, UiTheme.Accent);
