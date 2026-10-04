@@ -472,8 +472,9 @@ namespace ValheimTomrer.Blueprints
         }
 
         /// <summary>
-        /// Makes the copy's lights work in the editor: on, lighting only the editor's layer, with no shadows (a
-        /// point light's shadows are six renders), and switched on through their parents. A fire the game lights by
+        /// Makes the copy's lights work in the editor: on, lighting only the editor's layer, with shadows (so a wall
+        /// stops the light, as in the real world; a point light's shadow is six renders, so few lights are fine and
+        /// hundreds are slow), and switched on through their parents. A fire the game lights by
         /// its own script (Fireplace, which needs the network) gets its flame objects on. A light the game flickers flickers here.
         /// </summary>
         private static void LightUp(GameObject copy, int layer, List<Light> flickering)
@@ -494,7 +495,10 @@ namespace ValheimTomrer.Blueprints
             foreach (var light in copy.GetComponentsInChildren<Light>(true))
             {
                 light.cullingMask = 1 << layer;
-                light.shadows = LightShadows.None;
+                light.shadows = LightShadows.Soft;
+                light.shadowStrength = 0.9f;
+                light.shadowBias = 0.05f;
+                light.shadowNormalBias = 0.4f;
                 light.enabled = true;
                 for (var t = light.transform; t != null && t != copy.transform.parent; t = t.parent)
                 {
@@ -517,7 +521,7 @@ namespace ValheimTomrer.Blueprints
             DestroyAll<TerrainModifier>(copy);
             DestroyAll<GuidePoint>(copy);
             // The editor shows a torch, a lantern or a fire as they shine: their lights stay (only for the
-            // editor's own layer, no shadows) and flicker the way the game's do. LightLod is the game's switch by
+            // editor's own layer, soft shadows so a wall blocks them) and flicker the way the game's do. LightLod is the game's switch by
             // distance to its own camera, 8000 m away from here, so it always goes. The aim preview has no lights.
             var shining = style.Look == PreviewLook.Solid;
             var flickering = new List<Light>();

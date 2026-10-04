@@ -117,7 +117,7 @@ namespace ValheimTomrer.Editor.Ui
             for (var i = 0; i < Pages.Length; i++)
             {
                 var page = UiBuild.Rect(Names[i] + "Page", _root);
-                UiBuild.Stretch(page, 0f, 0f, 0f, TabsHeight + 1f);
+                UiBuild.Stretch(page, 0f, 0f, 0f, TabsHeight + 12f);
                 Pages[i] = page;
             }
 

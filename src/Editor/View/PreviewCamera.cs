@@ -119,13 +119,22 @@ namespace ValheimTomrer.Editor.View
             var fogTo = RenderSettings.fogEndDistance;
             var mode = RenderSettings.ambientMode;
             var light = RenderSettings.ambientLight;
+            var skyLight = RenderSettings.ambientSkyColor;
+            var equatorLight = RenderSettings.ambientEquatorColor;
+            var groundLight = RenderSettings.ambientGroundColor;
             var reflection = RenderSettings.reflectionIntensity;
             RenderSettings.fog = true;
             RenderSettings.fogMode = FogMode.Linear;
             RenderSettings.fogColor = Background;
             RenderSettings.fogStartDistance = FogFrom;
             RenderSettings.fogEndDistance = FogTo;
-            RenderSettings.ambientMode = AmbientMode.Flat;
+
+            // Light from all round, like the real sky: brighter from above, the horizon's own, and the dark
+            // bounce from the ground, so a wall's top, side and underside are not all the same grey.
+            RenderSettings.ambientMode = AmbientMode.Trilight;
+            RenderSettings.ambientSkyColor = Ambient * 1.45f;
+            RenderSettings.ambientEquatorColor = Ambient;
+            RenderSettings.ambientGroundColor = Ambient * 0.4f;
             RenderSettings.ambientLight = Ambient;
 
             // The world's sky is not reflected in the editor's pieces: it only washes them out.
@@ -143,6 +152,9 @@ namespace ValheimTomrer.Editor.View
                 RenderSettings.fogEndDistance = fogTo;
                 RenderSettings.ambientMode = mode;
                 RenderSettings.ambientLight = light;
+                RenderSettings.ambientSkyColor = skyLight;
+                RenderSettings.ambientEquatorColor = equatorLight;
+                RenderSettings.ambientGroundColor = groundLight;
                 RenderSettings.reflectionIntensity = reflection;
             }
         }

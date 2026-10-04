@@ -80,7 +80,7 @@ F7 opens a window with a 3D view, the piece list and the game's snapping.
   a keymap act, a pad twin and a line in the help.
 - **The look is dark only.** There is no light theme (the owner dropped it). The 3D scene is dark and matte on
   purpose: the ground has no shine, the sky is not reflected (`PreviewCamera.Render`), the grid has every fifth
-  line brighter. A bright scene hid the grid.
+  line brighter. The ambient is sky, horizon and ground (Trilight), not one flat colour. A bright scene hid the grid.
 - **Session-only, never in the file**: hide, lock, isolate, groups, the clipboard, saved views, the ruler.
   Groups live in `EditorState` (`Select` expands a piece to its group). Anything that must be in the file
   needs a format change in `Blueprint.cs` / `BlueprintFormat.cs`, which the desktop Tomrer shares: ask first.
@@ -93,7 +93,7 @@ F7 opens a window with a 3D view, the piece list and the game's snapping.
 - **The light** is `View/SceneLook.cs`: four looks by time of day, all colours from code. A new colour of the
   scene goes into the `Look`, never as a constant in `EditorScene`.
 - **Lights of pieces work in the editor** (`BlueprintPreview.LightUp`): a torch keeps its `Light` (editor layer
-  only, no shadows) and flickers; `LightLod` is always removed. The aim preview has no lights.
+  only, soft shadows so walls block it) and flickers; `LightLod` is always removed. The aim preview has no lights.
 - **Text boxes draw their own cursor and selection** (`FieldLook.DrawCaret`) because TextMeshPro's were not
   visible in this window. Do not remove them without seeing the game's ones work.
 - **Inspector tabs** slide too (`Inspector.SetTab`); only Quick add switches its popup off, and it
